@@ -1,0 +1,79 @@
+############################################
+# .NET / ASP.NET Core
+############################################
+bin/
+obj/
+out/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.cache
+*.pdb
+*.dbmdl
+*.jfm
+
+# ASP.NET Core config (local only)
+appsettings.Development.json
+appsettings.Local.json
+
+############################################
+# Node.js / React / Vite
+############################################
+node_modules/
+dist/
+build/
+.vite/
+.eslintcache
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+############################################
+# Environment variables
+############################################
+.env
+.env.*
+!.env.example
+
+############################################
+# Visual Studio
+############################################
+.vs/
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+############################################
+# JetBrains Rider / IntelliJ
+############################################
+.idea/
+*.sln.iml
+*.csproj.iml
+
+############################################
+# Cursor / Antigravity (AI Editors)
+############################################
+.cursor/
+.antigravity/
+.ai/
+.cache/
+
+############################################
+# OS files
+############################################
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+############################################
+# Logs & temp
+############################################
+logs/
+*.log
+*.tmp
+*.temp
+*.bak
