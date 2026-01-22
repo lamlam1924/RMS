@@ -423,7 +423,7 @@ CREATE TABLE FileTypes (
     Description NVARCHAR(200)
 );
 
-CREATE TABLE Files (
+CREATE TABLE FileUploaded (
     Id INT IDENTITY PRIMARY KEY,
     FileTypeId INT NOT NULL,
     EntityTypeId INT NOT NULL,
