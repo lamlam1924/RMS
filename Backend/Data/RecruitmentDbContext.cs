@@ -72,6 +72,8 @@ public partial class RecruitmentDbContext : DbContext
 
     public virtual DbSet<WorkflowTransition> WorkflowTransitions { get; set; }
 
+    public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.UseCollation("Vietnamese_CI_AS");
