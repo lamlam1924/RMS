@@ -1,0 +1,133 @@
+.page-head{
+    background:#ffffff;
+    border:1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+  }
+  .page-head h1{
+    margin:0;
+    font-size: 22px;
+    font-weight: 700;
+  }
+  
+  .filters{
+    display:flex;
+    align-items:flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 12px;
+    border:1px solid #e5e7eb;
+    background:#ffffff;
+    border-radius: 14px;
+    margin-bottom: 12px;
+  }
+  
+  .filter{
+    display:flex;
+    align-items:center;
+    gap: 8px;
+  }
+  .filter label{
+    color:#374151;
+    font-size: 13px;
+  }
+  .filter select, .filter input{
+    height: 34px;
+    border:1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 0 10px;
+    background:#fff;
+  }
+  .filter.wide select{ min-width: 190px; }
+  
+  .filter.search{
+    margin-left:auto;
+  }
+  .filter.search input{ width: 220px; }
+  
+  .btn-reset{
+    height: 34px;
+    border:none;
+    border-radius: 10px;
+    padding: 0 14px;
+    background:#6b7280;
+    color:#fff;
+    cursor:pointer;
+  }
+  .btn-reset:hover{ filter: brightness(0.95); }
+  
+  .table-wrap{
+    background:#ffffff;
+    border:1px solid #e5e7eb;
+    border-radius: 14px;
+    overflow:auto;
+  }
+  
+  .table{
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1050px;
+  }
+  .table th, .table td{
+    padding: 10px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    text-align:left;
+    white-space: nowrap;
+    font-size: 13px;
+  }
+  .table th{
+    color:#374151;
+    background:#f8fafc;
+    font-weight: 700;
+  }
+  
+  .badge{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 12px;
+    color:#fff;
+  }
+  .badge.cancel{ background:#ef4444; }
+  .badge.passed{ background:#22c55e; }
+  .badge.reached{ background:#f59e0b; }
+  .badge.stage{ background:#0ea5e9; }
+  
+  .action-btn{
+    width: 40px;
+    height: 32px;
+    border:none;
+    border-radius: 10px;
+    background:#06b6d4;
+    color:#fff;
+    cursor:pointer;
+    font-weight: 800;
+  }
+  .action-btn:hover{ filter: brightness(0.95); }
+  
+  .detail-actions{
+    display:flex;
+    gap: 8px;
+  }
+  .mini-btn{
+    width: 44px;
+    height: 32px;
+    border:none;
+    border-radius: 10px;
+    cursor:pointer;
+    color:#fff;
+  }
+  .mini-btn.cyan{ background:#06b6d4; }
+  .mini-btn.blue{ background:#2563eb; }
+  .mini-btn.gray{ background:#6b7280; }
+  
+  .empty{
+    text-align:center;
+    padding: 18px;
+    color:#6b7280;
+  }
+  
