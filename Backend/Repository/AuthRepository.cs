@@ -4,17 +4,6 @@ using RMS.Entity;
 
 namespace RMS.Repository;
 
-public interface IAuthRepository
-{
-    Task<User?> GetUserByEmailAsync(string email);
-    Task<User?> GetUserByGoogleIdAsync(string googleId);
-    Task<User> CreateUserAsync(User user);
-    Task<RefreshToken> CreateRefreshTokenAsync(RefreshToken refreshToken);
-    Task<RefreshToken?> GetRefreshTokenAsync(string token);
-    Task RevokeRefreshTokenAsync(int tokenId);
-    Task<List<string>> GetUserRolesAsync(int userId);
-    Task<List<string>> GetUserDepartmentsAsync(int userId);
-}
 
 public class AuthRepository : IAuthRepository
 {
@@ -39,9 +28,22 @@ public class AuthRepository : IAuthRepository
             .FirstOrDefaultAsync();
     }
 
+    public async Task<bool> EmailExistsAsync(string email)
+    {
+        return await _context.Users
+            .AnyAsync(u => u.Email == email && u.IsDeleted != true);
+    }
+
     public async Task<User> CreateUserAsync(User user)
     {
         await _context.Users.AddAsync(user);
+        await _context.SaveChangesAsync();
+        return user;
+    }
+
+    public async Task<User> UpdateUserAsync(User user)
+    {
+        _context.Users.Update(user);
         await _context.SaveChangesAsync();
         return user;
     }

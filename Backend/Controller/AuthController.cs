@@ -19,6 +19,147 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Check if email already exists
+    /// </summary>
+    [HttpGet("check-email")]
+    [AllowAnonymous]
+    public async Task<IActionResult> CheckEmail([FromQuery] string email)
+    {
+        try
+        {
+            var exists = await _authService.EmailExistsAsync(email);
+            return Ok(new { exists });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking email");
+            return StatusCode(500, new { message = "Đã có lỗi xảy ra" });
+        }
+    }
+
+    /// <summary>
+    /// Send OTP to email for verification
+    /// </summary>
+    [HttpPost("send-otp")]
+    [AllowAnonymous]
+    public async Task<IActionResult> SendOtp([FromBody] SendOtpRequestDto request)
+    {
+        try
+        {
+            var response = await _authService.SendOtpAsync(request.Email);
+            return response.Success ? Ok(response) : BadRequest(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending OTP");
+            return StatusCode(500, new { message = "Đã có lỗi xảy ra" });
+        }
+    }
+
+    /// <summary>
+    /// Verify OTP code
+    /// </summary>
+    [HttpPost("verify-otp")]
+    [AllowAnonymous]
+    public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequestDto request)
+    {
+        try
+        {
+            var response = await _authService.VerifyOtpAsync(request.Email, request.OtpCode);
+            return response.Success ? Ok(response) : BadRequest(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error verifying OTP");
+            return StatusCode(500, new { message = "Đã có lỗi xảy ra" });
+        }
+    }
+
+    /// <summary>
+    /// Register new user account
+    /// </summary>
+    [HttpPost("register")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Register([FromBody] RegisterRequestDto request)
+    {
+        try
+        {
+            var response = await _authService.RegisterAsync(request);
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during registration");
+            return StatusCode(500, new { message = "Đã có lỗi xảy ra khi đăng ký" });
+        }
+    }
+
+    /// <summary>
+    /// Send OTP for forgot password
+    /// </summary>
+    [HttpPost("forgot-password/send-otp")]
+    [AllowAnonymous]
+    public async Task<IActionResult> SendForgotPasswordOtp([FromBody] SendOtpRequestDto request)
+    {
+        try
+        {
+            var response = await _authService.SendForgotPasswordOtpAsync(request.Email);
+            return response.Success ? Ok(response) : BadRequest(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending forgot password OTP");
+            return StatusCode(500, new { message = "Đã có lỗi xảy ra" });
+        }
+    }
+
+    /// <summary>
+    /// Verify OTP for forgot password
+    /// </summary>
+    [HttpPost("forgot-password/verify-otp")]
+    [AllowAnonymous]
+    public async Task<IActionResult> VerifyForgotPasswordOtp([FromBody] VerifyOtpRequestDto request)
+    {
+        try
+        {
+            var response = await _authService.VerifyForgotPasswordOtpAsync(request.Email, request.OtpCode);
+            return response.Success ? Ok(response) : BadRequest(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error verifying forgot password OTP");
+            return StatusCode(500, new { message = "Đã có lỗi xảy ra" });
+        }
+    }
+
+    /// <summary>
+    /// Reset password
+    /// </summary>
+    [HttpPost("forgot-password/reset")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequestDto request)
+    {
+        try
+        {
+            await _authService.ResetPasswordAsync(request.Email, request.NewPassword);
+            return Ok(new { message = "Đặt lại mật khẩu thành công" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resetting password");
+            return StatusCode(500, new { message = "Đã có lỗi xảy ra" });
+        }
+    }
+
+    /// <summary>
     /// Login with email and password
     /// </summary>
     [HttpPost("login")]
