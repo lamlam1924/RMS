@@ -219,6 +219,8 @@ export default function Login() {
 
         <div className="login-footer">
           <a href="/forgot-password">Quên mật khẩu?</a>
+          <span className="separator">•</span>
+          <a href="/register">Đăng ký tài khoản</a>
         </div>
       </div>
     </div>

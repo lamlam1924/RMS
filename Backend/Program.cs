@@ -17,12 +17,15 @@ builder.Services.AddDbContext<RecruitmentDbContext>(options =>
 // Add Controllers
 builder.Services.AddControllers();
 
-// Add CORS
+// Add CORS - Support both HTTP and HTTPS, configurable for production
+var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() 
+    ?? new[] { "http://localhost:5173", "https://localhost:5173" };
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();
@@ -59,10 +62,16 @@ builder.Services.AddAuthorization();
 // Add HttpClient for Google OAuth
 builder.Services.AddHttpClient();
 
+// Add Memory Cache for OTP
+builder.Services.AddMemoryCache();
+
+//Register Repositories
+builder.Services.AddScoped<IAuthRepository, AuthRepository>();
+
 // Register Services
 builder.Services.AddScoped<JwtTokenHelper>();
-builder.Services.AddScoped<IAuthRepository, AuthRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 // Add Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -98,6 +107,28 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+//// [TEMPORARY] Cập nhật password hash cho tất cả users = "123456" 
+
+// using (var scope = app.Services.CreateScope())
+// {
+//     var dbContext = scope.ServiceProvider.GetRequiredService<RecruitmentDbContext>();
+//     var passwordHash = PasswordHelper.HashPassword("123456");
+    
+//     var usersWithoutPassword = dbContext.Users
+//         .Where(u => u.AuthProvider == "LOCAL" && (u.PasswordHash == null || u.PasswordHash == ""))
+//         .ToList();
+    
+//     if (usersWithoutPassword.Any())
+//     {
+//         foreach (var user in usersWithoutPassword)
+//         {
+//             user.PasswordHash = passwordHash;
+//         }
+//         dbContext.SaveChanges();
+//         Console.WriteLine($"✓ Đã cập nhật password '123456' cho {usersWithoutPassword.Count} users");
+//     }
+// }
+
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
@@ -105,12 +136,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Only use HTTPS redirection in production
-// In development, allow both HTTP and HTTPS to avoid CORS issues
-if (!app.Environment.IsDevelopment())
-{
-    app.UseHttpsRedirection();
-}
+// Enable HTTPS redirection
+app.UseHttpsRedirection();
 
 app.UseCors("AllowAll");
 

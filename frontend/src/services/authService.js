@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:3000/api';
+import { API_BASE_URL } from '../config/api.js';
 
 // Storage keys
 const ACCESS_TOKEN_KEY = 'accessToken';
@@ -10,10 +10,130 @@ const USER_INFO_KEY = 'userInfo';
  */
 export const authService = {
   /**
+   * Check if email already exists
+   */
+  async checkEmailExists(email) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/check-email?email=${encodeURIComponent(email)}`);
+      if (!response.ok) return false;
+      const data = await response.json();
+      return data.exists;
+    } catch (error) {
+      console.error('Check email error:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Send OTP to email for verification
+   */
+  async sendOtp(email) {
+    const response = await fetch(`${API_BASE_URL}/auth/send-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Gửi OTP thất bại');
+    }
+    return data;
+  },
+
+  /**
+   * Verify OTP code
+   */
+  async verifyOtp(email, otpCode) {
+    const response = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, otpCode })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Xác thực OTP thất bại');
+    }
+    return data;
+  },
+
+  /**
+   * Register new user account
+   */
+  async register(fullName, email, password, confirmPassword) {
+    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fullName, email, password, confirmPassword })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Đăng ký thất bại');
+    }
+
+    const data = await response.json();
+    this.saveTokens(data, true); // Auto save tokens after successful registration
+    return data;
+  },
+
+  /**
+   * Send OTP for forgot password
+   */
+  async sendForgotPasswordOtp(email) {
+    const response = await fetch(`${API_BASE_URL}/auth/forgot-password/send-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Gửi OTP thất bại');
+    }
+    return data;
+  },
+
+  /**
+   * Verify OTP for forgot password
+   */
+  async verifyForgotPasswordOtp(email, otpCode) {
+    const response = await fetch(`${API_BASE_URL}/auth/forgot-password/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, otpCode })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Xác thực OTP thất bại');
+    }
+    return data;
+  },
+
+  /**
+   * Reset password
+   */
+  async resetPassword(email, newPassword, confirmPassword) {
+    const response = await fetch(`${API_BASE_URL}/auth/forgot-password/reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, newPassword, confirmPassword })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Đặt lại mật khẩu thất bại');
+    }
+    return data;
+  },
+
+  /**
    * Login with email and password
    */
   async login(email, password, rememberMe = false) {
-    const response = await fetch(`${API_BASE}/auth/login`, {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, rememberMe })
@@ -33,7 +153,7 @@ export const authService = {
    * Get Google OAuth URL
    */
   async getGoogleAuthUrl() {
-    const response = await fetch(`${API_BASE}/auth/google/url`);
+    const response = await fetch(`${API_BASE_URL}/auth/google/url`);
     if (!response.ok) throw new Error('Failed to get Google auth URL');
     const data = await response.json();
     return data.url;
@@ -43,7 +163,7 @@ export const authService = {
    * Login with Google (callback)
    */
   async loginWithGoogle(code) {
-    const response = await fetch(`${API_BASE}/auth/google/callback`, {
+    const response = await fetch(`${API_BASE_URL}/auth/google/callback`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code })
@@ -68,7 +188,7 @@ export const authService = {
       throw new Error('No refresh token available');
     }
 
-    const response = await fetch(`${API_BASE}/auth/refresh`, {
+    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken })
@@ -92,7 +212,7 @@ export const authService = {
     
     if (refreshToken) {
       try {
-        await fetch(`${API_BASE}/auth/logout`, {
+        await fetch(`${API_BASE_URL}/auth/logout`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -112,7 +232,7 @@ export const authService = {
    * Get current user info
    */
   async getCurrentUser() {
-    const response = await fetch(`${API_BASE}/auth/me`, {
+    const response = await fetch(`${API_BASE_URL}/auth/me`, {
       headers: {
         'Authorization': `Bearer ${this.getAccessToken()}`
       }
