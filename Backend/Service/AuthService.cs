@@ -165,8 +165,9 @@ public class AuthService : IAuthService
             throw new InvalidOperationException("Email chưa được xác thực. Vui lòng xác thực email trước.");
         }
 
-        // 2. Check if email already exists
-        if (await _authRepository.EmailExistsAsync(request.Email))
+        // 2. Check if email already exists in Candidates or Users
+        if (await _authRepository.CandidateEmailExistsAsync(request.Email) || 
+            await _authRepository.EmailExistsAsync(request.Email))
         {
             throw new InvalidOperationException("Email đã được sử dụng");
         }
@@ -174,54 +175,38 @@ public class AuthService : IAuthService
         // 3. Hash password
         var passwordHash = PasswordHelper.HashPassword(request.Password);
 
-        // 4. Create new user
-        var newUser = new User
+        // 4. Create new CANDIDATE (Default for public registration)
+        var newCandidate = new Candidate
         {
             FullName = request.FullName,
             Email = request.Email,
             PasswordHash = passwordHash,
-            AuthProvider = "Local",
-            IsActive = true,
-            IsDeleted = false,
-            CreatedAt = DateTimeHelper.Now
+            AuthProvider = "LOCAL",
+            CreatedAt = DateTimeHelper.Now,
+            IsDeleted = false
         };
 
-        var user = await _authRepository.CreateUserAsync(newUser);
-        _logger.LogInformation("New user registered: {Email}", user.Email);
+        var candidate = await _authRepository.CreateCandidateAsync(newCandidate);
+        _logger.LogInformation("New candidate registered: {Email}", candidate.Email);
 
         // 5. Remove verification flag
         _cache.Remove(verifiedKey);
 
-        // 6. Get user roles and departments (default)
-        var roles = await _authRepository.GetUserRolesAsync(user.Id);
-        var departments = await _authRepository.GetUserDepartmentsAsync(user.Id);
-
-        // 7. Generate tokens (auto login after register)
-        var accessToken = _jwtTokenHelper.GenerateAccessToken(user, roles);
-        var refreshToken = _jwtTokenHelper.GenerateRefreshToken();
-        var expirationDays = int.Parse(_configuration["JWT:RefreshTokenExpirationDays"]!);
-
-        await _authRepository.CreateRefreshTokenAsync(new RefreshToken
-        {
-            UserId = user.Id,
-            Token = refreshToken,
-            ExpiresAt = DateTimeHelper.Now.AddDays(expirationDays),
-            CreatedAt = DateTimeHelper.Now,
-            IsRevoked = false
-        });
+        // 6. Generate access token only (No refresh token for candidates yet)
+        var accessToken = _jwtTokenHelper.GenerateAccessToken(candidate);
 
         return new LoginResponseDto
         {
             AccessToken = accessToken,
-            RefreshToken = refreshToken,
+            RefreshToken = null, // Disable refresh token for candidates
             User = new UserInfoDto
             {
-                Id = user.Id,
-                FullName = user.FullName,
-                Email = user.Email,
-                AuthProvider = user.AuthProvider,
-                Roles = roles,
-                Departments = departments
+                Id = candidate.Id,
+                FullName = candidate.FullName,
+                Email = candidate.Email,
+                AuthProvider = candidate.AuthProvider,
+                Roles = new List<string> { "CANDIDATE" }, // Hardcode role
+                Departments = new List<string>()
             }
         };
     }
@@ -358,155 +343,114 @@ public class AuthService : IAuthService
 
     public async Task<LoginResponseDto> LoginAsync(LoginRequestDto request)
     {
-        // 1. Find user by email
+        // 1. Find user by email (Staff Login)
         var user = await _authRepository.GetUserByEmailAsync(request.Email);
-        if (user == null)
+        
+        if (user != null)
         {
-            _logger.LogWarning("Login failed: User not found - {Email}", request.Email);
-            throw new UnauthorizedAccessException("Email hoặc password không đúng");
-        }
+            // Login as Staff Logic (Old Logic)
+            if (string.IsNullOrEmpty(user.PasswordHash)) throw new UnauthorizedAccessException("Email hoặc password không đúng");
+            if (!PasswordHelper.VerifyPassword(request.Password, user.PasswordHash)) throw new UnauthorizedAccessException("Email hoặc password không đúng");
+            if (user.IsActive != true) throw new UnauthorizedAccessException("Tài khoản đã bị vô hiệu hóa");
 
-        _logger.LogInformation("User found: {Email}, PasswordHash: {HasHash}", 
-            user.Email, 
-            string.IsNullOrEmpty(user.PasswordHash) ? "NULL" : $"EXISTS ({user.PasswordHash.Length} chars)");
-
-        // 2. Verify password
-        if (string.IsNullOrEmpty(user.PasswordHash))
-        {
-            _logger.LogWarning("Login failed: PasswordHash is NULL for user {Email}", user.Email);
-            throw new UnauthorizedAccessException("Email hoặc password không đúng");
-        }
-
-        var isPasswordValid = PasswordHelper.VerifyPassword(request.Password, user.PasswordHash);
-        _logger.LogInformation("Password verification for {Email}: {Result}", user.Email, isPasswordValid);
-
-        if (!isPasswordValid)
-        {
-            _logger.LogWarning("Login failed: Invalid password for user {Email}", user.Email);
-            throw new UnauthorizedAccessException("Email hoặc password không đúng");
-        }
-
-        // 3. Check if user is active
-        if (user.IsActive != true)
-        {
-            throw new UnauthorizedAccessException("Tài khoản đã bị vô hiệu hóa");
-        }
-
-        // 4. Get user roles and departments
-        var roles = await _authRepository.GetUserRolesAsync(user.Id);
-        var departments = await _authRepository.GetUserDepartmentsAsync(user.Id);
-
-        // 5. Generate tokens
-        var accessToken = _jwtTokenHelper.GenerateAccessToken(user, roles);
-        string? refreshToken = null;
-
-        if (request.RememberMe)
-        {
-            refreshToken = _jwtTokenHelper.GenerateRefreshToken();
-            var expirationDays = int.Parse(_configuration["JWT:RefreshTokenExpirationDays"]!);
+            var roles = await _authRepository.GetUserRolesAsync(user.Id);
+            var departments = await _authRepository.GetUserDepartmentsAsync(user.Id);
+            var accessToken = _jwtTokenHelper.GenerateAccessToken(user, roles);
             
-            await _authRepository.CreateRefreshTokenAsync(new RefreshToken
+            // Generate Refresh Token logic for Staff...
+            string? refreshToken = null;
+            if (request.RememberMe)
             {
-                UserId = user.Id,
-                Token = refreshToken,
-                ExpiresAt = DateTimeHelper.Now.AddDays(expirationDays),
-                CreatedAt = DateTimeHelper.Now,
-                IsRevoked = false
-            });
+                refreshToken = _jwtTokenHelper.GenerateRefreshToken();
+                var expirationDays = int.Parse(_configuration["JWT:RefreshTokenExpirationDays"]!);
+                await _authRepository.CreateRefreshTokenAsync(new RefreshToken
+                {
+                    UserId = user.Id, Token = refreshToken,
+                    ExpiresAt = DateTimeHelper.Now.AddDays(expirationDays), CreatedAt = DateTimeHelper.Now, IsRevoked = false
+                });
+            }
+
+            return new LoginResponseDto
+            {
+                AccessToken = accessToken, RefreshToken = refreshToken,
+                User = new UserInfoDto { Id = user.Id, FullName = user.FullName, Email = user.Email, AuthProvider = user.AuthProvider, Roles = roles, Departments = departments }
+            };
         }
 
-        // 6. Return response
-        return new LoginResponseDto
+        // 2. If Staff not found, Try Login as Candidate
+        var candidate = await _authRepository.GetCandidateByEmailAsync(request.Email);
+        if (candidate != null)
         {
-            AccessToken = accessToken,
-            RefreshToken = refreshToken,
-            User = new UserInfoDto
+            if (string.IsNullOrEmpty(candidate.PasswordHash) || !PasswordHelper.VerifyPassword(request.Password, candidate.PasswordHash))
             {
-                Id = user.Id,
-                FullName = user.FullName,
-                Email = user.Email,
-                AuthProvider = user.AuthProvider,
-                Roles = roles,
-                Departments = departments
+                 throw new UnauthorizedAccessException("Email hoặc password không đúng");
             }
-        };
+
+            var accessToken = _jwtTokenHelper.GenerateAccessToken(candidate);
+            
+            return new LoginResponseDto
+            {
+                AccessToken = accessToken, RefreshToken = null,
+                User = new UserInfoDto { Id = candidate.Id, FullName = candidate.FullName, Email = candidate.Email, AuthProvider = candidate.AuthProvider, Roles = new List<string> { "CANDIDATE" }, Departments = new List<string>() }
+            };
+        }
+
+        throw new UnauthorizedAccessException("Email hoặc password không đúng");
     }
 
     public async Task<LoginResponseDto> LoginWithGoogleAsync(string code)
     {
-        _logger.LogInformation("Starting Google OAuth flow with code: {CodePrefix}...", code.Substring(0, Math.Min(10, code.Length)));
-        
-        // 1. Exchange code for Google access token
         var tokenResponse = await ExchangeCodeForTokenAsync(code);
-        _logger.LogInformation("Successfully exchanged code for Google access token");
-        
-        // 2. Get user info from Google
         var googleUser = await GetGoogleUserInfoAsync(tokenResponse.AccessToken);
-        _logger.LogInformation("Retrieved Google user info: {Email}", googleUser.Email);
-
-        // 3. Find or create user
-        var user = await _authRepository.GetUserByGoogleIdAsync(googleUser.Sub);
         
-        if (user == null)
+        // 1. Check if User (Staff) exists
+        var user = await _authRepository.GetUserByGoogleIdAsync(googleUser.Sub) ?? await _authRepository.GetUserByEmailAsync(googleUser.Email);
+
+        if (user != null)
         {
-            // Find by email
-            user = await _authRepository.GetUserByEmailAsync(googleUser.Email);
-            
-            if (user == null)
+            if (string.IsNullOrEmpty(user.GoogleId)) // Update GoogleID if missing
             {
-                _logger.LogInformation("Creating new user from Google: {Email}", googleUser.Email);
-                // Create new user
-                user = await _authRepository.CreateUserAsync(new User
-                {
-                    FullName = googleUser.Name,
-                    Email = googleUser.Email,
-                    GoogleId = googleUser.Sub,
-                    AuthProvider = "Google",
-                    IsActive = true,
-                    CreatedAt = DateTimeHelper.Now
-                });
-            }
-            else
-            {
-                _logger.LogInformation("Updating existing user with Google ID: {Email}", googleUser.Email);
-                // Update existing user with Google ID
                 user.GoogleId = googleUser.Sub;
                 user.AuthProvider = "Google";
+                await _authRepository.UpdateUserAsync(user);
             }
+            
+            var roles = await _authRepository.GetUserRolesAsync(user.Id);
+            var departments = await _authRepository.GetUserDepartmentsAsync(user.Id);
+            var accessToken = _jwtTokenHelper.GenerateAccessToken(user, roles);
+            var refreshToken = _jwtTokenHelper.GenerateRefreshToken();
+            var expirationDays = int.Parse(_configuration["JWT:RefreshTokenExpirationDays"]!);
+            
+            await _authRepository.CreateRefreshTokenAsync(new RefreshToken { UserId = user.Id, Token = refreshToken, ExpiresAt = DateTimeHelper.Now.AddDays(expirationDays), CreatedAt = DateTimeHelper.Now, IsRevoked = false });
+
+            return new LoginResponseDto { AccessToken = accessToken, RefreshToken = refreshToken, User = new UserInfoDto { Id = user.Id, FullName = user.FullName, Email = user.Email, AuthProvider = user.AuthProvider, Roles = roles, Departments = departments } };
         }
 
-        // 4. Get user roles and departments
-        var roles = await _authRepository.GetUserRolesAsync(user.Id);
-        var departments = await _authRepository.GetUserDepartmentsAsync(user.Id);
-
-        // 5. Generate tokens (always create refresh token for Google login)
-        var accessToken = _jwtTokenHelper.GenerateAccessToken(user, roles);
-        var refreshToken = _jwtTokenHelper.GenerateRefreshToken();
-        var expirationDays = int.Parse(_configuration["JWT:RefreshTokenExpirationDays"]!);
-
-        await _authRepository.CreateRefreshTokenAsync(new RefreshToken
+        // 2. Check if Candidate exists
+        var candidate = await _authRepository.GetCandidateByGoogleIdAsync(googleUser.Sub) ?? await _authRepository.GetCandidateByEmailAsync(googleUser.Email);
+        
+        if (candidate == null)
         {
-            UserId = user.Id,
-            Token = refreshToken,
-            ExpiresAt = DateTimeHelper.Now.AddDays(expirationDays),
-            CreatedAt = DateTimeHelper.Now,
-            IsRevoked = false
-        });
+            // Create New Candidate
+            candidate = new Candidate
+            {
+                FullName = googleUser.Name, Email = googleUser.Email, GoogleId = googleUser.Sub,
+                AuthProvider = "Google", CreatedAt = DateTimeHelper.Now, IsDeleted = false
+            };
+            await _authRepository.CreateCandidateAsync(candidate);
+        }
+        else if (string.IsNullOrEmpty(candidate.GoogleId))
+        {
+             candidate.GoogleId = googleUser.Sub;
+             candidate.AuthProvider = "Google";
+             await _authRepository.UpdateCandidateAsync(candidate);
+        }
 
-        // 6. Return response
+        var candidateToken = _jwtTokenHelper.GenerateAccessToken(candidate);
         return new LoginResponseDto
         {
-            AccessToken = accessToken,
-            RefreshToken = refreshToken,
-            User = new UserInfoDto
-            {
-                Id = user.Id,
-                FullName = user.FullName,
-                Email = user.Email,
-                AuthProvider = user.AuthProvider,
-                Roles = roles,
-                Departments = departments
-            }
+            AccessToken = candidateToken, RefreshToken = null,
+            User = new UserInfoDto { Id = candidate.Id, FullName = candidate.FullName, Email = candidate.Email, AuthProvider = candidate.AuthProvider, Roles = new List<string> { "CANDIDATE" }, Departments = new List<string>() }
         };
     }
 

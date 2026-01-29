@@ -1,14 +1,14 @@
 import React from "react";
-import PageShell from "./_PageShell";
+import PageShell from "../../components/layout/PageShell/PageShell";
 
-export default function MailHistory() {
+export default function CanceledCandidates() {
   return (
-    <PageShell title="Mail History">
+    <PageShell title="Canceled Candidate">
       <SimpleTable
-        cols={["To", "Subject", "Sent At", "Status", "Actions"]}
+        cols={["Name", "Position", "Canceled Reason", "Canceled Date", "Actions"]}
         rows={[
-          ["khunkhun@gmail.com", "Interview Invitation", "2023-09-02 13:10", "Sent", "👁️"],
-          ["mgaung@gmail.com", "Result Notification", "2023-09-02 15:45", "Sent", "👁️"],
+          ["Mg Kaung", "C++ Developer", "No show", "2023-09-02", "👁️"],
+          ["Khun Khun", "Python Developer", "Rejected", "2023-09-02", "👁️"],
         ]}
       />
     </PageShell>

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
-import PageShell from "./_PageShell";
-import { loadVacancies, saveVacancies } from "../storage/vacancyStore";
+import PageShell from "../../components/layout/PageShell/PageShell";
+import { loadVacancies, saveVacancies } from "../../store/vacancyStore";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";

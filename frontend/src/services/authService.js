@@ -1,4 +1,4 @@
-import { API_BASE_URL } from '../config/api.js';
+import { API_BASE_URL } from './api.js';
 
 // Storage keys
 const ACCESS_TOKEN_KEY = 'accessToken';
@@ -209,7 +209,7 @@ export const authService = {
    */
   async logout() {
     const refreshToken = this.getRefreshToken();
-    
+
     if (refreshToken) {
       try {
         await fetch(`${API_BASE_URL}/auth/logout`, {
@@ -252,7 +252,7 @@ export const authService = {
    */
   saveTokens(data, rememberMe = false) {
     const storage = rememberMe ? localStorage : sessionStorage;
-    
+
     storage.setItem(ACCESS_TOKEN_KEY, data.accessToken);
     if (data.refreshToken) {
       storage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
@@ -260,7 +260,7 @@ export const authService = {
     if (data.user) {
       storage.setItem(USER_INFO_KEY, JSON.stringify(data.user));
     }
-    
+
     // Clear the other storage to avoid conflicts
     const otherStorage = rememberMe ? sessionStorage : localStorage;
     otherStorage.removeItem(ACCESS_TOKEN_KEY);
@@ -337,7 +337,7 @@ export const authService = {
  */
 export async function authFetch(url, options = {}) {
   const accessToken = authService.getAccessToken();
-  
+
   // Check if token is expired
   if (accessToken && authService.isTokenExpired(accessToken)) {
     try {
@@ -360,7 +360,7 @@ export async function authFetch(url, options = {}) {
   if (response.status === 401) {
     try {
       await authService.refreshToken();
-      
+
       // Retry the request
       const retryHeaders = {
         ...options.headers,

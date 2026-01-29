@@ -1,14 +1,14 @@
 import React from "react";
-import PageShell from "./_PageShell";
+import PageShell from "../../components/layout/PageShell/PageShell";
 
-export default function CanceledCandidates() {
+export default function Users() {
   return (
-    <PageShell title="Canceled Candidate">
+    <PageShell title="User" right={<button style={btnPrimary}>+ Add User</button>}>
       <SimpleTable
-        cols={["Name", "Position", "Canceled Reason", "Canceled Date", "Actions"]}
+        cols={["Name", "Email", "Role", "Status", "Actions"]}
         rows={[
-          ["Mg Kaung", "C++ Developer", "No show", "2023-09-02", "👁️"],
-          ["Khun Khun", "Python Developer", "Rejected", "2023-09-02", "👁️"],
+          ["HR Staff 01", "hrstaff01@company.com", "HR Staff", "Active", "✎  🔒"],
+          ["HR Manager", "hrmanager@company.com", "HR Manager", "Active", "✎  🔒"],
         ]}
       />
     </PageShell>
@@ -28,6 +28,10 @@ function SimpleTable({ cols, rows }) {
   );
 }
 
+const btnPrimary = {
+  height: 34, padding: "0 14px", borderRadius: 10, border: "none",
+  cursor: "pointer", background: "#2f3e9e", color: "#fff", fontWeight: 700,
+};
 const table = { width: "100%", borderCollapse: "collapse" };
 const th = { textAlign: "left", padding: 10, background: "#f8fafc", borderBottom: "1px solid #e5e7eb" };
 const td = { padding: 10, borderBottom: "1px solid #f1f5f9" };

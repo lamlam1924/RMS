@@ -44,4 +44,20 @@ public interface IAuthRepository
     
     /// <summary>Lấy danh sách departments của user</summary>
     Task<List<string>> GetUserDepartmentsAsync(int userId);
+
+    // ==================== Candidate Operations ====================
+    /// <summary>Lấy candidate theo email</summary>
+    Task<Candidate?> GetCandidateByEmailAsync(string email);
+
+    /// <summary>Lấy candidate theo Google ID</summary>
+    Task<Candidate?> GetCandidateByGoogleIdAsync(string googleId);
+
+    /// <summary>Kiểm tra email candidate đã tồn tại</summary>
+    Task<bool> CandidateEmailExistsAsync(string email);
+
+    /// <summary>Tạo candidate mới</summary>
+    Task<Candidate> CreateCandidateAsync(Candidate candidate);
+
+    /// <summary>Cập nhật thông tin candidate</summary>
+    Task<Candidate> UpdateCandidateAsync(Candidate candidate);
 }

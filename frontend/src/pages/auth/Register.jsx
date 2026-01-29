@@ -1,18 +1,18 @@
 import { useState } from 'react';
-import { authService } from '../services/authService';
-import './login.css';
+import { authService } from '../../services/authService';
+import '../../styles/login.css';
 
 export default function Register() {
   // Multi-step state
   const [step, setStep] = useState(1); // 1: Email, 2: OTP, 3: Info
-  
+
   // Form fields
   const [email, setEmail] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  
+
   // UI state
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -54,7 +54,6 @@ export default function Register() {
   };
 
   // Step 3: Complete registration
-  // Step 3: Complete registration
   const handleRegister = async (e) => {
     e.preventDefault();
     setError('');
@@ -78,7 +77,16 @@ export default function Register() {
     setLoading(true);
     try {
       await authService.register(fullName, email, password, confirmPassword);
-      window.location.href = '/dashboard';
+      
+      // Redirect based on user role
+      const user = authService.getUserInfo();
+      const roles = user?.roles?.map(r => r.toUpperCase()) || [];
+      
+      if (roles.includes('CANDIDATE')) {
+        window.location.href = '/app/jobs';
+      } else {
+        window.location.href = '/staff/dashboard';
+      }
     } catch (err) {
       setError(err.message || 'Đăng ký thất bại');
     } finally {
@@ -151,8 +159,8 @@ export default function Register() {
               <small className="form-hint">Nhập email để nhận mã xác thực</small>
             </div>
 
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className="btn btn-primary btn-full"
               disabled={loading}
             >
@@ -167,7 +175,7 @@ export default function Register() {
             <p className="otp-info">
               Mã OTP đã được gửi đến <strong>{email}</strong>
             </p>
-            
+
             <div className="form-group">
               <label htmlFor="otpCode">Mã OTP (6 số)</label>
               <input
@@ -184,8 +192,8 @@ export default function Register() {
               <small className="form-hint">Vui lòng kiểm tra email (kể cả thư mục spam)</small>
             </div>
 
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className="btn btn-primary btn-full"
               disabled={loading || otpCode.length !== 6}
             >
@@ -193,16 +201,16 @@ export default function Register() {
             </button>
 
             <div className="form-actions">
-              <button 
-                type="button" 
+              <button
+                type="button"
                 className="link-button"
                 onClick={() => setStep(1)}
                 disabled={loading}
               >
                 ← Thay đổi email
               </button>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 className="link-button"
                 onClick={handleResendOtp}
                 disabled={loading}
@@ -250,13 +258,13 @@ export default function Register() {
                 >
                   {showPassword ? (
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                      <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <line x1="1" y1="1" x2="23" y2="23" strokeWidth="2" strokeLinecap="round"/>
+                      <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      <line x1="1" y1="1" x2="23" y2="23" strokeWidth="2" strokeLinecap="round" />
                     </svg>
                   ) : (
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <circle cx="12" cy="12" r="3" strokeWidth="2"/>
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      <circle cx="12" cy="12" r="3" strokeWidth="2" />
                     </svg>
                   )}
                 </button>
@@ -284,21 +292,21 @@ export default function Register() {
                 >
                   {showConfirmPassword ? (
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                      <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <line x1="1" y1="1" x2="23" y2="23" strokeWidth="2" strokeLinecap="round"/>
+                      <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      <line x1="1" y1="1" x2="23" y2="23" strokeWidth="2" strokeLinecap="round" />
                     </svg>
                   ) : (
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <circle cx="12" cy="12" r="3" strokeWidth="2"/>
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      <circle cx="12" cy="12" r="3" strokeWidth="2" />
                     </svg>
                   )}
                 </button>
               </div>
             </div>
 
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className="btn btn-primary btn-full"
               disabled={loading}
             >

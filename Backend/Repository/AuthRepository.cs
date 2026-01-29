@@ -76,9 +76,13 @@ public class AuthRepository : IAuthRepository
 
     public async Task<List<string>> GetUserRolesAsync(int userId)
     {
-        // Assuming you have UserRole table, adjust as needed
-        // For now, return empty list or default role
-        return new List<string> { "User" };
+        var user = await _context.Users
+            .Include(u => u.Roles)
+            .FirstOrDefaultAsync(u => u.Id == userId);
+            
+        if (user == null) return new List<string>();
+        
+        return user.Roles.Select(r => r.Code).ToList();
     }
 
     public async Task<List<string>> GetUserDepartmentsAsync(int userId)
@@ -90,5 +94,39 @@ public class AuthRepository : IAuthRepository
             .ToListAsync();
 
         return departments;
+    }
+
+    public async Task<Candidate?> GetCandidateByEmailAsync(string email)
+    {
+        return await _context.Candidates
+            .Where(c => c.Email == email && c.IsDeleted != true)
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task<Candidate?> GetCandidateByGoogleIdAsync(string googleId)
+    {
+        return await _context.Candidates
+            .Where(c => c.GoogleId == googleId && c.IsDeleted != true)
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task<bool> CandidateEmailExistsAsync(string email)
+    {
+        return await _context.Candidates
+            .AnyAsync(c => c.Email == email && c.IsDeleted != true);
+    }
+
+    public async Task<Candidate> CreateCandidateAsync(Candidate candidate)
+    {
+        await _context.Candidates.AddAsync(candidate);
+        await _context.SaveChangesAsync();
+        return candidate;
+    }
+
+    public async Task<Candidate> UpdateCandidateAsync(Candidate candidate)
+    {
+        _context.Candidates.Update(candidate);
+        await _context.SaveChangesAsync();
+        return candidate;
     }
 }
