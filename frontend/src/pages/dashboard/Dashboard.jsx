@@ -1,5 +1,5 @@
 import React from "react";
-import PageShell from "./_PageShell";
+import PageShell from "../../components/layout/PageShell/PageShell";
 
 export default function Dashboard() {
   return (

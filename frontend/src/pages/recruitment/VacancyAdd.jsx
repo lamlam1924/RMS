@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import PageShell from "./_PageShell";
-import { loadVacancies, saveVacancies } from "../storage/vacancyStore";
+import PageShell from "../../components/layout/PageShell/PageShell";
+import { loadVacancies, saveVacancies } from "../../store/vacancyStore";
 
 const departments = ["IT", "HR", "Sales", "Retail", "Banking"];
 const statuses = ["Draft", "Open", "Closed"];

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import "./interview-candidates.css";
+import "../../styles/interview-candidates.css";
 
 const seed = [
   { id: 1, name: "Mg Kaung", vacancy: "C++ Developer", dept: "Retail", tech: "C++", date: "01-09-2023", exp: "2 years", status: "CANCEL", stage: "STAGE 1" },

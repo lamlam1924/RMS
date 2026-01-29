@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import PageShell from "./_PageShell";
+import PageShell from "../../components/layout/PageShell/PageShell";
 
 const seed = [
   {

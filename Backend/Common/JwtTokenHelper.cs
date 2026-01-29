@@ -51,6 +51,35 @@ public class JwtTokenHelper
     }
 
     /// <summary>
+    /// Generate Access Token (JWT) for Candidate
+    /// </summary>
+    public string GenerateAccessToken(Candidate candidate)
+    {
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.NameIdentifier, candidate.Id.ToString()),
+            new Claim(ClaimTypes.Email, candidate.Email),
+            new Claim(ClaimTypes.Name, candidate.FullName),
+            new Claim("AuthProvider", candidate.AuthProvider ?? "Local"),
+            new Claim(ClaimTypes.Role, "CANDIDATE") // Hardcode role for Candidate
+        };
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:Secret"]!));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var expirationMinutes = int.Parse(_configuration["JWT:AccessTokenExpirationMinutes"]!);
+
+        var token = new JwtSecurityToken(
+            issuer: _configuration["JWT:Issuer"],
+            audience: _configuration["JWT:Audience"],
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(expirationMinutes),
+            signingCredentials: credentials
+        );
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    /// <summary>
     /// Generate Refresh Token (random string)
     /// </summary>
     public string GenerateRefreshToken()
