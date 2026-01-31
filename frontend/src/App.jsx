@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ROLES } from "./constants/roles";
-import MainLayout from "./layouts/MainLayout/MainLayout";
-import CandidateLayout from "./layouts/CandidateLayout/CandidateLayout";
+import MainLayout from "./layouts/MainLayout";
+import CandidateLayout from "./layouts/CandidateLayout";
 import PrivateRoute from "./routes/PrivateRoute";
 import { authService } from "./services/authService";
 
@@ -13,21 +13,50 @@ import GoogleCallback from "./pages/auth/GoogleCallback";
 
 // Staff Pages
 import Dashboard from "./pages/dashboard/Dashboard";
-import Departments from "./pages/hr/Departments";
-import Positions from "./pages/hr/Positions";
-import Users from "./pages/hr/Users";
-import Vacancies from "./pages/recruitment/Vacancies";
-import VacancyAdd from "./pages/recruitment/VacancyAdd";
-import Candidates from "./pages/candidates/Candidates";
-import InterviewCandidates from "./pages/candidates/InterviewCandidates";
-import CanceledCandidates from "./pages/candidates/CanceledCandidates";
-import Interviews from "./pages/interviews/Interviews";
-import MailHistory from "./pages/mail/MailHistory";
+
+// Admin Pages
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import UserList from "./pages/admin/UserList";
+import UserDetail from "./pages/admin/UserDetail";
+import RoleList from "./pages/admin/RoleList";
+import RoleDetail from "./pages/admin/RoleDetail";
+import DepartmentList from "./pages/admin/DepartmentList";
+import DepartmentDetail from "./pages/admin/DepartmentDetail";
+import SystemConfiguration from "./pages/admin/SystemConfiguration";
+import WorkflowManagement from "./pages/admin/WorkflowManagement";
+
+// Director Pages
+import DirectorDashboard from "./pages/director/DirectorDashboard";
+import JobRequestApprovals from "./pages/director/JobRequestApprovals";
+import OfferApprovals from "./pages/director/OfferApprovals";
+
+// Department Manager Pages
+import DeptManagerDashboard from "./pages/department-manager/DeptManagerDashboard";
+import DeptManagerJobRequestList from "./pages/department-manager/DeptManagerJobRequestList";
+import DeptManagerJobRequestDetail from "./pages/department-manager/DeptManagerJobRequestDetail";
+import DeptManagerInterviewList from "./pages/department-manager/DeptManagerInterviewList";
+import DeptManagerInterviewDetail from "./pages/department-manager/DeptManagerInterviewDetail";
+
+// HR Manager Pages
+import HRManagerDashboard from "./pages/hr/dashboard/HRManagerDashboard";
+import HRJobRequestList from "./pages/hr/manager/HRJobRequestList";
+import HRJobRequestDetail from "./pages/hr/manager/HRJobRequestDetail";
+import HRApplicationList from "./pages/hr/manager/HRApplicationList";
+import HRApplicationDetail from "./pages/hr/manager/HRApplicationDetail";
+import HRInterviewList from "./pages/hr/manager/HRInterviewList";
+import HROfferList from "./pages/hr/manager/HROfferList";
+
+// HR Staff Pages
+import HRJobPostingList from "./pages/hr/staff/HRJobPostingList";
+
+// Employee Pages
+import EmployeeInterviewList from "./pages/employee/EmployeeInterviewList";
+import EmployeeInterviewDetail from "./pages/employee/EmployeeInterviewDetail";
 
 // Candidate Pages
-import JobBoard from "./pages/candidate-portal/JobBoard";
-import MyApplications from "./pages/candidate-portal/MyApplications";
-import MyProfile from "./pages/candidate-portal/MyProfile";
+import JobBoard from "./pages/candidate/JobBoard";
+import MyApplications from "./pages/candidate/MyApplications";
+import MyProfile from "./pages/candidate/MyProfile";
 
 const STAFF_ROLES = [
   ROLES.ADMIN,
@@ -35,8 +64,45 @@ const STAFF_ROLES = [
   ROLES.HR_MANAGER,
   ROLES.HR_STAFF,
   ROLES.DEPARTMENT_MANAGER,
-  ROLES.EMPLOYEE
+  ROLES.EMPLOYEE,
 ];
+
+// Role-based redirect component
+function RoleBasedRedirect() {
+  if (!authService.isAuthenticated()) {
+    return <Navigate to="/login" replace />;
+  }
+
+  const user = authService.getUserInfo();
+  if (!user || !user.roles || user.roles.length === 0) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Priority: Admin > Director > HR Manager > HR Staff > Department Manager > Employee > Candidate
+  if (user.roles.includes(ROLES.ADMIN)) {
+    return <Navigate to="/staff/admin" replace />;
+  }
+  if (user.roles.includes(ROLES.DIRECTOR)) {
+    return <Navigate to="/staff/director" replace />;
+  }
+  if (user.roles.includes(ROLES.HR_MANAGER)) {
+    return <Navigate to="/staff/hr-manager" replace />;
+  }
+  if (user.roles.includes(ROLES.HR_STAFF)) {
+    return <Navigate to="/staff/hr-staff/job-postings" replace />;
+  }
+  if (user.roles.includes(ROLES.DEPARTMENT_MANAGER)) {
+    return <Navigate to="/staff/dept-manager" replace />;
+  }
+  if (user.roles.includes(ROLES.EMPLOYEE)) {
+    return <Navigate to="/staff/employee/interviews" replace />;
+  }
+  if (user.roles.includes(ROLES.CANDIDATE)) {
+    return <Navigate to="/app/jobs" replace />;
+  }
+
+  return <Navigate to="/staff/dashboard" replace />;
+}
 
 export default function App() {
   return (
@@ -49,17 +115,17 @@ export default function App() {
         <Route path="/auth/google/callback" element={<GoogleCallback />} />
 
         {/* Root redirect */}
-        <Route
-          path="/"
-          element={<Navigate to="/login" replace />}
-        />
+        <Route path="/" element={<Navigate to="/login" replace />} />
 
         {/* Candidate Portal */}
-        <Route path="/app" element={
-          <PrivateRoute roles={[ROLES.CANDIDATE]}>
-            <CandidateLayout />
-          </PrivateRoute>
-        }>
+        <Route
+          path="/app"
+          element={
+            <PrivateRoute roles={[ROLES.CANDIDATE]}>
+              <CandidateLayout />
+            </PrivateRoute>
+          }
+        >
           <Route path="jobs" element={<JobBoard />} />
           <Route path="applications" element={<MyApplications />} />
           <Route path="profile" element={<MyProfile />} />
@@ -68,40 +134,302 @@ export default function App() {
         </Route>
 
         {/* Staff Portal (Internal) */}
-        <Route path="/staff" element={
-          <PrivateRoute roles={STAFF_ROLES}>
-            <MainLayout />
-          </PrivateRoute>
-        }>
+        <Route
+          path="/staff"
+          element={
+            <PrivateRoute roles={STAFF_ROLES}>
+              <MainLayout />
+            </PrivateRoute>
+          }
+        >
           <Route path="dashboard" element={<Dashboard />} />
 
-          {/* Admin Rights */}
-          <Route path="departments" element={
-            <PrivateRoute roles={[ROLES.ADMIN]}><Departments /></PrivateRoute>
-          } />
-          <Route path="positions" element={
-            <PrivateRoute roles={[ROLES.ADMIN]}><Positions /></PrivateRoute>
-          } />
-          <Route path="users" element={
-            <PrivateRoute roles={[ROLES.ADMIN]}><Users /></PrivateRoute>
-          } />
+          {/* Admin Management Routes */}
+          <Route
+            path="admin"
+            element={
+              <PrivateRoute roles={[ROLES.ADMIN]}>
+                <AdminDashboard />
+              </PrivateRoute>
+            }
+          />
 
-          {/* HR & Hiring Managers */}
-          <Route path="vacancies" element={<Vacancies />} />
-          <Route path="vacancies/add" element={<VacancyAdd />} />
-          <Route path="candidates" element={<Candidates />} />
-          <Route path="interview-candidates" element={<InterviewCandidates />} />
-          <Route path="canceled-candidates" element={<CanceledCandidates />} />
-          <Route path="interviews" element={<Interviews />} />
-          <Route path="mail-history" element={<MailHistory />} />
+          <Route
+            path="admin/users"
+            element={
+              <PrivateRoute roles={[ROLES.ADMIN]}>
+                <UserList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="admin/users/new"
+            element={
+              <PrivateRoute roles={[ROLES.ADMIN]}>
+                <UserDetail />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="admin/users/:id"
+            element={
+              <PrivateRoute roles={[ROLES.ADMIN]}>
+                <UserDetail />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="admin/users/:id/edit"
+            element={
+              <PrivateRoute roles={[ROLES.ADMIN]}>
+                <UserDetail />
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="admin/roles"
+            element={
+              <PrivateRoute roles={[ROLES.ADMIN]}>
+                <RoleList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="admin/roles/new"
+            element={
+              <PrivateRoute roles={[ROLES.ADMIN]}>
+                <RoleDetail />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="admin/roles/:id"
+            element={
+              <PrivateRoute roles={[ROLES.ADMIN]}>
+                <RoleDetail />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="admin/roles/:id/edit"
+            element={
+              <PrivateRoute roles={[ROLES.ADMIN]}>
+                <RoleDetail />
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="admin/departments"
+            element={
+              <PrivateRoute roles={[ROLES.ADMIN]}>
+                <DepartmentList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="admin/departments/new"
+            element={
+              <PrivateRoute roles={[ROLES.ADMIN]}>
+                <DepartmentDetail />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="admin/departments/:id"
+            element={
+              <PrivateRoute roles={[ROLES.ADMIN]}>
+                <DepartmentDetail />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="admin/departments/:id/edit"
+            element={
+              <PrivateRoute roles={[ROLES.ADMIN]}>
+                <DepartmentDetail />
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="admin/workflow"
+            element={
+              <PrivateRoute roles={[ROLES.ADMIN]}>
+                <WorkflowManagement />
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="admin/config"
+            element={
+              <PrivateRoute roles={[ROLES.ADMIN]}>
+                <SystemConfiguration />
+              </PrivateRoute>
+            }
+          />
+
+          {/* Director Management Routes */}
+          <Route
+            path="director"
+            element={
+              <PrivateRoute roles={[ROLES.DIRECTOR]}>
+                <DirectorDashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="director/job-requests"
+            element={
+              <PrivateRoute roles={[ROLES.DIRECTOR]}>
+                <JobRequestApprovals />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="director/offers"
+            element={
+              <PrivateRoute roles={[ROLES.DIRECTOR]}>
+                <OfferApprovals />
+              </PrivateRoute>
+            }
+          />
+
+          {/* Department Manager Routes */}
+          <Route
+            path="dept-manager"
+            element={
+              <PrivateRoute roles={[ROLES.DEPARTMENT_MANAGER]}>
+                <DeptManagerDashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="dept-manager/job-requests"
+            element={
+              <PrivateRoute roles={[ROLES.DEPARTMENT_MANAGER]}>
+                <DeptManagerJobRequestList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="dept-manager/job-requests/:id"
+            element={
+              <PrivateRoute roles={[ROLES.DEPARTMENT_MANAGER]}>
+                <DeptManagerJobRequestDetail />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="dept-manager/interviews"
+            element={
+              <PrivateRoute roles={[ROLES.DEPARTMENT_MANAGER]}>
+                <DeptManagerInterviewList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="dept-manager/interviews/:id"
+            element={
+              <PrivateRoute roles={[ROLES.DEPARTMENT_MANAGER]}>
+                <DeptManagerInterviewDetail />
+              </PrivateRoute>
+            }
+          />
+
+          {/* Employee Routes */}
+          <Route
+            path="employee/interviews"
+            element={
+              <PrivateRoute roles={[ROLES.EMPLOYEE]}>
+                <EmployeeInterviewList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="employee/interviews/:id"
+            element={
+              <PrivateRoute roles={[ROLES.EMPLOYEE]}>
+                <EmployeeInterviewDetail />
+              </PrivateRoute>
+            }
+          />
+
+          {/* HR Manager Routes (Manager Only) */}
+          <Route
+            path="hr-manager"
+            element={
+              <PrivateRoute roles={[ROLES.HR_MANAGER]}>
+                <HRManagerDashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="hr-manager/job-requests"
+            element={
+              <PrivateRoute roles={[ROLES.HR_MANAGER]}>
+                <HRJobRequestList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="hr-manager/job-requests/:id"
+            element={
+              <PrivateRoute roles={[ROLES.HR_MANAGER]}>
+                <HRJobRequestDetail />
+              </PrivateRoute>
+            }
+          />
+
+          {/* HR Staff Routes (Staff Only) */}
+          <Route
+            path="hr-staff/job-postings"
+            element={
+              <PrivateRoute roles={[ROLES.HR_STAFF]}>
+                <HRJobPostingList />
+              </PrivateRoute>
+            }
+          />
+
+          {/* Shared Routes (HR Manager + HR Staff) */}
+          <Route
+            path="hr-manager/applications"
+            element={
+              <PrivateRoute roles={[ROLES.HR_MANAGER, ROLES.HR_STAFF]}>
+                <HRApplicationList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="hr-manager/applications/:id"
+            element={
+              <PrivateRoute roles={[ROLES.HR_MANAGER, ROLES.HR_STAFF]}>
+                <HRApplicationDetail />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="hr-manager/interviews"
+            element={
+              <PrivateRoute roles={[ROLES.HR_MANAGER, ROLES.HR_STAFF]}>
+                <HRInterviewList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="hr-manager/offers"
+            element={
+              <PrivateRoute roles={[ROLES.HR_MANAGER, ROLES.HR_STAFF]}>
+                <HROfferList />
+              </PrivateRoute>
+            }
+          />
         </Route>
 
         {/* 404 & Redirect Logic */}
-        <Route path="*" element={
-          authService.isAuthenticated()
-            ? <Navigate to="/staff/dashboard" replace />
-            : <Navigate to="/login" replace />
-        } />
+        <Route path="*" element={<RoleBasedRedirect />} />
       </Routes>
     </BrowserRouter>
   );

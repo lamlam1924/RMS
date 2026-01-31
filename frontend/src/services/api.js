@@ -11,8 +11,28 @@ if (import.meta.env.DEV) {
     console.log('API Base URL:', API_BASE_URL);
 }
 
+// Helper to get auth token
+function getAuthToken() {
+    return localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+}
+
+// Helper to create auth headers
+function getAuthHeaders() {
+    const token = getAuthToken();
+    const headers = { "Content-Type": "application/json" };
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+}
+
 export async function apiGet(path) {
-    const res = await fetch(path);
+    const token = getAuthToken();
+    const headers = {};
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    const res = await fetch(path, { headers });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
 }
@@ -20,7 +40,7 @@ export async function apiGet(path) {
 export async function apiPost(path, body) {
     const res = await fetch(path, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify(body)
     });
     if (!res.ok) throw new Error(await res.text());
@@ -30,7 +50,7 @@ export async function apiPost(path, body) {
 export async function apiPatch(path, body) {
     const res = await fetch(path, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify(body)
     });
     if (!res.ok) throw new Error(await res.text());
@@ -38,7 +58,23 @@ export async function apiPatch(path, body) {
 }
 
 export async function apiDelete(path) {
-    const res = await fetch(path, { method: "DELETE" });
+    const token = getAuthToken();
+    const headers = {};
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    const res = await fetch(path, { method: "DELETE", headers });
     if (!res.ok && res.status !== 204) throw new Error(await res.text());
     return true;
 }
+
+// Default export with common HTTP methods
+const api = {
+    get: apiGet,
+    post: apiPost,
+    patch: apiPatch,
+    put: apiPost, // Using POST for PUT
+    delete: apiDelete,
+};
+
+export default api;

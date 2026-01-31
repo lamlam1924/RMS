@@ -16,7 +16,11 @@ export default defineConfig(({ mode }) => {
         "/api": {
           target: apiTarget,
           changeOrigin: true,
-          secure: false
+          secure: false,
+          rewrite: (path) => {
+            console.log('Proxying:', path, '->', apiTarget + path);
+            return path;
+          }
         }
       }
     }
