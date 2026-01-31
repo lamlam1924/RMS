@@ -84,6 +84,10 @@ export default function Register() {
       
       if (roles.includes('CANDIDATE')) {
         window.location.href = '/app/jobs';
+      } else if (roles.includes('ADMIN')) {
+        window.location.href = '/staff/admin';
+      } else if (roles.includes('DIRECTOR')) {
+        window.location.href = '/staff/director';
       } else {
         window.location.href = '/staff/dashboard';
       }

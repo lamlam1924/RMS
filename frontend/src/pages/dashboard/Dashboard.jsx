@@ -1,10 +1,16 @@
 import React from "react";
-import PageShell from "../../components/layout/PageShell/PageShell";
+import PageShell from "../../layouts/PageShell";
 
 export default function Dashboard() {
   return (
     <PageShell title="Dashboard">
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12 }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+          gap: 12,
+        }}
+      >
         <Card label="Open Vacancies" value="12" />
         <Card label="Candidates" value="84" />
         <Card label="Interviews Today" value="5" />

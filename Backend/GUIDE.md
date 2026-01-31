@@ -9,6 +9,6 @@ dotnet ef dbcontext scaffold "Server=localhost;Database=RecruitmentDB;User Id=sa
 --Setup HTTPS cho người mới (1 lần/máy)
  dotnet dev-certs https --trust
 
-
+dotnet add package AutoMapper.Extensions.Microsoft.DependencyInjection
  ---------------------------------
  

@@ -287,5 +287,4 @@ INSERT INTO FileTypes (Id, Code, Description) VALUES
 (1, 'CV_PDF', N'File CV PDF'),
 (2, 'INTERVIEW_NOTE', N'Biên bản phỏng vấn'),
 (3, 'OFFER_LETTER', N'Thư mời nhận việc');
-
-
+go
