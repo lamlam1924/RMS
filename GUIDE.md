@@ -12,3 +12,8 @@ docker-compose down -v
 
 docker compose logs -f
 docker logs rms-db-init
+
+-----------
+docker compose down -v
+docker compose build --no-cache
+docker compose up -d
