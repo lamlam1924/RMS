@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import "../styles/MainLayout.css";
 import { ROLES, hasRole } from "../constants/roles";
 import { authService } from "../services/authService";
 
@@ -182,52 +181,49 @@ export default function MainLayout() {
   const filteredMenu = getFilteredMenu();
 
   return (
-    <div className="staff-shell">
-      <header className="topbar">
-        <div className="topbar-left">
-          <div className="brand">
-            <div className="brand-logo">RMS</div>
-            <div className="brand-sub">Recruitment Management</div>
+    <div className="h-screen flex flex-col bg-slate-50 text-gray-800 font-sans">
+      <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-5 shadow-sm z-10">
+        <div className="flex items-center gap-4">
+          <div className="flex flex-col leading-tight">
+            <div className="font-extrabold tracking-wide text-lg text-blue-900">RMS</div>
+            <div className="text-xs text-gray-500 font-medium">Recruitment Management</div>
           </div>
-          <button className="icon-btn" aria-label="menu">
-            ☰
+          <button className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors" aria-label="menu">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3 12H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M3 6H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M3 18H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
           </button>
         </div>
 
-        <div className="topbar-right">
-          <div
-            className="user-info"
-            style={{ marginRight: 16, fontSize: 13, textAlign: "right" }}
-          >
-            <div style={{ fontWeight: 600 }}>{user?.fullName}</div>
-            <div style={{ color: "#666", fontSize: 11 }}>
-              {user?.roles?.join(", ")}
-            </div>
+        <div className="flex items-center gap-4">
+          <div className="text-right hidden sm:block">
+            <div className="font-semibold text-sm text-gray-800">{user?.fullName}</div>
+            <div className="text-xs text-gray-500">{user?.roles?.join(", ")}</div>
           </div>
           <button
-            className="icon-btn"
+            className="p-2 rounded-lg hover:bg-red-50 text-gray-500 hover:text-red-600 transition-colors border border-transparent hover:border-red-100"
             aria-label="logout"
             onClick={handleLogout}
             title="Logout"
           >
-            🚪
+             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
           </button>
         </div>
       </header>
 
-      <div className="body">
-        <aside className="sidebar">
+      <div className="flex-1 grid grid-cols-[260px_1fr] min-h-0">
+        <aside className="bg-white border-r border-gray-200 p-3 overflow-y-auto hidden md:block">
           {filteredMenu.map((m) => {
             // Render divider
             if (m.isDivider) {
               return (
                 <div
                   key={m.key}
-                  style={{
-                    height: 1,
-                    background: "#d1d5db",
-                    margin: "12px 16px",
-                  }}
+                  className="h-px bg-gray-200 my-4 mx-2"
                 />
               );
             }
@@ -240,33 +236,38 @@ export default function MainLayout() {
                   to={m.to}
                   end
                   className={({ isActive }) =>
-                    `side-item ${isActive ? "active" : ""}`
+                    `w-full flex items-center gap-3 px-3 py-2.5 mb-1 rounded-xl transition-all duration-200 text-sm font-medium ${
+                      isActive 
+                        ? "bg-blue-600 text-white shadow-md shadow-blue-200" 
+                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                    }`
                   }
-                  style={{ textDecoration: "none" }}
                 >
-                  <span className="side-label">{m.label}</span>
+                  <span>{m.label}</span>
                 </NavLink>
               );
             }
 
             // Render group with children
             return (
-              <div key={m.key} className="side-group">
-                <div className="side-group-title">
-                  <span className="side-label">{m.label}</span>
-                  <span className="side-caret">▾</span>
+              <div key={m.key} className="mt-4 mb-2">
+                <div className="flex items-center justify-between px-3 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                  <span>{m.label}</span>
                 </div>
 
-                <div className="side-group-children">
+                <div className="mt-1 space-y-1">
                   {m.children.map((c) => (
                     <NavLink
                       key={c.key}
                       to={c.to}
                       end
                       className={({ isActive }) =>
-                        `side-child ${isActive ? "active" : ""}`
+                        `block w-full text-left px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
+                          isActive
+                            ? "bg-blue-50 text-blue-700 font-semibold"
+                            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                        }`
                       }
-                      style={{ textDecoration: "none" }}
                     >
                       {c.label}
                     </NavLink>
@@ -277,7 +278,7 @@ export default function MainLayout() {
           })}
         </aside>
 
-        <main className="content">
+        <main className="p-6 overflow-y-auto bg-slate-50/50">
           <Outlet />
         </main>
       </div>
