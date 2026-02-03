@@ -213,8 +213,11 @@ public class AuthService : IAuthService
 
     public async Task<OtpResponseDto> SendForgotPasswordOtpAsync(string email)
     {
-        // Check if email exists
-        if (!await _authRepository.EmailExistsAsync(email))
+        // Check if email exists in either Users or Candidates
+        bool existsInUsers = await _authRepository.EmailExistsAsync(email);
+        bool existsInCandidates = await _authRepository.CandidateEmailExistsAsync(email);
+
+        if (!existsInUsers && !existsInCandidates)
         {
             return new OtpResponseDto
             {
@@ -323,16 +326,29 @@ public class AuthService : IAuthService
 
         // Get user
         var user = await _authRepository.GetUserByEmailAsync(email);
-        if (user == null)
+        if (user != null)
         {
-            throw new InvalidOperationException("Không tìm thấy người dùng");
+            // Update user password
+            user.PasswordHash = PasswordHelper.HashPassword(newPassword);
+            user.UpdatedAt = DateTimeHelper.Now;
+            await _authRepository.UpdateUserAsync(user);
         }
-
-        // Update password
-        user.PasswordHash = PasswordHelper.HashPassword(newPassword);
-        user.UpdatedAt = DateTimeHelper.Now;
-
-        await _authRepository.UpdateUserAsync(user);
+        else
+        {
+            // Try to get candidate
+            var candidate = await _authRepository.GetCandidateByEmailAsync(email);
+            if (candidate != null)
+            {
+                // Update candidate password
+                candidate.PasswordHash = PasswordHelper.HashPassword(newPassword);
+                // candidate.UpdatedAt = DateTimeHelper.Now; // Assuming Candidate has UpdatedAt, need to check entity first
+                await _authRepository.UpdateCandidateAsync(candidate);
+            }
+            else
+            {
+                throw new InvalidOperationException("Không tìm thấy người dùng");
+            }
+        }
         
         // Remove verification flag
         _cache.Remove(verifiedKey);

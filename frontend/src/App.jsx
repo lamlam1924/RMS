@@ -5,6 +5,9 @@ import CandidateLayout from "./layouts/CandidateLayout";
 import PrivateRoute from "./routes/PrivateRoute";
 import { authService } from "./services/authService";
 
+// Landing Page
+import LandingPage from "./pages/LandingPageNew";
+
 // Auth Pages
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
@@ -55,6 +58,7 @@ import EmployeeInterviewDetail from "./pages/employee/EmployeeInterviewDetail";
 
 // Candidate Pages
 import JobBoard from "./pages/candidate/JobBoard";
+import JobDetail from "./pages/candidate/JobDetail";
 import MyApplications from "./pages/candidate/MyApplications";
 import MyProfile from "./pages/candidate/MyProfile";
 
@@ -108,14 +112,14 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Landing Page */}
+        <Route path="/" element={<LandingPage />} />
+
         {/* Public Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/auth/google/callback" element={<GoogleCallback />} />
-
-        {/* Root redirect */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
 
         {/* Candidate Portal */}
         <Route
@@ -127,6 +131,7 @@ export default function App() {
           }
         >
           <Route path="jobs" element={<JobBoard />} />
+          <Route path="jobs/:id" element={<JobDetail />} />
           <Route path="applications" element={<MyApplications />} />
           <Route path="profile" element={<MyProfile />} />
           {/* Default redirect to jobs */}
