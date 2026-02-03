@@ -48,6 +48,8 @@ public partial class RecruitmentDbContext : DbContext
 
     public virtual DbSet<JobRequest> JobRequests { get; set; }
 
+    public virtual DbSet<JobPosting> JobPostings { get; set; }
+
     public virtual DbSet<Offer> Offers { get; set; }
 
     public virtual DbSet<OfferApproval> OfferApprovals { get; set; }
@@ -451,6 +453,36 @@ public partial class RecruitmentDbContext : DbContext
                 .HasForeignKey(d => d.RequestedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__JobReques__Reque__571DF1D5");
+        });
+
+        modelBuilder.Entity<JobPosting>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__JobPosti__3214EC07");
+
+            entity.Property(e => e.Title).HasMaxLength(300);
+            entity.Property(e => e.Location).HasMaxLength(200);
+            entity.Property(e => e.SalaryMin).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.SalaryMax).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
+            entity.Property(e => e.DeletedAt).HasColumnType("datetime");
+            entity.Property(e => e.IsDeleted).HasDefaultValue(false);
+
+            entity.HasOne(d => d.JobRequest).WithMany()
+                .HasForeignKey(d => d.JobRequestId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__JobPostin__JobRe__");
+
+            entity.HasOne(d => d.Status).WithMany()
+                .HasForeignKey(d => d.StatusId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__JobPostin__Statu__");
+
+            entity.HasOne(d => d.CreatedByNavigation).WithMany()
+                .HasForeignKey(d => d.CreatedBy)
+                .HasConstraintName("FK__JobPostin__Creat__");
         });
 
         modelBuilder.Entity<Offer>(entity =>
