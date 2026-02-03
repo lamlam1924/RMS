@@ -165,6 +165,75 @@ if (env.IsDevelopment())
 
 app.UseCors("AppCors");
 
+// [AUTO-MIGRATION] Tự động tạo table & data nếu chưa có
+var retryCount = 0;
+const int maxRetries = 5;
+while (retryCount < maxRetries)
+{
+    try 
+    {
+        using (var scope = app.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<RecruitmentDbContext>();
+            
+            // 1. Chờ DB connect được
+            if (!dbContext.Database.CanConnect())
+            {
+                throw new Exception("Cannot connect to database check");
+            }
+
+            // 2. Tự động chạy Migration (tạo bảng)
+            dbContext.Database.Migrate();
+            Console.WriteLine("✓ Database Migration Successfully");
+
+            // 3. Update password hash (Logic cũ của bạn)
+            var passwordHash = PasswordHelper.HashPassword("123456");
+            
+            // Update Users
+            var usersWithoutPassword = dbContext.Users
+                .Where(u => u.AuthProvider == "LOCAL" && (u.PasswordHash == null || u.PasswordHash == ""))
+                .ToList();
+            
+            if (usersWithoutPassword.Any())
+            {
+                foreach (var user in usersWithoutPassword)
+                {
+                    user.PasswordHash = passwordHash;
+                }
+                Console.WriteLine($"✓ Cập nhật password '123456' cho {usersWithoutPassword.Count} users");
+            }
+            
+            // Update Candidates
+            var candidatesWithoutPassword = dbContext.Candidates
+                .Where(c => c.AuthProvider == "LOCAL" && (c.PasswordHash == null || c.PasswordHash == ""))
+                .ToList();
+            
+            if (candidatesWithoutPassword.Any())
+            {
+                foreach (var candidate in candidatesWithoutPassword)
+                {
+                    candidate.PasswordHash = passwordHash;
+                }
+                Console.WriteLine($"✓ Cập nhật password '123456' cho {candidatesWithoutPassword.Count} candidates");
+            }
+            
+            if (usersWithoutPassword.Any() || candidatesWithoutPassword.Any())
+            {
+                dbContext.SaveChanges();
+            }
+        }
+        break; // Success
+    }
+    catch (Exception ex)
+    {
+        retryCount++;
+        Console.WriteLine($"Attempt {retryCount}/{maxRetries} failed: {ex.Message}. Retrying in 5s...");
+        System.Threading.Thread.Sleep(5000);
+    }
+}
+
+// Configure the HTTP request pipeline
+
 app.UseAuthentication();
 app.UseAuthorization();
 

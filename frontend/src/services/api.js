@@ -20,25 +20,23 @@ function getAuthToken() {
 function getAuthHeaders() {
     const token = getAuthToken();
     const headers = { "Content-Type": "application/json" };
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-    }
+    if (token) headers['Authorization'] = `Bearer ${token}`;
     return headers;
 }
 
 export async function apiGet(path) {
+    const url = `${API_BASE_URL}${path}`;
     const token = getAuthToken();
     const headers = {};
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-    }
-    const res = await fetch(path, { headers });
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(url, { headers });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
 }
 
 export async function apiPost(path, body) {
-    const res = await fetch(path, {
+    const url = `${API_BASE_URL}${path}`;
+    const res = await fetch(url, {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify(body)
@@ -48,7 +46,8 @@ export async function apiPost(path, body) {
 }
 
 export async function apiPatch(path, body) {
-    const res = await fetch(path, {
+    const url = `${API_BASE_URL}${path}`;
+    const res = await fetch(url, {
         method: "PATCH",
         headers: getAuthHeaders(),
         body: JSON.stringify(body)
@@ -58,22 +57,20 @@ export async function apiPatch(path, body) {
 }
 
 export async function apiDelete(path) {
+    const url = `${API_BASE_URL}${path}`;
     const token = getAuthToken();
     const headers = {};
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-    }
-    const res = await fetch(path, { method: "DELETE", headers });
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(url, { method: "DELETE", headers });
     if (!res.ok && res.status !== 204) throw new Error(await res.text());
     return true;
 }
 
-// Default export with common HTTP methods
 const api = {
     get: apiGet,
     post: apiPost,
     patch: apiPatch,
-    put: apiPost, // Using POST for PUT
+    put: apiPost,
     delete: apiDelete,
 };
 

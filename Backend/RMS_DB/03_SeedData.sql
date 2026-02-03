@@ -1,3 +1,6 @@
+USE RecruitmentDB;
+GO
+
 INSERT INTO EntityTypes (Id, Code, Description) VALUES
 (1, 'JOB_REQUEST',  N'Yêu cầu tuyển dụng nội bộ'),
 (2, 'JOB_POSTING',  N'Tin tuyển dụng công khai'),

@@ -1,7 +1,10 @@
+USE RecruitmentDB;
+GO
 /* =========================================================
    2026-01-30 | Lâm
    Change: Thêm dữ liệu cho WorkflowTransitions
    ========================================================= */
+   
 INSERT INTO WorkflowTransitions (StatusTypeId, FromStatusId, ToStatusId, RequiredRoleId) VALUES
 (1, 1, 2, 5), 
 (1, 2, 3, 3), 
@@ -60,9 +63,21 @@ go
 
    /* =========================================================
    2026-01-22 | Lam
-   Change: 
+   Change: cập nhật pass=123456
    ========================================================= */
+-- Hash của '123456' (BCrypt WorkFactor=12)
+DECLARE @Hash VARCHAR(255) = '$2a$12$9kP2YoLUSMAu3X/JmxeWO.O2FA6/r.qnqmeur8pQ4q9xX9fBBTnhO';
 
+-- Update Users
+UPDATE Users 
+SET PasswordHash = @Hash 
+WHERE AuthProvider = 'LOCAL';
+
+-- Update Candidates
+UPDATE Candidates
+SET PasswordHash = @Hash 
+WHERE AuthProvider = 'LOCAL';
+GO
 
    /* =========================================================
    2026-01-22 | Lam
