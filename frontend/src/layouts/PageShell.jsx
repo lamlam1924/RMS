@@ -2,48 +2,17 @@ import React from "react";
 
 export default function PageShell({ title, right, children }) {
   return (
-    <div style={container}>
+    <div className="w-full animate-in fade-in duration-300">
       {/* Page Header */}
       {(title || right) && (
-        <div style={header}>
-          {title && <h1 style={titleStyle}>{title}</h1>}
-          {right && <div style={rightActions}>{right}</div>}
+        <div className="flex justify-between items-center mb-6 gap-4 flex-wrap">
+          {title && <h1 className="text-2xl font-bold text-slate-800 m-0 tracking-tight">{title}</h1>}
+          {right && <div className="flex gap-3 items-center">{right}</div>}
         </div>
       )}
 
       {/* Page Content */}
-      <div style={content}>{children}</div>
+      <div className="w-full">{children}</div>
     </div>
   );
 }
-
-// Styles
-const container = {
-  width: "100%",
-};
-
-const header = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  marginBottom: "24px",
-  gap: "16px",
-  flexWrap: "wrap",
-};
-
-const titleStyle = {
-  fontSize: "28px",
-  fontWeight: "700",
-  color: "#333",
-  margin: 0,
-};
-
-const rightActions = {
-  display: "flex",
-  gap: "12px",
-  alignItems: "center",
-};
-
-const content = {
-  width: "100%",
-};

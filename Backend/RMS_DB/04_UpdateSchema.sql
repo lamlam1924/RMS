@@ -32,7 +32,11 @@ INSERT INTO WorkflowTransitions (StatusTypeId, FromStatusId, ToStatusId, Require
 (4, 15, 17, 2), 
 (4, 16, 18, 4); 
 go
----------
+
+/* =========================================================
+   2026-01-30 | Lâm
+   Change: Cập nhật trạng thái JobRequests và StatusHistories
+   ========================================================= */
 UPDATE JobRequests SET StatusId = 3 WHERE Id IN (1, 2);
 go
 
@@ -45,6 +49,10 @@ VALUES
 (1, 2, 2, 3, 3, DATEADD(day, -1, GETDATE()), N'HR Manager xác nhận hợp lệ');
 go
 
+/* =========================================================
+   2026-01-30 | Lâm
+   Change: Thêm Offers và OfferApprovals
+   ========================================================= */
 INSERT INTO Offers (ApplicationId, ProposedSalary, StatusId, CreatedBy)
 VALUES
 (2, 25000000, 15, 4),  -- Fresher - IN_REVIEW
@@ -57,20 +65,147 @@ VALUES
 (3, 3, 'APPROVED', N'Phù hợp cho vị trí intern', DATEADD(hour, -1, GETDATE()));
 go
 
+/* =========================================================
+   2026-02-02 | Sơn
+   Change: Thêm bảng JobPostings
+   Purpose: Để candidates có thể xem tin tuyển dụng công khai
+   Note: Candidates sử dụng bảng riêng, không cần Users/Roles
+   ========================================================= */
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'JobPostings')
+BEGIN
+    CREATE TABLE JobPostings (
+        Id INT IDENTITY PRIMARY KEY,
+        JobRequestId INT NOT NULL,
+        
+        Title NVARCHAR(300) NOT NULL,
+        Description NVARCHAR(MAX),
+        Requirements NVARCHAR(MAX),
+        Benefits NVARCHAR(MAX),
+        
+        SalaryMin DECIMAL(18,2),
+        SalaryMax DECIMAL(18,2),
+        Location NVARCHAR(200),
+        
+        DeadlineDate DATE,
+        StatusId INT NOT NULL,
+        
+        CreatedAt DATETIME DEFAULT GETDATE(),
+        CreatedBy INT,
+        UpdatedAt DATETIME,
+        UpdatedBy INT,
+        
+        IsDeleted BIT DEFAULT 0,
+        DeletedAt DATETIME,
+        DeletedBy INT,
+        
+        FOREIGN KEY (JobRequestId) REFERENCES JobRequests(Id),
+        FOREIGN KEY (StatusId) REFERENCES Statuses(Id),
+        FOREIGN KEY (CreatedBy) REFERENCES Users(Id)
+    );
+    PRINT 'Created table JobPostings';
+END
+ELSE
+BEGIN
+    PRINT 'Table JobPostings already exists';
+END
+GO
 
-   /* =========================================================
-   2026-01-22 | Lam
-   Change: 
+/* =========================================================
+   2026-02-02 | Sơn
+   Change: Update JobRequests status thành APPROVED và thêm JobPostings
+   Purpose: Tạo tin tuyển dụng công khai cho candidates
    ========================================================= */
 
+-- Update JobRequests thành APPROVED để có thể tạo JobPosting
+UPDATE JobRequests SET StatusId = 4 WHERE Id IN (1, 2);  -- 4 = APPROVED
+PRINT 'Updated JobRequests to APPROVED status';
+GO
 
-   /* =========================================================
-   2026-01-22 | Lam
-   Change: 
+-- Thêm JobPostings nếu chưa có
+IF NOT EXISTS (SELECT * FROM JobPostings WHERE JobRequestId = 1)
+BEGIN
+    INSERT INTO JobPostings (
+        JobRequestId, Title, Description, 
+        Requirements, Benefits, 
+        SalaryMin, SalaryMax, Location,
+        DeadlineDate, StatusId, CreatedBy
+    )
+    VALUES
+    -- Backend Developer
+    (1, 
+     N'Tuyển dụng Backend Developer (.NET Core)', 
+     N'Chúng tôi đang tìm kiếm Backend Developer có kinh nghiệm với .NET Core để tham gia phát triển các dự án lớn cho khách hàng quốc tế.
+
+Mô tả công việc:
+• Thiết kế và phát triển Web API sử dụng ASP.NET Core
+• Làm việc với SQL Server, Entity Framework Core
+• Tham gia review code và tối ưu hiệu năng
+• Làm việc theo mô hình Scrum/Agile', 
+     
+     N'Yêu cầu:
+• Tốt nghiệp Đại học chuyên ngành CNTT
+• Có ít nhất 2 năm kinh nghiệm với .NET Core
+• Thành thạo C#, ASP.NET Core, Entity Framework
+• Kinh nghiệm với SQL Server, Git
+• Có khả năng làm việc nhóm tốt
+• Tiếng Anh đọc hiểu tài liệu kỹ thuật',
+     
+     N'Quyền lợi:
+• Lương: 20-35 triệu (tùy kinh nghiệm)
+• Thưởng theo dự án và hiệu quả công việc
+• Đầy đủ BHXH, BHYT, BHTN
+• Review lương 2 lần/năm
+• Làm việc trong môi trường chuyên nghiệp
+• Cơ hội thăng tiến rõ ràng', 
+     
+     20000000, 35000000, N'Hà Nội',
+     '2026-02-28', 7, 3),  -- StatusId = 7 (PUBLISHED)
+
+    -- Digital Marketing Executive
+    (2,
+     N'Tuyển dụng Digital Marketing Executive',
+     N'Chúng tôi cần một Digital Marketing Executive năng động để triển khai các chiến dịch marketing online hiệu quả.
+
+Mô tả công việc:
+• Lên kế hoạch và triển khai chiến dịch quảng cáo Google Ads, Facebook Ads
+• Quản lý và tối ưu ngân sách marketing
+• Phân tích dữ liệu và báo cáo hiệu quả chiến dịch
+• Phối hợp với team Content để tạo nội dung phù hợp',
+
+     N'Yêu cầu:
+• Tốt nghiệp Đại học Marketing, Kinh tế, hoặc liên quan
+• Có ít nhất 1 năm kinh nghiệm Digital Marketing
+• Thành thạo Google Ads, Facebook Ads Manager
+• Biết sử dụng Google Analytics
+• Khả năng phân tích số liệu tốt
+• Chủ động, sáng tạo',
+
+     N'Quyền lợi:
+• Lương: 12-20 triệu
+• Thưởng KPI hàng tháng
+• BHXH đầy đủ theo luật
+• Môi trường trẻ trung, năng động
+• Được đào tạo và phát triển kỹ năng
+• Team building định kỳ',
+
+     12000000, 20000000, N'Hà Nội',
+     '2026-02-25', 7, 3);  -- StatusId = 7 (PUBLISHED)
+     
+    PRINT 'Added 2 JobPostings (Backend Developer & Marketing Executive)';
+END
+ELSE
+BEGIN
+    PRINT 'JobPostings already exist';
+END
+GO
+
+/* =========================================================
+   2026-02-02 | Sơn
+   Change: Fix Applications StatusId
+   Purpose: Sử dụng đúng StatusId từ ApplicationStatus (9-13)
    ========================================================= */
-
-
-   /* =========================================================
-   2026-01-22 | Lam
-   Change: 
-   ========================================================= */
+UPDATE Applications SET StatusId = 9 WHERE Id = 1;   -- APPLIED
+UPDATE Applications SET StatusId = 10 WHERE Id = 2;  -- SCREENING
+UPDATE Applications SET StatusId = 11 WHERE Id = 3;  -- INTERVIEWING
+PRINT 'Updated Applications with correct StatusIds';
+GO

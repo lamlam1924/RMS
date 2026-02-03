@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { authService } from "../../services/authService";
-import "../../styles/user-profile.css";
 
 export default function UserProfile() {
   const [user, setUser] = useState(null);
@@ -19,20 +18,24 @@ export default function UserProfile() {
   if (!user) return null;
 
   return (
-    <div className="user-profile">
+    <div className="relative">
       <button
-        className="user-profile-button"
+        className="flex items-center gap-3 p-2 bg-white border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20"
         onClick={() => setShowDropdown(!showDropdown)}
       >
-        <div className="user-avatar">
-          {user.fullName.charAt(0).toUpperCase()}
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-semibold text-base shadow-sm">
+          {user.fullName?.charAt(0)?.toUpperCase()}
         </div>
-        <div className="user-info">
-          <div className="user-name">{user.fullName}</div>
-          <div className="user-email">{user.email}</div>
+        <div className="hidden md:block flex-1 text-left min-w-[150px]">
+          <div className="text-sm font-semibold text-gray-800 leading-tight mb-0.5">
+            {user.fullName}
+          </div>
+          <div className="text-xs text-gray-500 truncate max-w-[150px]">
+            {user.email}
+          </div>
         </div>
         <svg
-          className="dropdown-icon"
+          className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${showDropdown ? 'rotate-180' : ''}`}
           width="20"
           height="20"
           viewBox="0 0 20 20"
@@ -44,19 +47,21 @@ export default function UserProfile() {
       {showDropdown && (
         <>
           <div
-            className="dropdown-backdrop"
+            className="fixed inset-0 z-10"
             onClick={() => setShowDropdown(false)}
           />
-          <div className="user-dropdown">
-            <div className="dropdown-header">
-              <div className="dropdown-user-name">{user.fullName}</div>
-              <div className="dropdown-user-email">{user.email}</div>
-              <div className="user-badges">
+          <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-gray-200 rounded-xl shadow-xl z-20 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="px-5 py-4 bg-gray-50 border-b border-gray-100">
+              <div className="font-semibold text-gray-900 mb-1">{user.fullName}</div>
+              <div className="text-xs text-gray-500 mb-3">{user.email}</div>
+              <div className="flex flex-wrap gap-2">
                 {user.authProvider === "Google" && (
-                  <span className="badge badge-google">Google</span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-white border border-gray-200 text-gray-600 shadow-sm">
+                    Google
+                  </span>
                 )}
                 {user.roles?.map((role) => (
-                  <span key={role} className="badge badge-role">
+                  <span key={role} className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-700">
                     {role}
                   </span>
                 ))}
@@ -64,66 +69,74 @@ export default function UserProfile() {
             </div>
 
             {user.departments && user.departments.length > 0 && (
-              <div className="dropdown-section">
-                <div className="section-title">Phòng ban</div>
+              <div className="p-2">
+                <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  Phòng ban
+                </div>
                 {user.departments.map((dept) => (
-                  <div key={dept} className="section-item">
+                  <div key={dept} className="px-3 py-1 text-sm text-gray-600">
                     {dept}
                   </div>
                 ))}
               </div>
             )}
 
-            <div className="dropdown-divider" />
+            <div className="h-px bg-gray-100 my-1" />
 
-            <button
-              className="dropdown-item"
-              onClick={() => (window.location.href = "/profile")}
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="currentColor"
+            <div className="p-1">
+              <button
+                className="w-full text-left flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors group"
+                onClick={() => (window.location.href = "/profile")}
               >
-                <path d="M8 8a3 3 0 100-6 3 3 0 000 6zm2 2H6a5 5 0 00-5 5v1h12v-1a5 5 0 00-5-5z" />
-              </svg>
-              Thông tin cá nhân
-            </button>
+                <svg
+                  className="text-gray-400 group-hover:text-blue-600 transition-colors"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
+                  <path d="M8 8a3 3 0 100-6 3 3 0 000 6zm2 2H6a5 5 0 00-5 5v1h12v-1a5 5 0 00-5-5z" />
+                </svg>
+                Thông tin cá nhân
+              </button>
 
-            <button
-              className="dropdown-item"
-              onClick={() => (window.location.href = "/settings")}
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="currentColor"
+              <button
+                className="w-full text-left flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors group"
+                onClick={() => (window.location.href = "/settings")}
               >
-                <path d="M8 4.754a3.246 3.246 0 100 6.492 3.246 3.246 0 000-6.492zM5.754 8a2.246 2.246 0 114.492 0 2.246 2.246 0 01-4.492 0z" />
-                <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 01-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 01-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 01.52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 011.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 011.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 01.52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 01-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 01-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 002.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 001.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 00-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 00-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 00-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 001.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 003.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 002.692-1.115l.094-.319z" />
-              </svg>
-              Cài đặt
-            </button>
+                <svg
+                  className="text-gray-400 group-hover:text-blue-600 transition-colors"
+                  width="18"
+                   height="18"
+                   viewBox="0 0 16 16"
+                   fill="currentColor"
+                 >
+                   <path fillRule="evenodd" d="M8 13.5a5.5 5.5 0 100-11 5.5 5.5 0 000 11zm0 .5A6 6 0 108 2a6 6 0 000 12z" clipRule="evenodd" />
+                 </svg>
+                 Cài đặt
+              </button>
+            </div>
 
-            <div className="dropdown-divider" />
+            <div className="h-px bg-gray-100 my-1" />
 
-            <button
-              className="dropdown-item dropdown-item-danger"
-              onClick={handleLogout}
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="currentColor"
+            <div className="p-1">
+              <button
+                className="w-full text-left flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                onClick={handleLogout}
               >
-                <path d="M10 12.5a.5.5 0 01-.5.5h-8a.5.5 0 01-.5-.5v-9a.5.5 0 01.5-.5h8a.5.5 0 01.5.5v2a.5.5 0 001 0v-2A1.5 1.5 0 009.5 2h-8A1.5 1.5 0 000 3.5v9A1.5 1.5 0 001.5 14h8a1.5 1.5 0 001.5-1.5v-2a.5.5 0 00-1 0v2z" />
-                <path d="M15.854 8.354a.5.5 0 000-.708l-3-3a.5.5 0 00-.708.708L14.293 7.5H5.5a.5.5 0 000 1h8.793l-2.147 2.146a.5.5 0 00.708.708l3-3z" />
-              </svg>
-              Đăng xuất
-            </button>
+                <svg
+                  className="text-red-500"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
+                  <path fillRule="evenodd" d="M10 12.5a.5.5 0 01-.5.5h-8a.5.5 0 01-.5-.5v-9a.5.5 0 01.5-.5h8a.5.5 0 01.5.5v2a.5.5 0 001 0v-2A1.5 1.5 0 009.5 2h-8A1.5 1.5 0 000 3.5v9A1.5 1.5 0 001.5 14h8a1.5 1.5 0 001.5-1.5v-2a.5.5 0 00-1 0v2z" clipRule="evenodd" />
+                  <path fillRule="evenodd" d="M15.854 8.354a.5.5 0 000-.708l-3-3a.5.5 0 00-.708.708L14.293 7.5H5.5a.5.5 0 000 1h8.793l-2.147 2.146a.5.5 0 00.708.708l3-3z" clipRule="evenodd" />
+                </svg>
+                Đăng xuất
+              </button>
+            </div>
           </div>
         </>
       )}
