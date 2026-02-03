@@ -1,3 +1,5 @@
+USE RecruitmentDB;
+GO
 -- Add RefreshToken table
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'RefreshTokens')
 BEGIN

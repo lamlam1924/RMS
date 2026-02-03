@@ -1,8 +1,8 @@
-
-
 /* =========================================================
    CORE LOOKUP TABLES
    ========================================================= */
+USE RecruitmentDB;
+GO
 
 CREATE TABLE EntityTypes (
     Id INT PRIMARY KEY,
