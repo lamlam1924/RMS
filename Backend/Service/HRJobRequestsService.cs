@@ -1,5 +1,5 @@
 using AutoMapper;
-using RMS.Data;
+using RMS.Dto.Common;
 using RMS.Dto.HR;
 using RMS.Dto.Common;
 using RMS.Entity;
@@ -25,13 +25,10 @@ public class HRJobRequestsService : IHRJobRequestsService
         var entities = await _repository.GetJobRequestsAsync();
         var dtos = _mapper.Map<List<JobRequestListDto>>(entities);
 
-        foreach (var dto in dtos)
+        // Map status directly
+        for(int i = 0; i < dtos.Count; i++)
         {
-            var entity = entities.First(e => e.Id == dto.Id);
-            var status = await _repository.GetStatusByIdAsync(entity.StatusId);
-            dto.CurrentStatus = status?.Name ?? "Unknown";
-            if (status != null)
-                dto.Status = _mapper.Map<StatusDto>(status);
+             dtos[i].CurrentStatus = GetStatusName(entities[i].StatusId);
         }
 
         return dtos;
@@ -42,30 +39,9 @@ public class HRJobRequestsService : IHRJobRequestsService
         var entities = await _repository.GetPendingJobRequestsAsync();
         var dtos = _mapper.Map<List<JobRequestListDto>>(entities);
 
-        foreach (var dto in dtos)
+        for(int i = 0; i < dtos.Count; i++)
         {
-            var entity = entities.First(e => e.Id == dto.Id);
-            var status = await _repository.GetStatusByIdAsync(entity.StatusId);
-            dto.CurrentStatus = status?.Name ?? "Unknown";
-            if (status != null)
-                dto.Status = _mapper.Map<StatusDto>(status);
-        }
-
-        return dtos;
-    }
-
-    public async Task<List<JobRequestListDto>> GetJobRequestsByStatusAsync(string statusCode)
-    {
-        var entities = await _repository.GetJobRequestsByStatusAsync(statusCode);
-        var dtos = _mapper.Map<List<JobRequestListDto>>(entities);
-
-        foreach (var dto in dtos)
-        {
-            var entity = entities.First(e => e.Id == dto.Id);
-            var status = await _repository.GetStatusByIdAsync(entity.StatusId);
-            dto.CurrentStatus = status?.Name ?? "Unknown";
-            if (status != null)
-                dto.Status = _mapper.Map<StatusDto>(status);
+             dtos[i].CurrentStatus = GetStatusName(entities[i].StatusId);
         }
 
         return dtos;
@@ -77,9 +53,11 @@ public class HRJobRequestsService : IHRJobRequestsService
         if (entity == null) return null;
 
         var dto = _mapper.Map<JobRequestDetailDto>(entity);
-        var statusHistory = await _repository.GetStatusHistoryAsync(id, "JOB_REQUEST");
         
-        // Map status history
+        // Use entity status as primary source
+        dto.CurrentStatus = GetStatusName(entity.StatusId);
+
+        var statusHistory = await _repository.GetStatusHistoryAsync(id, "JobRequest");
         dto.StatusHistory = _mapper.Map<List<StatusHistoryDto>>(statusHistory);
         
         // Set current status from entity.StatusId (authoritative source)
@@ -138,5 +116,46 @@ public class HRJobRequestsService : IHRJobRequestsService
     public async Task<bool> RejectCancelAsync(int id, string? note, int hrManagerId)
     {
         return await _repository.RejectCancelAsync(id, hrManagerId, note);
+    }
+
+    private string GetStatusName(int statusId)
+    {
+        return statusId switch
+        {
+            1 => "DRAFT",
+            2 => "SUBMITTED",
+            3 => "IN_REVIEW",
+            4 => "APPROVED",
+            5 => "REJECTED",
+            _ => "Unknown"
+        };
+    }
+
+    public async Task<ActionResponseDto> UpdateStatusAsync(int id, int statusId, string note, int userId)
+    {
+        var jobRequest = await _repository.GetJobRequestByIdAsync(id);
+        if (jobRequest == null) 
+            return new ActionResponseDto { Success = false, Message = "Job request not found" };
+
+        var oldStatusId = jobRequest.StatusId;
+        jobRequest.StatusId = statusId;
+        jobRequest.UpdatedAt = DateTime.Now;
+
+        await _repository.UpdateJobRequestAsync(jobRequest);
+
+        // Add history
+        var history = new StatusHistory
+        {
+            EntityTypeId = 1, // JOB_REQUEST
+            EntityId = id,
+            FromStatusId = oldStatusId,
+            ToStatusId = statusId,
+            ChangedBy = userId,
+            ChangedAt = DateTime.Now,
+            Note = note
+        };
+        await _repository.AddStatusHistoryAsync(history);
+
+        return new ActionResponseDto { Success = true, Message = "Status updated successfully" };
     }
 }

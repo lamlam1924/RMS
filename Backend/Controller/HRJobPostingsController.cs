@@ -55,6 +55,24 @@ public class HRJobPostingsController : ControllerBase
     }
 
     /// <summary>
+    /// Get job posting detail
+    /// </summary>
+    [HttpGet("{id}")]
+    public async Task<ActionResult<JobPostingDetailDto>> GetJobPosting(int id)
+    {
+        try
+        {
+            var jobPosting = await _hrJobPostingsService.GetJobPostingByIdAsync(id);
+            if (jobPosting == null) return NotFound();
+            return Ok(jobPosting);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to load job posting", error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Create new job posting
     /// </summary>
     [HttpPost]
@@ -73,6 +91,29 @@ public class HRJobPostingsController : ControllerBase
         catch (Exception ex)
         {
             return StatusCode(500, new { message = "Failed to create job posting", error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Update job posting
+    /// </summary>
+    [HttpPut("{id}")]
+    [Authorize(Roles = "HR_STAFF")]
+    public async Task<ActionResult<ActionResponseDto>> UpdateJobPosting(int id, [FromBody] UpdateJobPostingDto dto)
+    {
+        try
+        {
+            var userId = CurrentUserHelper.GetCurrentUserId(this);
+            var result = await _hrJobPostingsService.UpdateJobPostingAsync(id, dto, userId);
+            
+            if (result.Success)
+                return Ok(result);
+            else
+                return BadRequest(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to update job posting", error = ex.Message });
         }
     }
 

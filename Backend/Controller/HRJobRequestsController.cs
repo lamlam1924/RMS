@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RMS.Common;
+using RMS.Dto.Common;
 using RMS.Dto.HR;
 using RMS.Service.Interface;
 
@@ -91,6 +92,7 @@ public class HRJobRequestsController : ControllerBase
     }
 
     /// <summary>
+<<<<<<< HEAD
     /// Forward job request to Director
     /// </summary>
     [HttpPost("{id}/forward")]
@@ -177,6 +179,26 @@ public class HRJobRequestsController : ControllerBase
         catch (Exception ex)
         {
             return StatusCode(500, new { message = "Error rejecting cancel request", error = ex.Message });
+=======
+    /// Update job request status (Approve/Reject)
+    /// </summary>
+    [HttpPut("{id}/status")]
+    public async Task<ActionResult<ActionResponseDto>> UpdateStatus(int id, [FromBody] UpdateJobRequestStatusDto dto)
+    {
+        try
+        {
+            var userId = CurrentUserHelper.GetCurrentUserId(this);
+            var result = await _hrJobRequestsService.UpdateStatusAsync(id, dto.ToStatusId, dto.Note, userId);
+            
+            if (result.Success)
+                return Ok(result);
+            else
+                return BadRequest(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to update status", error = ex.Message });
+>>>>>>> afecdd6 (feat: manager posting)
         }
     }
 }

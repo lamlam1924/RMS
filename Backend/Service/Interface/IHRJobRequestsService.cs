@@ -1,3 +1,4 @@
+using RMS.Dto.Common;
 using RMS.Dto.HR;
 
 namespace RMS.Service.Interface;
@@ -30,4 +31,5 @@ public interface IHRJobRequestsService
 
     /// <summary>HR từ chối yêu cầu hủy (CANCEL_PENDING → trạng thái trước)</summary>
     Task<bool> RejectCancelAsync(int id, string? note, int hrManagerId);
+    Task<ActionResponseDto> UpdateStatusAsync(int id, int statusId, string note, int userId);
 }

@@ -214,4 +214,16 @@ public class HRJobRequestsRepository : IHRJobRequestsRepository
             .Select(f => f.FileUrl)
             .FirstOrDefaultAsync();
     }
+
+    public async Task UpdateJobRequestAsync(JobRequest jobRequest)
+    {
+        _context.JobRequests.Update(jobRequest);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task AddStatusHistoryAsync(StatusHistory statusHistory)
+    {
+        _context.StatusHistories.Add(statusHistory);
+        await _context.SaveChangesAsync();
+    }
 }

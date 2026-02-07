@@ -45,4 +45,6 @@ public interface IHRJobRequestsRepository
 
     /// <summary>HR từ chối hủy (CANCEL_PENDING → trạng thái trước đó)</summary>
     Task<bool> RejectCancelAsync(int id, int hrManagerId, string? note);
+    Task UpdateJobRequestAsync(JobRequest jobRequest);
+    Task AddStatusHistoryAsync(StatusHistory statusHistory);
 }

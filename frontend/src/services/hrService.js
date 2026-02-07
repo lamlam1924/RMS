@@ -207,6 +207,14 @@ const hrService = {
       return response.json();
     },
     
+    getById: async (id) => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/job-postings/${id}`, {
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error('Failed to fetch job posting');
+      return response.json();
+    },
+
     create: async (data) => {
       const response = await fetch(`${API_BASE_URL}/api/hr/job-postings`, {
         method: 'POST',
@@ -214,6 +222,16 @@ const hrService = {
         body: JSON.stringify(data)
       });
       if (!response.ok) throw new Error('Failed to create job posting');
+      return response.json();
+    },
+
+    update: async (id, data) => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/job-postings/${id}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw new Error('Failed to update job posting');
       return response.json();
     },
     

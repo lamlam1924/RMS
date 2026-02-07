@@ -29,3 +29,9 @@ public class HRJobRequestReviewDto
 {
     public string? Note { get; set; }
 }
+
+public class UpdateJobRequestStatusDto
+{
+    public int ToStatusId { get; set; }
+    public string Note { get; set; } = string.Empty;
+}

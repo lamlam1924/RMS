@@ -55,6 +55,8 @@ import HROfferList from "./pages/hr/manager/HROfferList";
 
 // HR Staff Pages
 import HRJobPostingList from "./pages/hr/staff/HRJobPostingList";
+import CreateJobPosting from "./pages/hr/staff/CreateJobPosting";
+import EditJobPosting from "./pages/hr/staff/EditJobPosting";
 
 // Employee Pages
 import EmployeeInterviewList from "./pages/employee/EmployeeInterviewList";
@@ -416,6 +418,22 @@ export default function App() {
             element={
               <PrivateRoute roles={[ROLES.HR_STAFF]}>
                 <HRJobPostingList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="hr-staff/job-postings/new"
+            element={
+              <PrivateRoute roles={[ROLES.HR_STAFF]}>
+                <CreateJobPosting />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="hr-staff/job-postings/:id/edit"
+            element={
+              <PrivateRoute roles={[ROLES.HR_STAFF]}>
+                <EditJobPosting />
               </PrivateRoute>
             }
           />

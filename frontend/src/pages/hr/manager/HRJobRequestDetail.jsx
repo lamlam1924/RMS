@@ -100,6 +100,41 @@ export default function HRJobRequestDetail() {
     }
   };
 
+  const handleAction = async (action) => {
+    const isApprove = action === 'APPROVE';
+    const confirmMessage = isApprove 
+      ? 'Are you sure you want to verify this request and forward it to the Director?' 
+      : 'Are you sure you want to REJECT this request?';
+    
+    if (!window.confirm(confirmMessage)) return;
+
+    let note = '';
+    if (!isApprove) {
+      note = window.prompt('Please provide a reason for rejection:', '');
+      if (note === null) return; // User cancelled
+    } else {
+        note = window.prompt('Add an optional note for the Director (or leave blank):', '');
+    }
+
+    try {
+      setLoading(true);
+      // Logic Update:
+      // HR Manager APPROVE -> Moves status to IN_REVIEW (3), NOT APPROVED (4).
+      // Director will do the final approval (3 -> 4).
+      // REJECT -> 5
+      const newStatusId = isApprove ? 3 : 5;
+      
+      await hrService.jobRequests.updateStatus(id, newStatusId, note || '');
+      
+      alert(isApprove ? 'Request forwarded to Director successfully!' : 'Request rejected.');
+      loadJobRequest(); // Reload details
+    } catch (error) {
+      console.error('Action failed:', error);
+      alert('Failed to update status.');
+      setLoading(false);
+    }
+  };
+
   if (loading) return <LoadingSpinner />;
   if (!jobRequest) return <NotFound />;
 
