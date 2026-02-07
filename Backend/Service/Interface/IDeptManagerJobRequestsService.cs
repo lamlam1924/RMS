@@ -12,4 +12,5 @@ public interface IDeptManagerJobRequestsService
     Task<ActionResponseDto> SubmitJobRequestAsync(int id, int managerId);
     Task<ActionResponseDto> DeleteJobRequestAsync(int id, int managerId);
     Task<List<ApplicationSummaryDto>> GetApplicationsByJobRequestAsync(int jobRequestId, int managerId);
+    Task<List<PositionDto>> GetPositionsAsync(int managerId);
 }

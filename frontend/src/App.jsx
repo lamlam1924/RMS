@@ -36,7 +36,9 @@ import OfferApprovals from "./pages/director/OfferApprovals";
 // Department Manager Pages
 import DeptManagerDashboard from "./pages/department-manager/DeptManagerDashboard";
 import DeptManagerJobRequestList from "./pages/department-manager/DeptManagerJobRequestList";
+import CreateJobRequest from "./pages/department-manager/DeptManagerJobRequestCreate";
 import DeptManagerJobRequestDetail from "./pages/department-manager/DeptManagerJobRequestDetail";
+import DeptManagerJobRequestEdit from "./pages/department-manager/DeptManagerJobRequestEdit";
 import DeptManagerInterviewList from "./pages/department-manager/DeptManagerInterviewList";
 import DeptManagerInterviewDetail from "./pages/department-manager/DeptManagerInterviewDetail";
 
@@ -316,6 +318,22 @@ export default function App() {
             element={
               <PrivateRoute roles={[ROLES.DEPARTMENT_MANAGER]}>
                 <DeptManagerJobRequestList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="dept-manager/job-requests/new"
+            element={
+              <PrivateRoute roles={[ROLES.DEPARTMENT_MANAGER]}>
+                <CreateJobRequest />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="dept-manager/job-requests/:id/edit"
+            element={
+              <PrivateRoute roles={[ROLES.DEPARTMENT_MANAGER]}>
+                <DeptManagerJobRequestEdit />
               </PrivateRoute>
             }
           />

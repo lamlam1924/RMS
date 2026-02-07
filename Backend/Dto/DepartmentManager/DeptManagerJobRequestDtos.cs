@@ -28,6 +28,7 @@ public class DeptManagerJobRequestListDto
 public class DeptManagerJobRequestDetailDto
 {
     public int Id { get; set; }
+    public int PositionId { get; set; }
     public required string PositionTitle { get; set; }
     public required string DepartmentName { get; set; }
     public required string RequestedByName { get; set; }

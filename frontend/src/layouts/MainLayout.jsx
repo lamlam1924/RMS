@@ -152,6 +152,7 @@ const MENU_CONFIG = [
 
 export default function MainLayout() {
   const [user, setUser] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -170,10 +171,9 @@ export default function MainLayout() {
 
     return MENU_CONFIG.filter((item) => {
       if (item.isDivider) {
-        // Show divider only if user has any of the required roles
         return item.roles ? hasRole(user.roles, item.roles) : true;
       }
-      if (!item.roles) return true; // No restriction
+      if (!item.roles) return true;
       return hasRole(user.roles, item.roles);
     });
   };
@@ -181,105 +181,128 @@ export default function MainLayout() {
   const filteredMenu = getFilteredMenu();
 
   return (
-    <div className="h-screen flex flex-col bg-slate-50 text-gray-800 font-sans">
-      <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-5 shadow-sm z-10">
+    <div className="h-screen flex flex-col bg-gray-50">
+      {/* Header */}
+      <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shadow-sm sticky top-0 z-50">
         <div className="flex items-center gap-4">
-          <div className="flex flex-col leading-tight">
-            <div className="font-extrabold tracking-wide text-lg text-blue-900">RMS</div>
-            <div className="text-xs text-gray-500 font-medium">Recruitment Management</div>
-          </div>
-          <button className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors" aria-label="menu">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M3 12H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M3 6H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M3 18H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 rounded-lg hover:bg-gray-100 text-gray-700 transition-colors lg:hidden"
+            aria-label="toggle menu"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center shadow-lg">
+              <span className="text-white font-bold text-lg">R</span>
+            </div>
+            <div className="hidden sm:block">
+              <div className="font-bold text-xl text-gray-900">RMS</div>
+              <div className="text-xs text-gray-500 -mt-0.5">Recruitment Management</div>
+            </div>
+          </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="text-right hidden sm:block">
-            <div className="font-semibold text-sm text-gray-800">{user?.fullName}</div>
-            <div className="text-xs text-gray-500">{user?.roles?.join(", ")}</div>
+        <div className="flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-gray-50 rounded-lg">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+              {user?.fullName?.charAt(0)?.toUpperCase() || 'U'}
+            </div>
+            <div className="text-left">
+              <div className="font-semibold text-sm text-gray-900">{user?.fullName}</div>
+              <div className="text-xs text-gray-500">{user?.roles?.[0]}</div>
+            </div>
           </div>
           <button
-            className="p-2 rounded-lg hover:bg-red-50 text-gray-500 hover:text-red-600 transition-colors border border-transparent hover:border-red-100"
-            aria-label="logout"
             onClick={handleLogout}
+            className="p-2.5 rounded-lg hover:bg-red-50 text-gray-600 hover:text-red-600 transition-all border border-transparent hover:border-red-200"
+            aria-label="logout"
             title="Logout"
           >
-             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
           </button>
         </div>
       </header>
 
-      <div className="flex-1 grid grid-cols-[260px_1fr] min-h-0">
-        <aside className="bg-white border-r border-gray-200 p-3 overflow-y-auto hidden md:block">
-          {filteredMenu.map((m) => {
-            // Render divider
-            if (m.isDivider) {
+      <div className="flex-1 flex overflow-hidden">
+        {/* Sidebar */}
+        <aside className={`
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 
+          transition-transform duration-300 ease-in-out lg:transition-none
+          flex flex-col mt-16 lg:mt-0
+        `}>
+          <nav className="flex-1 overflow-y-auto p-4 space-y-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+            {filteredMenu.map((m) => {
+              if (m.isDivider) {
+                return <div key={m.key} className="h-px bg-gray-200 my-3" />;
+              }
+
+              if (!m.children) {
+                return (
+                  <NavLink
+                    key={m.key}
+                    to={m.to}
+                    end
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium group ${
+                        isActive
+                          ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`
+                    }
+                  >
+                    <span className="flex-1">{m.label}</span>
+                  </NavLink>
+                );
+              }
+
               return (
-                <div
-                  key={m.key}
-                  className="h-px bg-gray-200 my-4 mx-2"
-                />
-              );
-            }
-
-            // Render single menu item
-            if (!m.children) {
-              return (
-                <NavLink
-                  key={m.key}
-                  to={m.to}
-                  end
-                  className={({ isActive }) =>
-                    `w-full flex items-center gap-3 px-3 py-2.5 mb-1 rounded-xl transition-all duration-200 text-sm font-medium ${
-                      isActive 
-                        ? "bg-blue-600 text-white shadow-md shadow-blue-200" 
-                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                    }`
-                  }
-                >
-                  <span>{m.label}</span>
-                </NavLink>
-              );
-            }
-
-            // Render group with children
-            return (
-              <div key={m.key} className="mt-4 mb-2">
-                <div className="flex items-center justify-between px-3 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                  <span>{m.label}</span>
+                <div key={m.key} className="space-y-1">
+                  <div className="px-3 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    {m.label}
+                  </div>
+                  <div className="space-y-0.5">
+                    {m.children.map((c) => (
+                      <NavLink
+                        key={c.key}
+                        to={c.to}
+                        end
+                        className={({ isActive }) =>
+                          `flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
+                            isActive
+                              ? "bg-blue-50 text-blue-700 font-semibold border-l-4 border-blue-600 pl-3"
+                              : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 border-l-4 border-transparent pl-3"
+                          }`
+                        }
+                      >
+                        <span>{c.label}</span>
+                      </NavLink>
+                    ))}
+                  </div>
                 </div>
-
-                <div className="mt-1 space-y-1">
-                  {m.children.map((c) => (
-                    <NavLink
-                      key={c.key}
-                      to={c.to}
-                      end
-                      className={({ isActive }) =>
-                        `block w-full text-left px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
-                          isActive
-                            ? "bg-blue-50 text-blue-700 font-semibold"
-                            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                        }`
-                      }
-                    >
-                      {c.label}
-                    </NavLink>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </nav>
         </aside>
 
-        <main className="p-6 overflow-y-auto bg-slate-50/50">
-          <Outlet />
+        {/* Overlay for mobile */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/50 z-30 lg:hidden mt-16"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
+        {/* Main Content */}
+        <main className="flex-1 overflow-y-auto bg-gray-50">
+          <div className="p-6">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

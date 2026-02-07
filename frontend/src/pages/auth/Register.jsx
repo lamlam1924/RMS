@@ -88,6 +88,8 @@ export default function Register() {
         window.location.href = '/staff/admin';
       } else if (roles.includes('DIRECTOR')) {
         window.location.href = '/staff/director';
+      } else if (roles.includes('DEPARTMENT_MANAGER')) {
+        window.location.href = '/staff/dept-manager';
       } else {
         window.location.href = '/staff/dashboard';
       }

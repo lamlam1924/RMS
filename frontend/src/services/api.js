@@ -45,6 +45,17 @@ export async function apiPost(path, body) {
     return res.json();
 }
 
+export async function apiPut(path, body) {
+    const url = `${API_BASE_URL}${path}`;
+    const res = await fetch(url, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+}
+
 export async function apiPatch(path, body) {
     const url = `${API_BASE_URL}${path}`;
     const res = await fetch(url, {
@@ -69,8 +80,8 @@ export async function apiDelete(path) {
 const api = {
     get: apiGet,
     post: apiPost,
+    put: apiPut,
     patch: apiPatch,
-    put: apiPost,
     delete: apiDelete,
 };
 
