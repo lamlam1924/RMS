@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import deptManagerService from '../../services/deptManagerService';
 import { FilterTabs, EmptyState, LoadingSpinner } from '../../components/shared';
-import { getPriorityBadge, getStatusBadge } from '../../utils/badgeHelpers';
+import { getPriorityBadge, getStatusBadge } from '../../utils/helpers/badge';
 
 export default function DeptManagerJobRequestList() {
   const navigate = useNavigate();
@@ -57,34 +57,25 @@ export default function DeptManagerJobRequestList() {
   };
 
   return (
-    <div style={{ padding: 24, backgroundColor: '#f9fafb', minHeight: '100vh' }}>
+    <div className="min-h-screen">
       {/* Header */}
-      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, color: '#111827', marginBottom: 8 }}>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Job Requests
           </h1>
-          <p style={{ color: '#6b7280' }}>
+          <p className="text-gray-600">
             Manage recruitment requests for your department
           </p>
         </div>
         <button
           onClick={() => navigate('/staff/dept-manager/job-requests/new')}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: 6,
-            cursor: 'pointer',
-            fontWeight: 500,
-            fontSize: 14,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8
-          }}
+          className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg font-medium"
         >
-          ➕ New Request
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          New Request
         </button>
       </div>
 
@@ -114,60 +105,29 @@ export default function DeptManagerJobRequestList() {
           } : null}
         />
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="space-y-4">
           {jobRequests.map((request) => (
             <div
               key={request.id}
               onClick={() => navigate(`/staff/dept-manager/job-requests/${request.id}`)}
-              style={{
-                backgroundColor: 'white',
-                padding: 20,
-                borderRadius: 8,
-                border: '1px solid #e5e7eb',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
-                e.currentTarget.style.borderColor = '#3b82f6';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
-                e.currentTarget.style.borderColor = '#e5e7eb';
-              }}
+              className="bg-white rounded-xl border border-gray-200 p-6 cursor-pointer transition-all duration-200 hover:shadow-lg hover:border-blue-300 group"
             >
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'flex-start',
-                marginBottom: 12
-              }}>
-                <div>
-                  <h3 style={{ 
-                    fontSize: 18, 
-                    fontWeight: 600, 
-                    color: '#111827',
-                    marginBottom: 6
-                  }}>
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
+                <div className="flex-1">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
                     {request.positionTitle}
                   </h3>
-                  <div style={{ fontSize: 13, color: '#6b7280' }}>
-                    Request #{request.id}
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <span>Request #{request.id}</span>
+                    <span>•</span>
+                    <span>{request.departmentName}</span>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div className="flex flex-wrap gap-2">
                   {(() => {
                     const badge = getPriorityBadge(request.priority);
                     return (
-                      <span style={{ 
-                        padding: '4px 10px', 
-                        borderRadius: '6px', 
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        backgroundColor: badge.bg,
-                        color: badge.color
-                      }}>
+                      <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: badge.bg, color: badge.color }}>
                         {badge.label}
                       </span>
                     );
@@ -175,14 +135,7 @@ export default function DeptManagerJobRequestList() {
                   {(() => {
                     const badge = getStatusBadge(request.statusCode);
                     return (
-                      <span style={{ 
-                        padding: '4px 10px', 
-                        borderRadius: '6px', 
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        backgroundColor: badge.bg,
-                        color: badge.color
-                      }}>
+                      <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: badge.bg, color: badge.color }}>
                         {badge.label}
                       </span>
                     );
@@ -190,47 +143,37 @@ export default function DeptManagerJobRequestList() {
                 </div>
               </div>
 
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-                gap: 16,
-                marginBottom: 12
-              }}>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
                 <div>
-                  <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Quantity</div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>
-                    {request.quantity} positions
+                  <div className="text-xs text-gray-500 mb-1">Quantity</div>
+                  <div className="text-sm font-semibold text-gray-900">
+                    {request.quantity} {request.quantity > 1 ? 'positions' : 'position'}
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Budget</div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>
+                  <div className="text-xs text-gray-500 mb-1">Budget</div>
+                  <div className="text-sm font-semibold text-gray-900">
                     {formatCurrency(request.budget)}
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Expected Start</div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>
+                  <div className="text-xs text-gray-500 mb-1">Expected Start</div>
+                  <div className="text-sm font-semibold text-gray-900">
                     {formatDate(request.expectedStartDate)}
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Created</div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>
+                  <div className="text-xs text-gray-500 mb-1">Created</div>
+                  <div className="text-sm font-semibold text-gray-900">
                     {formatDate(request.createdAt)}
                   </div>
                 </div>
               </div>
 
               {request.reason && (
-                <div style={{ 
-                  padding: 12,
-                  backgroundColor: '#f9fafb',
-                  borderRadius: 6,
-                  marginTop: 12
-                }}>
-                  <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Reason</div>
-                  <div style={{ fontSize: 13, color: '#374151' }}>
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                  <div className="text-xs font-medium text-gray-500 mb-1">Reason</div>
+                  <div className="text-sm text-gray-700 line-clamp-2">
                     {request.reason}
                   </div>
                 </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import employeeService from '../../services/employeeService';
 import { FilterTabs, EmptyState, LoadingSpinner } from '../../components/shared';
-import { getStatusBadge } from '../../utils/badgeHelpers';
+import { getStatusBadge } from '../../utils/helpers/badge';
 
 export default function EmployeeInterviewList() {
   const navigate = useNavigate();

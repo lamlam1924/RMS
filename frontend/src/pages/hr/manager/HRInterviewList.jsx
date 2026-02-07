@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import hrService from '../../../services/hrService';
-import { formatDate, formatTime, getTimeBadge } from '../../../utils/formatters';
+import { formatDate, formatTime, getTimeBadge } from '../../../utils/formatters/display';
 import { InterviewTypeBadge, TimeBadge, StatusBadge } from '../../../components/shared/Badge';
 
 export default function HRInterviewList() {

@@ -77,6 +77,13 @@ public class DeptManagerJobRequestsService : IDeptManagerJobRequestsService
     {
         try
         {
+            // Validate input
+            var validation = JobRequestValidationHelper.ValidateCreateJobRequest(request);
+            if (!validation.IsValid)
+            {
+                return ResponseHelper.CreateActionResponse(false, "", validation.ErrorMessage!);
+            }
+
             // Validate position access
             var hasAccess = await _repository.ValidatePositionAccessAsync(request.PositionId, managerId);
             if (!hasAccess)
@@ -120,6 +127,13 @@ public class DeptManagerJobRequestsService : IDeptManagerJobRequestsService
     {
         try
         {
+            // Validate input
+            var validation = JobRequestValidationHelper.ValidateUpdateJobRequest(request);
+            if (!validation.IsValid)
+            {
+                return ResponseHelper.CreateActionResponse(false, "", validation.ErrorMessage!);
+            }
+
             var entity = await _repository.GetJobRequestByIdAsync(id, managerId);
             if (entity == null)
             {
@@ -237,5 +251,11 @@ public class DeptManagerJobRequestsService : IDeptManagerJobRequestsService
         }
         
         return dtos;
+    }
+
+    public async Task<List<PositionDto>> GetPositionsAsync(int managerId)
+    {
+        var positions = await _repository.GetPositionsByManagerIdAsync(managerId);
+        return _mapper.Map<List<PositionDto>>(positions);
     }
 }

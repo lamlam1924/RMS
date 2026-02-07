@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RMS.Common;
 using RMS.Data;
 using RMS.Entity;
 using RMS.Repository.Interface;
@@ -55,7 +56,7 @@ public class DeptManagerJobRequestsRepository : IDeptManagerJobRequestsRepositor
         if (jobRequest == null) return false;
 
         jobRequest.IsDeleted = true;
-        jobRequest.DeletedAt = DateTime.Now;
+        jobRequest.DeletedAt = DateTimeHelper.Now;
         jobRequest.DeletedBy = managerId;
 
         return await _context.SaveChangesAsync() > 0;
@@ -73,7 +74,7 @@ public class DeptManagerJobRequestsRepository : IDeptManagerJobRequestsRepositor
 
         var oldStatusId = jobRequest.StatusId;
         jobRequest.StatusId = submittedStatus.Id;
-        jobRequest.UpdatedAt = DateTime.Now;
+        jobRequest.UpdatedAt = DateTimeHelper.Now;
         jobRequest.UpdatedBy = managerId;
 
         // Add status history
@@ -84,7 +85,7 @@ public class DeptManagerJobRequestsRepository : IDeptManagerJobRequestsRepositor
             FromStatusId = oldStatusId,
             ToStatusId = submittedStatus.Id,
             ChangedBy = managerId,
-            ChangedAt = DateTime.Now,
+            ChangedAt = DateTimeHelper.Now,
             Note = "Job request submitted for approval"
         };
 
@@ -131,5 +132,17 @@ public class DeptManagerJobRequestsRepository : IDeptManagerJobRequestsRepositor
         if (position == null) return false;
 
         return position.Department.UserDepartments.Any(ud => ud.UserId == managerId);
+    }
+
+    public async Task<List<Position>> GetPositionsByManagerIdAsync(int managerId)
+    {
+        // Get all positions in departments where the manager is a member
+        return await _context.Positions
+            .Include(p => p.Department)
+                .ThenInclude(d => d.UserDepartments)
+            .Where(p => !p.IsDeleted!.Value && 
+                       p.Department.UserDepartments.Any(ud => ud.UserId == managerId))
+            .OrderBy(p => p.Title)
+            .ToListAsync();
     }
 }

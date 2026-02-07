@@ -13,4 +13,5 @@ public interface IDeptManagerJobRequestsRepository
     Task<List<StatusHistory>> GetJobRequestStatusHistoryAsync(int jobRequestId);
     Task<List<Application>> GetApplicationsByJobRequestIdAsync(int jobRequestId, int managerId);
     Task<bool> ValidatePositionAccessAsync(int positionId, int managerId);
+    Task<List<Position>> GetPositionsByManagerIdAsync(int managerId);
 }

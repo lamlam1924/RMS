@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RMS.Common;
+using RMS.Dto.Common;
 using RMS.Dto.DepartmentManager;
 using RMS.Service.Interface;
 
@@ -32,8 +33,20 @@ public class DeptManagerJobRequestsController : ControllerBase
         return Ok(jobRequests);
     }
 
-    /// <summary>
-    /// Get detailed information of a specific job request
+    /// <summary>    /// Get all positions in the manager's department(s)
+    /// </summary>
+    [HttpGet("positions")]
+    public async Task<ActionResult<List<PositionDto>>> GetPositions()
+    {
+        var managerId = CurrentUserHelper.GetCurrentUserId(this);
+        if (managerId == 0)
+            return Unauthorized(new { message = "Invalid user" });
+
+        var positions = await _service.GetPositionsAsync(managerId);
+        return Ok(positions);
+    }
+
+    /// <summary>    /// Get detailed information of a specific job request
     /// </summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<DeptManagerJobRequestDetailDto>> GetJobRequestDetail(int id)

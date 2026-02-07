@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import hrService from '../../../services/hrService';
 import WorkflowOverviewWidget from '../../../components/hr/WorkflowOverviewWidget';
-import { formatCurrency, formatDate, formatDateRelative, formatTime } from '../../../utils/formatters';
+import { formatCurrency, formatDate, formatDateRelative, formatTime } from '../../../utils/formatters/display';
 import { PriorityBadge } from '../../../components/shared/Badge';
 
 export default function HRManagerDashboard() {

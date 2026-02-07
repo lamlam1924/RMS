@@ -185,6 +185,20 @@ export default function DeptManagerJobRequestDetail() {
             gap: 12
           }}>
             <button
+              onClick={() => navigate(`/staff/dept-manager/job-requests/${id}/edit`)}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#f59e0b',
+                color: 'white',
+                border: 'none',
+                borderRadius: 6,
+                cursor: 'pointer',
+                fontWeight: 500
+              }}
+            >
+              ✏️ Edit Request
+            </button>
+            <button
               onClick={handleSubmit}
               disabled={submitting}
               style={{
@@ -198,21 +212,7 @@ export default function DeptManagerJobRequestDetail() {
                 opacity: submitting ? 0.6 : 1
               }}
             >
-              {submitting ? 'Submitting...' : 'Submit for Approval'}
-            </button>
-            <button
-              onClick={() => navigate(`/staff/dept-manager/job-requests/${id}/edit`)}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: 'white',
-                color: '#374151',
-                border: '1px solid #d1d5db',
-                borderRadius: 6,
-                cursor: 'pointer',
-                fontWeight: 500
-              }}
-            >
-              Edit
+              {submitting ? 'Submitting...' : '📤 Submit for Approval'}
             </button>
           </div>
         )}

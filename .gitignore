@@ -14,7 +14,9 @@ out/
 *.jfm
 
 # ASP.NET Core config (local only)
+appsettings.json
 appsettings.Development.json
+appsettings.Production.json
 appsettings.Local.json
 
 ############################################

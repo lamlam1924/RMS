@@ -66,6 +66,8 @@ export default function Login() {
       window.location.href = '/staff/admin';
     } else if (roles.includes('DIRECTOR')) {
       window.location.href = '/staff/director';
+    } else if (roles.includes('DEPARTMENT_MANAGER')) {
+      window.location.href = '/staff/dept-manager';
     } else {
       window.location.href = '/staff/dashboard';
     }
@@ -235,9 +237,9 @@ export default function Login() {
           </button>
 
           <div className="mt-8 flex items-center justify-center gap-2 text-sm text-gray-600">
-            <a href="/forgot-password" class="hover:text-[#667eea] font-medium transition-colors">Quên mật khẩu?</a>
+            <a href="/forgot-password" className="hover:text-[#667eea] font-medium transition-colors">Quên mật khẩu?</a>
             <span className="text-gray-300">•</span>
-            <a href="/register" class="hover:text-[#667eea] font-medium transition-colors">Đăng ký tài khoản</a>
+            <a href="/register" className="hover:text-[#667eea] font-medium transition-colors">Đăng ký tài khoản</a>
           </div>
         </div>
       </div>

@@ -3,32 +3,33 @@ import api from './api';
 const deptManagerService = {
   // Dashboard
   dashboard: {
-    getStats: () => api.get('/api/dept-manager/dashboard/stats'),
+    getStats: () => api.get('/dept-manager/dashboard/stats'),
   },
 
   // Job Requests
   jobRequests: {
-    getAll: () => api.get('/api/dept-manager/job-requests'),
-    getById: (id) => api.get(`/api/dept-manager/job-requests/${id}`),
-    create: (data) => api.post('/api/dept-manager/job-requests', data),
-    update: (id, data) => api.put(`/api/dept-manager/job-requests/${id}`, data),
-    submit: (id) => api.post(`/api/dept-manager/job-requests/${id}/submit`),
-    delete: (id) => api.delete(`/api/dept-manager/job-requests/${id}`),
+    getAll: () => api.get('/dept-manager/job-requests'),
+    getById: (id) => api.get(`/dept-manager/job-requests/${id}`),
+    create: (data) => api.post('/dept-manager/job-requests', data),
+    update: (id, data) => api.put(`/dept-manager/job-requests/${id}`, data),
+    submit: (id) => api.post(`/dept-manager/job-requests/${id}/submit`),
+    delete: (id) => api.delete(`/dept-manager/job-requests/${id}`),
+    getPositions: () => api.get('/dept-manager/job-requests/positions'),
   },
 
   // Interviews
   interviews: {
-    getAll: () => api.get('/api/dept-manager/interviews'),
-    getUpcoming: () => api.get('/api/dept-manager/interviews/upcoming'),
-    getById: (id) => api.get(`/api/dept-manager/interviews/${id}`),
+    getAll: () => api.get('/dept-manager/interviews'),
+    getUpcoming: () => api.get('/dept-manager/interviews/upcoming'),
+    getById: (id) => api.get(`/dept-manager/interviews/${id}`),
     submitFeedback: (id, feedback) => 
-      api.post(`/api/dept-manager/interviews/${id}/feedback`, feedback),
+      api.post(`/dept-manager/interviews/${id}/feedback`, feedback),
   },
 
   // Applications (for reference)
   applications: {
     getByJobRequest: (jobRequestId) => 
-      api.get(`/api/dept-manager/job-requests/${jobRequestId}/applications`),
+      api.get(`/dept-manager/job-requests/${jobRequestId}/applications`),
   },
 };
 

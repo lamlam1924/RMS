@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import hrService from '../../../services/hrService';
-import { formatDate, formatCurrency, formatDateTime } from '../../../utils/formatters';
+import { formatDate, formatCurrency, formatDateTime } from '../../../utils/formatters/display';
 import { PriorityBadge, StatusBadge } from '../../../components/shared/Badge';
 
 export default function HRApplicationDetail() {

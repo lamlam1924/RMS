@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import hrService from '../../../services/hrService';
 import ApplicationProgressBar from '../../../components/hr/ApplicationProgressBar';
-import { formatDate, formatCurrency } from '../../../utils/formatters';
+import { formatDate, formatCurrency } from '../../../utils/formatters/display';
 import { PriorityBadge, StatusBadge } from '../../../components/shared/Badge';
 
 export default function HRApplicationList() {
