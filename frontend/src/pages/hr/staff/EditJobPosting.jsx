@@ -1,0 +1,234 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import hrService from '../../../services/hrService';
+import { formatCurrency } from '../../../utils/formatters/display';
+
+export default function EditJobPosting() {
+  const navigate = useNavigate();
+  const { id } = useParams();
+  
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [jobPosting, setJobPosting] = useState(null);
+
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    requirements: '',
+    benefits: '',
+    salaryMin: '',
+    salaryMax: '',
+    location: '',
+    deadline: ''
+  });
+
+  useEffect(() => {
+    loadJobPosting();
+  }, [id]);
+
+  const loadJobPosting = async () => {
+    try {
+      setLoading(true);
+      const data = await hrService.jobPostings.getById(id);
+      setJobPosting(data);
+      
+      setFormData({
+        title: data.title,
+        description: data.description || '',
+        requirements: data.requirements || '',
+        benefits: data.benefits || '',
+        salaryMin: data.salaryMin || '',
+        salaryMax: data.salaryMax || '',
+        location: data.location || '',
+        deadline: data.deadline || ''
+      });
+    } catch (error) {
+      console.error('Failed to load job posting:', error);
+      alert('Failed to load job posting details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+
+    try {
+      const payload = {
+        title: formData.title,
+        description: formData.description,
+        requirements: formData.requirements,
+        benefits: formData.benefits,
+        salaryMin: formData.salaryMin ? parseFloat(formData.salaryMin) : null,
+        salaryMax: formData.salaryMax ? parseFloat(formData.salaryMax) : null,
+        location: formData.location,
+        deadline: formData.deadline ? new Date(formData.deadline).toISOString() : null
+      };
+
+      await hrService.jobPostings.update(id, payload);
+      alert('Job posting updated successfully!');
+      navigate('/staff/hr-staff/job-postings');
+    } catch (error) {
+      console.error('Failed to update job posting:', error);
+      alert('Failed to update job posting');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <div style={{ padding: 24 }}>Loading...</div>;
+  if (!jobPosting) return <div style={{ padding: 24 }}>Job Posting not found</div>;
+
+  return (
+    <div style={{ padding: 24, backgroundColor: '#f9fafb', minHeight: '100vh' }}>
+      <div style={{ maxWidth: 800, margin: '0 auto' }}>
+        <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 24 }}>Edit Job Posting</h1>
+        
+        <div style={{ backgroundColor: 'white', padding: 24, borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+          <div style={{ marginBottom: 24, padding: 16, backgroundColor: '#f3f4f6', borderRadius: 8 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Original Info</h3>
+            <p><strong>Status:</strong> {jobPosting.currentStatus}</p>
+            <p><strong>Position:</strong> {jobPosting.positionTitle}</p>
+            <p><strong>Department:</strong> {jobPosting.departmentName}</p>
+          </div>
+
+          <form onSubmit={handleSubmit}>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
+                Job Title <span style={{ color: 'red' }}>*</span>
+              </label>
+              <input
+                type="text"
+                name="title"
+                value={formData.title}
+                onChange={handleChange}
+                required
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6 }}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Salary Min</label>
+                <input
+                  type="number"
+                  name="salaryMin"
+                  value={formData.salaryMin}
+                  onChange={handleChange}
+                  style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6 }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Salary Max</label>
+                <input
+                  type="number"
+                  name="salaryMax"
+                  value={formData.salaryMax}
+                  onChange={handleChange}
+                  style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6 }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Location</label>
+                <input
+                  type="text"
+                  name="location"
+                  value={formData.location}
+                  onChange={handleChange}
+                  style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6 }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Deadline</label>
+                <input
+                  type="date"
+                  name="deadline"
+                  value={formData.deadline ? formData.deadline.split('T')[0] : ''}
+                  onChange={handleChange}
+                  style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6 }}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Description</label>
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                rows={4}
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6 }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Requirements</label>
+              <textarea
+                name="requirements"
+                value={formData.requirements}
+                onChange={handleChange}
+                rows={4}
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6 }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Benefits</label>
+              <textarea
+                name="benefits"
+                value={formData.benefits}
+                onChange={handleChange}
+                rows={4}
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6 }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+              <button
+                type="button"
+                onClick={() => navigate('/staff/hr-staff/job-postings')}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: 'white',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 6,
+                  color: '#374151',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: saving ? 'not-allowed' : 'pointer',
+                  opacity: saving ? 0.7 : 1
+                }}
+              >
+                {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}

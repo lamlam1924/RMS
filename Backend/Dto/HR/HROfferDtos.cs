@@ -1,3 +1,5 @@
+using RMS.Dto.Common;
+
 namespace RMS.Dto.HR;
 
 public class OfferListDto

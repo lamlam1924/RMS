@@ -1,3 +1,5 @@
+using RMS.Dto.Common;
+
 namespace RMS.Dto.HR;
 
 public class JobRequestListDto
@@ -19,4 +21,10 @@ public class JobRequestListDto
 public class JobRequestDetailDto : JobRequestListDto
 {
     public List<StatusHistoryDto> StatusHistory { get; set; } = new();
+}
+
+public class UpdateJobRequestStatusDto
+{
+    public int ToStatusId { get; set; }
+    public string Note { get; set; } = string.Empty;
 }

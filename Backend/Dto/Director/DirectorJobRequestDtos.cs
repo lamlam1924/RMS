@@ -35,6 +35,6 @@ public class JobRequestDetailDto
 public class JobRequestApprovalActionDto
 {
     public int JobRequestId { get; set; }
-    public required string Action { get; set; }
+    public string? Action { get; set; }
     public string? Comment { get; set; }
 }

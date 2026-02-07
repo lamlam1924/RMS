@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using RMS.Common;
 using RMS.Data;
+using RMS.Dto.Common;
 using RMS.Dto.HR;
 using RMS.Entity;
 using RMS.Repository.Interface;

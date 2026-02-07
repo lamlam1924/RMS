@@ -18,207 +18,132 @@ public class HRJobPostingsRepository : IHRJobPostingsRepository
 
     public async Task<List<JobPostingListDto>> GetJobPostingsAsync(int? statusId = null)
     {
-        var query = _context.JobRequests
-            .Where(jr => jr.IsDeleted == false && jr.StatusId >= 4);
+        // Query from JobPosting table
+        var query = _context.JobPostings
+            .Include(jp => jp.JobRequest)
+            .ThenInclude(jr => jr.Position)
+            .ThenInclude(p => p.Department)
+            .Include(jp => jp.Status)
+            .Where(jp => !jp.IsDeleted!.Value);
 
         if (statusId.HasValue)
         {
-            query = query.Where(jr => jr.StatusId == statusId.Value);
+            query = query.Where(jp => jp.StatusId == statusId.Value);
         }
 
         var jobPostings = await query
-            .OrderByDescending(jr => jr.CreatedAt)
-            .Select(jr => new JobPostingListDto
+            .OrderByDescending(jp => jp.CreatedAt)
+            .Select(jp => new JobPostingListDto
             {
-                Id = jr.Id,
-                Title = jr.Reason ?? "Untitled",
-                PositionTitle = jr.Position.Title,
-                DepartmentName = jr.Position.Department.Name,
-                Quantity = jr.Quantity,
-                StatusId = jr.StatusId,
-                CurrentStatus = "",
-                CreatedAt = jr.CreatedAt ?? DateTimeHelper.Now
+                Id = jp.Id,
+                Title = jp.Title,
+                PositionTitle = jp.JobRequest.Position.Title,
+                DepartmentName = jp.JobRequest.Position.Department.Name,
+                Quantity = jp.JobRequest.Quantity, 
+                StatusId = jp.StatusId,
+                CurrentStatus = jp.Status.Name,
+                CreatedAt = jp.CreatedAt ?? DateTimeHelper.Now,
+                PublishedAt = jp.UpdatedAt, 
+                JobRequestId = jp.JobRequestId
             })
             .ToListAsync();
 
-        foreach (var jp in jobPostings)
-        {
-            var latestStatus = await _context.StatusHistories
-                .Include(sh => sh.ToStatus)
-                .Where(sh => sh.EntityType.Code == "JobRequest" && sh.EntityId == jp.Id)
-                .OrderByDescending(sh => sh.ChangedAt)
-                .FirstOrDefaultAsync();
-            
-            jp.CurrentStatus = latestStatus?.ToStatus?.Name ?? "Unknown";
-        }
-
         return jobPostings;
-    }
-
-    public async Task<JobRequest?> GetJobPostingByIdAsync(int id)
-    {
-        return await _context.JobRequests
-            .Include(jr => jr.Position).ThenInclude(p => p.Department)
-            .Include(jr => jr.RequestedByNavigation)
-            .FirstOrDefaultAsync(jr => jr.Id == id && jr.IsDeleted == false && jr.StatusId >= 4);
-    }
-
-    public async Task<int> CreateJobPostingAsync(int positionId, int quantity, string reason, decimal? budget, DateTime? deadline, int userId)
-    {
-        var jobRequest = new JobRequest
-        {
-            PositionId = positionId,
-            Quantity = quantity,
-            Reason = reason,
-            Budget = budget,
-            Priority = 1,
-            StatusId = 4,
-            RequestedBy = userId,
-            CreatedAt = DateTimeHelper.Now,
-            CreatedBy = userId,
-            IsDeleted = false
-        };
-
-        _context.JobRequests.Add(jobRequest);
-        await _context.SaveChangesAsync();
-
-        var jobRequestEntityType = await _context.EntityTypes.FirstOrDefaultAsync(et => et.Code == "JobRequest");
-        var statusHistory = new StatusHistory
-        {
-            EntityTypeId = jobRequestEntityType?.Id ?? 1,
-            EntityId = jobRequest.Id,
-            ToStatusId = 4,
-            ChangedBy = userId,
-            ChangedAt = DateTimeHelper.Now
-        };
-        _context.StatusHistories.Add(statusHistory);
-        await _context.SaveChangesAsync();
-
-        return jobRequest.Id;
-    }
-
-    public async Task<bool> UpdateJobPostingStatusAsync(int id, int statusId, int userId, string? reason = null)
-    {
-        var jobRequest = await _context.JobRequests.FirstOrDefaultAsync(jr => jr.Id == id && jr.IsDeleted == false);
-        if (jobRequest == null) return false;
-
-        var oldStatusId = jobRequest.StatusId;
-        jobRequest.StatusId = statusId;
-        jobRequest.UpdatedAt = DateTimeHelper.Now;
-        jobRequest.UpdatedBy = userId;
-
-        var jobRequestEntityType = await _context.EntityTypes.FirstOrDefaultAsync(et => et.Code == "JobRequest");
-        var statusHistory = new StatusHistory
-        {
-            EntityTypeId = jobRequestEntityType?.Id ?? 1,
-            EntityId = id,
-            FromStatusId = oldStatusId,
-            ToStatusId = statusId,
-            ChangedBy = userId,
-            ChangedAt = DateTimeHelper.Now,
-            Note = reason
-        };
-        _context.StatusHistories.Add(statusHistory);
-
-        await _context.SaveChangesAsync();
-        return true;
-    }
-
-    public async Task<bool> DeleteJobPostingAsync(int id, int userId)
-    {
-        var jobRequest = await _context.JobRequests.FirstOrDefaultAsync(jr => jr.Id == id);
-        if (jobRequest == null) return false;
-
-        jobRequest.IsDeleted = true;
-        jobRequest.UpdatedAt = DateTimeHelper.Now;
-        jobRequest.UpdatedBy = userId;
-
-        await _context.SaveChangesAsync();
-        return true;
     }
 
     public async Task<List<JobPostingListDto>> GetDraftJobPostingsAsync()
     {
-        var jobPostings = await _context.JobRequests
-            .Where(jr => jr.IsDeleted == false && jr.StatusId == 4)
-            .OrderByDescending(jr => jr.CreatedAt)
-            .Select(jr => new JobPostingListDto
-            {
-                Id = jr.Id,
-                Title = jr.Reason ?? "Untitled",
-                PositionTitle = jr.Position.Title,
-                DepartmentName = jr.Position.Department.Name,
-                Quantity = jr.Quantity,
-                StatusId = jr.StatusId,
-                CurrentStatus = "",
-                CreatedAt = jr.CreatedAt ?? DateTimeHelper.Now
-            })
-            .ToListAsync();
+        // Status 6 = Draft for Job Posting
+        return await GetJobPostingsAsync(6);
+    }
+    
+    public async Task<JobPosting> GetJobPostingByIdAsync(int id)
+    {
+        return await _context.JobPostings
+            .Include(jp => jp.Status)
+            .Include(jp => jp.JobRequest)
+            .ThenInclude(jr => jr.Position)
+            .ThenInclude(p => p.Department)
+            .FirstOrDefaultAsync(jp => jp.Id == id && !jp.IsDeleted!.Value);
+    }
 
-        foreach (var jp in jobPostings)
+    public async Task<int> CreateJobPostingAsync(JobPosting jobPosting)
+    {
+        _context.JobPostings.Add(jobPosting);
+        await _context.SaveChangesAsync();
+
+        // Add status history
+        var statusHistory = new StatusHistory
         {
-            var latestStatus = await _context.StatusHistories
-                .Include(sh => sh.ToStatus)
-                .Where(sh => sh.EntityType.Code == "JobRequest" && sh.EntityId == jp.Id)
-                .OrderByDescending(sh => sh.ChangedAt)
-                .FirstOrDefaultAsync();
-            
-            jp.CurrentStatus = latestStatus?.ToStatus?.Name ?? "Unknown";
-        }
+            EntityTypeId = 2, // JobPosting EntityTypeId = 2
+            EntityId = jobPosting.Id,
+            ToStatusId = jobPosting.StatusId,
+            ChangedBy = jobPosting.CreatedBy ?? 0,
+            ChangedAt = DateTimeHelper.Now,
+            Note = "Job posting created"
+        };
+        _context.StatusHistories.Add(statusHistory);
+        await _context.SaveChangesAsync();
 
-        return jobPostings;
+        return jobPosting.Id;
+    }
+
+    public async Task<bool> UpdateJobPostingAsync(JobPosting jobPosting)
+    {
+        _context.JobPostings.Update(jobPosting);
+        return await _context.SaveChangesAsync() > 0;
     }
 
     public async Task<bool> PublishJobPostingAsync(int jobPostingId, int userId)
     {
-        var jobRequest = await _context.JobRequests.FirstOrDefaultAsync(jr => jr.Id == jobPostingId && jr.IsDeleted == false);
-        if (jobRequest == null) return false;
+        var jobPosting = await _context.JobPostings.FindAsync(jobPostingId);
+        if (jobPosting == null) return false;
 
-        var oldStatusId = jobRequest.StatusId;
-        jobRequest.StatusId = 5;
-        jobRequest.UpdatedAt = DateTimeHelper.Now;
-        jobRequest.UpdatedBy = userId;
+        // Change to PUBLISHED (7)
+        var oldStatusId = jobPosting.StatusId;
+        jobPosting.StatusId = 7; 
+        jobPosting.UpdatedAt = DateTimeHelper.Now;
+        jobPosting.UpdatedBy = userId;
 
-        var jobRequestEntityType = await _context.EntityTypes.FirstOrDefaultAsync(et => et.Code == "JobRequest");
+        // Add status history
         var statusHistory = new StatusHistory
         {
-            EntityTypeId = jobRequestEntityType?.Id ?? 1,
+            EntityTypeId = 2, // JobPosting
             EntityId = jobPostingId,
             FromStatusId = oldStatusId,
-            ToStatusId = 5,
+            ToStatusId = 7,
             ChangedBy = userId,
-            ChangedAt = DateTimeHelper.Now
+            ChangedAt = DateTimeHelper.Now,
+            Note = "Job posting published"
         };
-        _context.StatusHistories.Add(statusHistory);
 
-        await _context.SaveChangesAsync();
-        return true;
+        _context.StatusHistories.Add(statusHistory);
+        return await _context.SaveChangesAsync() > 0;
     }
 
     public async Task<bool> CloseJobPostingAsync(int jobPostingId, string reason, int userId)
     {
-        var jobRequest = await _context.JobRequests.FirstOrDefaultAsync(jr => jr.Id == jobPostingId && jr.IsDeleted == false);
-        if (jobRequest == null) return false;
+        var jobPosting = await _context.JobPostings.FindAsync(jobPostingId);
+        if (jobPosting == null) return false;
 
-        var oldStatusId = jobRequest.StatusId;
-        jobRequest.StatusId = 6;
-        jobRequest.UpdatedAt = DateTimeHelper.Now;
-        jobRequest.UpdatedBy = userId;
+        // Change to CLOSED (8)
+        var oldStatusId = jobPosting.StatusId;
+        jobPosting.StatusId = 8;
+        jobPosting.UpdatedAt = DateTimeHelper.Now;
+        jobPosting.UpdatedBy = userId;
 
-        var jobRequestEntityType = await _context.EntityTypes.FirstOrDefaultAsync(et => et.Code == "JobRequest");
         var statusHistory = new StatusHistory
         {
-            EntityTypeId = jobRequestEntityType?.Id ?? 1,
+            EntityTypeId = 2, // JobPosting
             EntityId = jobPostingId,
             FromStatusId = oldStatusId,
-            ToStatusId = 6,
+            ToStatusId = 8,
             ChangedBy = userId,
             ChangedAt = DateTimeHelper.Now,
-            Note = reason
+            Note = $"Job posting closed. Reason: {reason}"
         };
-        _context.StatusHistories.Add(statusHistory);
 
-        await _context.SaveChangesAsync();
-        return true;
+        _context.StatusHistories.Add(statusHistory);
+        return await _context.SaveChangesAsync() > 0;
     }
 }
