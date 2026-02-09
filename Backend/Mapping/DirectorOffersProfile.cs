@@ -14,7 +14,7 @@ public class DirectorOffersProfile : Profile
             .ForMember(dest => dest.PositionTitle, opt => opt.MapFrom(src => src.Application.JobRequest.Position.Title))
             .ForMember(dest => dest.DepartmentName, opt => opt.MapFrom(src => src.Application.JobRequest.Position.Department.Name))
             .ForMember(dest => dest.ProposedSalary, opt => opt.MapFrom(src => src.ProposedSalary))
-            .ForMember(dest => dest.CurrentStatus, opt => opt.Ignore()) // Set separately from Status entity
+            .ForMember(dest => dest.CurrentStatus, opt => opt.MapFrom(src => src.Status.Name)) // Map from Status entity
             .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt ?? DateTime.Now));
 
         // Offer Entity -> OfferDetailDto
@@ -28,7 +28,7 @@ public class DirectorOffersProfile : Profile
             .ForMember(dest => dest.ProposedSalary, opt => opt.MapFrom(src => src.ProposedSalary))
             .ForMember(dest => dest.StartDate, opt => opt.Ignore()) // Not in Offer entity
             .ForMember(dest => dest.Benefits, opt => opt.Ignore()) // Not in Offer entity
-            .ForMember(dest => dest.CurrentStatus, opt => opt.Ignore()) // Set separately
+            .ForMember(dest => dest.CurrentStatus, opt => opt.MapFrom(src => src.Status.Name)) // Map from Status entity
             .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt ?? DateTime.Now))
             .ForMember(dest => dest.ApprovalHistory, opt => opt.Ignore()); // Set separately from OfferApproval
 

@@ -10,6 +10,8 @@ public interface IDirectorRepository
     Task<List<StatusHistory>> GetJobRequestStatusHistoryAsync(int jobRequestId);
     Task<bool> ApproveJobRequestAsync(int jobRequestId, int directorId, string comment);
     Task<bool> RejectJobRequestAsync(int jobRequestId, int directorId, string comment);
+    Task<bool> ReturnJobRequestAsync(int jobRequestId, int directorId, string comment);
+    Task<string?> GetJdFileUrlAsync(int jobRequestId);
     
     // Offers
     Task<List<Offer>> GetPendingOffersAsync();
@@ -17,4 +19,5 @@ public interface IDirectorRepository
     Task<List<OfferApproval>> GetOfferApprovalHistoryAsync(int offerId);
     Task<bool> ApproveOfferAsync(int offerId, int directorId, string comment);
     Task<bool> RejectOfferAsync(int offerId, int directorId, string comment);
+    Task<Dictionary<int, string>> GetStatusNamesAsync(IEnumerable<int> statusIds);
 }

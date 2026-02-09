@@ -10,6 +10,9 @@ dotnet ef dbcontext scaffold "Server=localhost;Database=RecruitmentDB;User Id=sa
  dotnet dev-certs https --trust
 
 dotnet add package AutoMapper.Extensions.Microsoft.DependencyInjection
+dotnet add Backend/RMS.csproj package CloudinaryDotNet
+
+npm install lucide-react
  ---------------------------------
  
 

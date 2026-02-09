@@ -26,7 +26,8 @@ export {
 
 // Helpers - Badge utilities
 export {
-  getBadgeColor
+  getPriorityBadge,
+  getStatusBadge
 } from './helpers/badge';
 
 // Formatters - Currency formatting
@@ -51,3 +52,31 @@ export {
   formatDateTime,
   formatDateRelative
 } from './formatters/display';
+
+// Helpers - Toast notifications
+export { default as toast } from './helpers/toast';
+
+// Helpers - SLA calculations and status
+export {
+  SLA_CONFIG,
+  SLA_STATUS,
+  calculateSLADeadline,
+  calculateRemainingTime,
+  getSLAStatus,
+  formatRemainingTime,
+  getSLAStyle,
+  isApproachingDeadline,
+  getSLASummary
+} from './helpers/sla';
+
+// Helpers - Smart suggestions and analysis
+export {
+  getBudgetSuggestion,
+  analyzeBudgetCompetitiveness,
+  getPrioritySuggestion,
+  validateQuantity as validateQuantitySmart,
+  getExampleJD,
+  getReasonSuggestions,
+  estimateHiringTimeline,
+  getSmartValidationInsights
+} from './helpers/smartHelpers';

@@ -244,3 +244,66 @@ WHERE Id = 3; -- INTERVIEWING
 PRINT
 'Updated Applications with correct StatusIds';
 GO
+
+   /* =========================================================
+   2026-02-07 | Lâm
+   Change: Thêm trạng thái RETURNED và cấu hình Workflow mới cho Job Request
+   Purpose: Hỗ trợ HR Manager trả về yêu cầu cho Dept Manager chỉnh sửa
+   ========================================================= */
+IF NOT EXISTS (SELECT 1 FROM Statuses WHERE Code = 'RETURNED' AND StatusTypeId = 1)
+BEGIN
+    INSERT INTO Statuses (Id, StatusTypeId, Code, Name, OrderNo, IsFinal)
+    VALUES (21, 1, 'RETURNED', N'Yêu cầu chỉnh sửa', 6, 0);
+    PRINT 'Added status RETURNED (ID: 21)';
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM WorkflowTransitions WHERE StatusTypeId = 1 AND FromStatusId = 2 AND ToStatusId = 21 AND RequiredRoleId = 3)
+BEGIN
+    INSERT INTO WorkflowTransitions (StatusTypeId, FromStatusId, ToStatusId, RequiredRoleId)
+    VALUES (1, 2, 21, 3);
+    PRINT 'Added transition: SUBMITTED -> RETURNED (HR Manager)';
+END
+
+-- Thêm luồng: RETURNED -> DRAFT (Dept Manager mở lại để sửa)
+IF NOT EXISTS (SELECT 1 FROM WorkflowTransitions WHERE StatusTypeId = 1 AND FromStatusId = 21 AND ToStatusId = 1 AND RequiredRoleId = 5)
+BEGIN
+    INSERT INTO WorkflowTransitions (StatusTypeId, FromStatusId, ToStatusId, RequiredRoleId)
+    VALUES (1, 21, 1, 5);
+    PRINT 'Added transition: RETURNED -> DRAFT (Dept Manager)';
+END
+
+-- Thêm luồng: IN_REVIEW -> RETURNED (Trường hợp Director xem xong cũng có thể yêu cầu HR bảo Dept Manager sửa lại)
+IF NOT EXISTS (SELECT 1 FROM WorkflowTransitions WHERE StatusTypeId = 1 AND FromStatusId = 3 AND ToStatusId = 21 AND RequiredRoleId = 2)
+BEGIN
+    INSERT INTO WorkflowTransitions (StatusTypeId, FromStatusId, ToStatusId, RequiredRoleId)
+    VALUES (1, 3, 21, 2);
+    PRINT 'Added transition: IN_REVIEW -> RETURNED (Director)';
+END
+
+GO
+/* =========================================================
+   2026-02-07 | Lâm
+   Change: Thêm các trường theo dõi cho luồng Trả về (Return Flow)
+   Purpose: Hỗ trợ HR Manager theo dõi việc Dept Manager đã xem yêu cầu chưa
+   ========================================================= */
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('JobRequests') AND name = 'LastReturnedAt')
+BEGIN
+    ALTER TABLE JobRequests ADD LastReturnedAt DATETIME NULL;
+    PRINT 'Added column LastReturnedAt to JobRequests';
+END
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('JobRequests') AND name = 'LastViewedByManagerAt')
+BEGIN
+    ALTER TABLE JobRequests ADD LastViewedByManagerAt DATETIME NULL;
+    PRINT 'Added column LastViewedByManagerAt to JobRequests';
+END
+GO
+-- Thêm loại tệp JOB_DESCRIPTION cho Job Requests
+IF NOT EXISTS (SELECT 1 FROM FileTypes WHERE Code = 'JOB_DESCRIPTION')
+BEGIN
+    INSERT INTO FileTypes (Id, Code, Description)
+    VALUES (4, 'JOB_DESCRIPTION', N'Bản mô tả công việc (Job Description)');
+END
+GO

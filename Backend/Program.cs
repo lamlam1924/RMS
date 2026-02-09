@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -80,8 +81,43 @@ builder.Services.AddAuthorization();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "RMS API", Version = "v1" });
-    c.CustomSchemaIds(type => type.FullName);
+    c.SwaggerDoc("v1", new OpenApiInfo 
+    { 
+        Title = "RMS API", 
+        Version = "v1",
+        Description = "Recruitment Management System API"
+    });
+    
+    // Fix: Handle duplicate schema names and IFormFile
+    c.CustomSchemaIds(type => 
+    {
+        // Skip IFormFile - Swagger handles it automatically
+        if (type == typeof(IFormFile))
+            return "File";
+        
+        // For types with duplicate names, use short namespace + type name
+        var fullName = type.FullName ?? type.Name;
+        
+        // Extract last part of namespace + type name for cleaner schema IDs
+        // Example: RMS.Dto.HR.JobRequestDetailDto -> HR_JobRequestDetailDto
+        if (fullName.StartsWith("RMS.Dto."))
+        {
+            var parts = fullName.Split('.');
+            if (parts.Length >= 4)
+            {
+                var namespaceSection = parts[2]; // HR, Director, DepartmentManager, etc.
+                var typeName = parts[^1]; // JobRequestDetailDto
+                return $"{namespaceSection}_{typeName}".Replace("+", "_").Replace("[", "Of").Replace("]", "");
+            }
+        }
+            
+        // Use FullName for other types to avoid conflicts
+        return fullName.Replace("+", ".").Replace("[", "Of").Replace("]", "").Replace(".", "_");
+    });
+    
+    // Support file upload in Swagger UI
+    // c.OperationFilter<SwaggerFileOperationFilter>();
+    
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
@@ -131,20 +167,22 @@ builder.Services.AddScoped<IHRInterviewsRepository, HRInterviewsRepository>();
 builder.Services.AddScoped<IHROffersRepository, HROffersRepository>();
 builder.Services.AddScoped<IHRJobPostingsRepository, HRJobPostingsRepository>();
 builder.Services.AddScoped<IEmployeeInterviewsRepository, EmployeeInterviewsRepository>();
+builder.Services.AddScoped<IMediaRepository, MediaRepository>();
 
 // Register Services
 builder.Services.AddScoped<JwtTokenHelper>();
+builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IAdminUserService, AdminUserService>();
-builder.Services.AddScoped<IAdminRoleService, AdminRoleService>();
+builder.Services.AddScoped<IMediaService, MediaService>();
+builder.Services.AddScoped<IDeptManagerDashboardService, DeptManagerDashboardService>();
 builder.Services.AddScoped<IAdminDepartmentService, AdminDepartmentService>();
 builder.Services.AddScoped<IAdminConfigService, AdminConfigService>();
 builder.Services.AddScoped<IAdminWorkflowService, AdminWorkflowService>();
 builder.Services.AddScoped<IDirectorService, DirectorService>();
 builder.Services.AddScoped<IDeptManagerJobRequestsService, DeptManagerJobRequestsService>();
 builder.Services.AddScoped<IDeptManagerInterviewsService, DeptManagerInterviewsService>();
-builder.Services.AddScoped<IDeptManagerDashboardService, DeptManagerDashboardService>();
 builder.Services.AddScoped<IHRStatisticsService, HRStatisticsService>();
 builder.Services.AddScoped<IHRJobRequestsService, HRJobRequestsService>();
 builder.Services.AddScoped<IHRApplicationsService, HRApplicationsService>();
@@ -157,11 +195,12 @@ builder.Services.AddScoped<IEmployeeInterviewsService, EmployeeInterviewsService
 var app = builder.Build();
 
 // ======================= MIDDLEWARE =======================
-if (env.IsDevelopment())
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "RMS API V1");
+    c.RoutePrefix = "swagger";
+});
 
 app.UseCors("AppCors");
 

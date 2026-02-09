@@ -54,7 +54,13 @@ public class HRStatisticsRepository : IHRStatisticsRepository
             .Where(jr => jr.StatusId == 7 && jr.IsDeleted == false)
             .CountAsync();
 
+        // Returned Job Requests (RETURNED = 21)
+        stats.ReturnedJobRequestsCount = await _context.JobRequests
+            .Where(jr => jr.StatusId == 21 && jr.IsDeleted == false)
+            .CountAsync();
+
         return stats;
+
     }
 
     public async Task<List<RecruitmentFunnelDto>> GetRecruitmentFunnelAsync()

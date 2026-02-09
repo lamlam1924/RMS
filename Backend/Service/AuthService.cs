@@ -97,28 +97,28 @@ public class AuthService : IAuthService
         }
     }
 
-    public async Task<OtpResponseDto> VerifyOtpAsync(string email, string otpCode)
+    public Task<OtpResponseDto> VerifyOtpAsync(string email, string otpCode)
     {
         var cacheKey = $"otp_{email}";
         
         if (!_cache.TryGetValue<OtpCacheData>(cacheKey, out var otpData) || otpData == null)
         {
-            return new OtpResponseDto
+            return Task.FromResult(new OtpResponseDto
             {
                 Success = false,
                 Message = "Mã OTP không hợp lệ hoặc đã hết hạn"
-            };
+            });
         }
 
         // Check attempts
         if (otpData.Attempts >= 5)
         {
             _cache.Remove(cacheKey);
-            return new OtpResponseDto
+            return Task.FromResult(new OtpResponseDto
             {
                 Success = false,
                 Message = "Bạn đã nhập sai quá nhiều lần. Vui lòng yêu cầu mã mới"
-            };
+            });
         }
 
         // Verify OTP
@@ -130,11 +130,11 @@ public class AuthService : IAuthService
             _cache.Remove(cacheKey); // Remove OTP after verification
             
             _logger.LogInformation("OTP verified successfully for {Email}", email);
-            return new OtpResponseDto
+            return Task.FromResult(new OtpResponseDto
             {
                 Success = true,
                 Message = "Xác thực email thành công"
-            };
+            });
         }
 
         // Increment attempts
@@ -149,11 +149,11 @@ public class AuthService : IAuthService
             .SetAbsoluteExpiration(updatedData.ExpiresAt);
         _cache.Set(cacheKey, updatedData, cacheOptions);
 
-        return new OtpResponseDto
+        return Task.FromResult(new OtpResponseDto
         {
             Success = false,
             Message = "Mã OTP không đúng"
-        };
+        });
     }
 
     public async Task<LoginResponseDto> RegisterAsync(RegisterRequestDto request)
@@ -256,28 +256,28 @@ public class AuthService : IAuthService
         };
     }
 
-    public async Task<OtpResponseDto> VerifyForgotPasswordOtpAsync(string email, string otpCode)
+    public Task<OtpResponseDto> VerifyForgotPasswordOtpAsync(string email, string otpCode)
     {
         var cacheKey = $"forgot_password_otp_{email}";
         
         if (!_cache.TryGetValue<OtpCacheData>(cacheKey, out var otpData) || otpData == null)
         {
-            return new OtpResponseDto
+            return Task.FromResult(new OtpResponseDto
             {
                 Success = false,
                 Message = "Mã OTP không hợp lệ hoặc đã hết hạn"
-            };
+            });
         }
 
         // Check attempts
         if (otpData.Attempts >= 5)
         {
             _cache.Remove(cacheKey);
-            return new OtpResponseDto
+            return Task.FromResult(new OtpResponseDto
             {
                 Success = false,
                 Message = "Bạn đã nhập sai quá nhiều lần. Vui lòng yêu cầu mã mới"
-            };
+            });
         }
 
         // Verify OTP
@@ -289,11 +289,11 @@ public class AuthService : IAuthService
             _cache.Remove(cacheKey); // Remove OTP after verification
             
             _logger.LogInformation("Forgot password OTP verified for {Email}", email);
-            return new OtpResponseDto
+            return Task.FromResult(new OtpResponseDto
             {
                 Success = true,
                 Message = "Xác thực email thành công"
-            };
+            });
         }
 
         // Increment attempts
@@ -308,11 +308,11 @@ public class AuthService : IAuthService
             .SetAbsoluteExpiration(updatedData.ExpiresAt);
         _cache.Set(cacheKey, updatedData, cacheOptions);
 
-        return new OtpResponseDto
+        return Task.FromResult(new OtpResponseDto
         {
             Success = false,
             Message = "Mã OTP không đúng"
-        };
+        });
     }
 
     public async Task<bool> ResetPasswordAsync(string email, string newPassword)

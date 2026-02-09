@@ -1,15 +1,7 @@
-namespace RMS.Dto.Director;
+using System;
+using System.Collections.Generic;
 
-public class OfferListDto
-{
-    public int Id { get; set; }
-    public required string CandidateName { get; set; }
-    public required string PositionTitle { get; set; }
-    public required string DepartmentName { get; set; }
-    public decimal ProposedSalary { get; set; }
-    public required string CurrentStatus { get; set; }
-    public DateTime CreatedAt { get; set; }
-}
+namespace RMS.Dto.Director;
 
 public class OfferDetailDto
 {
@@ -26,11 +18,4 @@ public class OfferDetailDto
     public required string CurrentStatus { get; set; }
     public DateTime CreatedAt { get; set; }
     public List<OfferApprovalHistoryDto> ApprovalHistory { get; set; } = new();
-}
-
-public class OfferApprovalActionDto
-{
-    public int OfferId { get; set; }
-    public required string Action { get; set; }
-    public string? Comment { get; set; }
 }

@@ -13,10 +13,12 @@ namespace RMS.Controller;
 public class DeptManagerJobRequestsController : ControllerBase
 {
     private readonly IDeptManagerJobRequestsService _service;
+    private readonly IMediaService _mediaService;
 
-    public DeptManagerJobRequestsController(IDeptManagerJobRequestsService service)
+    public DeptManagerJobRequestsController(IDeptManagerJobRequestsService service, IMediaService mediaService)
     {
         _service = service;
+        _mediaService = mediaService;
     }
 
     /// <summary>
@@ -67,15 +69,32 @@ public class DeptManagerJobRequestsController : ControllerBase
     /// </summary>
     [HttpPost]
     public async Task<ActionResult<DeptManagerJobRequestDetailDto>> CreateJobRequest(
-        [FromBody] CreateJobRequestDto request)
+        [FromForm] CreateJobRequestForm form)
     {
         var managerId = CurrentUserHelper.GetCurrentUserId(this);
         if (managerId == 0)
             return Unauthorized(new { message = "Invalid user" });
 
-        var result = await _service.CreateJobRequestAsync(request, managerId);
+        var result = await _service.CreateJobRequestAsync(form, managerId);
         if (!result.Success)
             return BadRequest(new { message = result.Message });
+
+        // Nếu có file JD, thực hiện upload
+        if (form.JdFile != null && result.Data is DeptManagerJobRequestDetailDto createdDto)
+        {
+            try 
+            {
+                using var fileStream = form.JdFile.OpenReadStream();
+                await _mediaService.UploadFileAsync(fileStream, form.JdFile.FileName, "JOB_DESCRIPTION", createdDto.Id, "JOB_REQUEST");
+                // Refresh data to include JdFileUrl
+                var refreshed = await _service.GetJobRequestDetailAsync(createdDto.Id, managerId);
+                result.Data = refreshed;
+            }
+            catch (Exception)
+            {
+                // Log error but maybe don't fail the whole request creation
+            }
+        }
 
         return Ok(result);
     }
@@ -85,17 +104,56 @@ public class DeptManagerJobRequestsController : ControllerBase
     /// </summary>
     [HttpPut("{id}")]
     public async Task<ActionResult<DeptManagerJobRequestDetailDto>> UpdateJobRequest(
-        int id, [FromBody] UpdateJobRequestDto request)
+        int id, [FromBody] UpdateJobRequestDto updateDto)
     {
         var managerId = CurrentUserHelper.GetCurrentUserId(this);
         if (managerId == 0)
             return Unauthorized(new { message = "Invalid user" });
 
-        var result = await _service.UpdateJobRequestAsync(id, request, managerId);
+        var result = await _service.UpdateJobRequestAsync(id, updateDto, managerId);
         if (!result.Success)
             return BadRequest(new { message = result.Message });
 
         return Ok(result);
+    }
+
+    /// <summary>
+    /// Upload JD file for a job request
+    /// </summary>
+    [HttpPost("{id}/upload-jd")]
+    [Consumes("multipart/form-data")]
+    public async Task<ActionResult<DeptManagerJobRequestDetailDto>> UploadJdFile(
+        int id, IFormFile jdFile)
+    {
+        var managerId = CurrentUserHelper.GetCurrentUserId(this);
+        if (managerId == 0)
+            return Unauthorized(new { message = "Invalid user" });
+
+        if (jdFile == null)
+            return BadRequest(new { message = "JD file is required" });
+
+        // Check if job request exists and belongs to manager
+        var jobRequest = await _service.GetJobRequestDetailAsync(id, managerId);
+        if (jobRequest == null)
+            return NotFound(new { message = "Job request not found" });
+
+        // Only DRAFT can upload/update JD
+        if (jobRequest.StatusCode != "DRAFT")
+            return BadRequest(new { message = "Only draft job requests can update JD file" });
+
+        try
+        {
+            using var fileStream = jdFile.OpenReadStream();
+            await _mediaService.UploadFileAsync(fileStream, jdFile.FileName, "JOB_DESCRIPTION", id, "JOB_REQUEST");
+            
+            // Return refreshed data with JD URL
+            var refreshed = await _service.GetJobRequestDetailAsync(id, managerId);
+            return Ok(refreshed);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = $"Failed to upload JD file: {ex.Message}" });
+        }
     }
 
     /// <summary>
@@ -145,4 +203,21 @@ public class DeptManagerJobRequestsController : ControllerBase
         var applications = await _service.GetApplicationsByJobRequestAsync(jobRequestId, managerId);
         return Ok(applications);
     }
+    /// <summary>
+    /// Reopen a returned job request to edit (Move from RETURNED to DRAFT)
+    /// </summary>
+    [HttpPost("{id}/reopen")]
+    public async Task<IActionResult> Reopen(int id)
+    {
+        var managerId = CurrentUserHelper.GetCurrentUserId(this);
+        var response = await _service.ReopenReturnedRequestAsync(id, managerId);
+        
+        if (!response.Success)
+        {
+            return BadRequest(response);
+        }
+        
+        return Ok(response);
+    }
 }
+

@@ -1,15 +1,21 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import directorService from "../../services/directorService";
+import { formatVND } from "../../utils/formatters/currency";
+import { formatDateDisplay } from "../../utils/formatters/date";
 
+/**
+ * DirectorDashboard Component
+ * Thiết kế cao cấp, hiện đại, tối giản nhưng đầy đủ thông tin chiến lược
+ * Lấy cảm hứng từ phong cách LandingPageNew (Glassmorphism, Soft Shadows)
+ */
 const DirectorDashboard = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState({
     pendingJobRequests: 0,
     pendingOffers: 0,
-    totalJobRequests: 0,
-    totalOffers: 0,
     urgentItems: 0,
+    totalPending: 0,
   });
   const [departmentBreakdown, setDepartmentBreakdown] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
@@ -21,635 +27,371 @@ const DirectorDashboard = () => {
   }, []);
 
   const loadDashboardStats = async () => {
-    setLoading(true);
     try {
+      setLoading(true);
       const [jobRequests, offers] = await Promise.all([
         directorService.jobRequests.getPending(),
         directorService.offers.getPending(),
       ]);
 
-      // Calculate statistics
-      const urgentJobs = jobRequests.filter(jr => jr.priority === 1);
-      const urgentOffers = offers.filter(o => o.priority === 1);
+      const urgentJobs = jobRequests.filter((jr) => jr.priority === 1);
+      const urgentOffers = offers.filter((o) => o.priority === 1);
 
-      // Group by department
+      // Dept Breakdown
       const deptMap = {};
-      jobRequests.forEach(jr => {
+      jobRequests.forEach((jr) => {
         if (!deptMap[jr.departmentName]) {
-          deptMap[jr.departmentName] = { 
-            name: jr.departmentName, 
-            pending: 0, 
-            total: 0,
-            budget: 0 
+          deptMap[jr.departmentName] = {
+            name: jr.departmentName,
+            pending: 0,
+            budget: 0,
           };
         }
         deptMap[jr.departmentName].pending++;
-        deptMap[jr.departmentName].total++;
         deptMap[jr.departmentName].budget += jr.budget || 0;
       });
 
-      const deptBreakdown = Object.values(deptMap).sort((a, b) => b.pending - a.pending);
-
-      // Get recent items (last 5)
       const recentItems = [
-        ...jobRequests.slice(0, 3).map(jr => ({
-          type: 'Job Request',
+        ...jobRequests.slice(0, 3).map((jr) => ({
+          type: "Job Request",
           title: jr.positionTitle,
           department: jr.departmentName,
           priority: jr.priority,
           createdAt: jr.createdAt,
           id: jr.id,
         })),
-        ...offers.slice(0, 2).map(o => ({
-          type: 'Offer',
+        ...offers.slice(0, 2).map((o) => ({
+          type: "Offer",
           title: o.candidateName,
           department: o.departmentName,
           priority: o.priority,
           createdAt: o.createdAt,
           id: o.id,
         })),
-      ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
-
-      const urgent = [
-        ...urgentJobs.map(jr => ({
-          type: 'Job Request',
-          title: jr.positionTitle,
-          department: jr.departmentName,
-          id: jr.id,
-        })),
-        ...urgentOffers.map(o => ({
-          type: 'Offer',
-          title: o.candidateName,
-          department: o.departmentName,
-          id: o.id,
-        })),
-      ];
+      ]
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, 5);
 
       setStats({
         pendingJobRequests: jobRequests.length,
         pendingOffers: offers.length,
-        totalJobRequests: jobRequests.length,
-        totalOffers: offers.length,
         urgentItems: urgentJobs.length + urgentOffers.length,
+        totalPending: jobRequests.length + offers.length,
       });
-      setDepartmentBreakdown(deptBreakdown);
+      setDepartmentBreakdown(Object.values(deptMap));
       setRecentActivity(recentItems);
-      setUrgentRequests(urgent);
+      setUrgentRequests([...urgentJobs, ...urgentOffers]);
     } catch (err) {
-      console.error("Failed to load dashboard stats:", err);
+      console.error("Dashboard error:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const getPriorityBadge = (priority) => {
-    const badges = {
-      1: { label: 'Urgent', color: '#ef4444', bg: '#fee2e2' },
-      2: { label: 'High', color: '#f97316', bg: '#ffedd5' },
-      3: { label: 'Normal', color: '#3b82f6', bg: '#dbeafe' },
-    };
-    const badge = badges[priority] || badges[3];
-    return (
-      <span style={{ 
-        padding: '2px 8px', 
-        borderRadius: '4px', 
-        fontSize: '11px',
-        fontWeight: '600',
-        backgroundColor: badge.bg,
-        color: badge.color
-      }}>
-        {badge.label}
-      </span>
-    );
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  };
-
-  const formatCurrency = (amount) => {
-    if (!amount) return 'N/A';
-    return new Intl.NumberFormat('vi-VN', { 
-      style: 'currency', 
-      currency: 'VND',
-      maximumFractionDigits: 0 
-    }).format(amount);
-  };
+  if (loading) return <LoadingSpinner />;
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <div>
-          <h1 style={styles.title}>Director Dashboard</h1>
-          <p style={styles.subtitle}>Strategic approval and oversight</p>
+    <div className="min-h-screen bg-[#fafbfc] py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      {/* Background Orbs */}
+      <div className="fixed top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 to-indigo-600"></div>
+      <div className="fixed top-40 -left-20 w-80 h-80 bg-blue-50/50 rounded-full blur-3xl opacity-60 -z-10"></div>
+      <div className="fixed bottom-20 -right-20 w-96 h-96 bg-indigo-50/50 rounded-full blur-3xl opacity-60 -z-10"></div>
+
+      <div className="max-w-7xl mx-auto relative z-10">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16 animate-in fade-in slide-in-from-top-4 duration-700">
+          <div>
+            <span className="text-blue-500 font-bold text-[10px] uppercase tracking-[0.2em] mb-3 block px-1">
+              Management Hub
+            </span>
+            <h1 className="text-5xl font-extrabold text-slate-900 tracking-tight leading-tight">
+              Bảng Điều Khiển Chiến Lược
+            </h1>
+            <p className="mt-2 text-slate-400 font-semibold text-xs uppercase tracking-widest pl-1">
+              Giám đốc • Tổng quan vận hành và phê duyệt
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => navigate("/director/job-requests")}
+              className="px-6 py-3 bg-white border border-slate-100 rounded-2xl text-xs font-bold uppercase tracking-widest text-slate-600 hover:text-blue-600 hover:border-blue-100 transition-all shadow-sm active:scale-95"
+            >
+              Yêu cầu
+            </button>
+            <button
+              onClick={() => navigate("/director/offers")}
+              className="px-6 py-3 bg-white border border-slate-100 rounded-2xl text-xs font-bold uppercase tracking-widest text-slate-600 hover:text-indigo-600 hover:border-indigo-100 transition-all shadow-sm active:scale-95"
+            >
+              Offer
+            </button>
+          </div>
         </div>
-        <div style={styles.quickActions}>
-          <button 
-            style={styles.quickActionBtn}
-            onClick={() => navigate('/director/job-requests')}
-          >
-            📋 Job Requests
-          </button>
-          <button 
-            style={styles.quickActionBtn}
-            onClick={() => navigate('/director/offers')}
-          >
-            📄 Offers
-          </button>
+
+        {/* Highlight Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-16 animate-in fade-in duration-700 delay-100">
+          <StatCard
+            label="Yêu cầu chờ duyệt"
+            value={stats.pendingJobRequests}
+            icon="📋"
+            color="blue"
+          />
+          <StatCard
+            label="Offer chờ ký"
+            value={stats.pendingOffers}
+            icon="📄"
+            color="indigo"
+          />
+          <StatCard
+            label="Vấn đề khẩn cấp"
+            value={stats.urgentItems}
+            icon="🔥"
+            color="red"
+            isUrgent
+          />
+          <StatCard
+            label="Tổng đầu việc"
+            value={stats.totalPending}
+            icon="📊"
+            color="slate"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+          {/* Left/Middle: Core Insights */}
+          <div className="lg:col-span-2 space-y-10 animate-in fade-in slide-in-from-left-4 duration-700 delay-200">
+            {/* Urgent Section */}
+            {urgentRequests.length > 0 && (
+              <section className="bg-white rounded-[2.5rem] p-10 border border-slate-50 shadow-xl shadow-slate-200/50">
+                <div className="flex items-center justify-between mb-8">
+                  <h2 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
+                    <span className="text-2xl">🚨</span> Ưu tiên xử lý ngay
+                  </h2>
+                  <span className="px-3 py-1 bg-red-50 text-red-500 rounded-full text-[10px] font-bold uppercase tracking-widest border border-red-100 animate-pulse">
+                    {urgentRequests.length} tin mới
+                  </span>
+                </div>
+                <div className="space-y-4">
+                  {urgentRequests.map((item, idx) => (
+                    <UrgentRow
+                      key={idx}
+                      item={item}
+                      onClick={() =>
+                        navigate(
+                          item.positionTitle
+                            ? `/director/job-requests/${item.id}`
+                            : `/director/offers/${item.id}`,
+                        )
+                      }
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Department Analysis */}
+            <section className="bg-white rounded-[2.5rem] p-10 border border-slate-100 shadow-sm">
+              <h2 className="text-xl font-bold text-slate-900 tracking-tight mb-10 px-2 flex items-center gap-3">
+                <span className="w-1.5 h-6 bg-slate-900 rounded-full"></span>
+                Phân bổ theo Phòng ban
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {departmentBreakdown.map((dept, idx) => (
+                  <DeptProgress
+                    key={idx}
+                    dept={dept}
+                    maxPending={stats.pendingJobRequests}
+                  />
+                ))}
+              </div>
+            </section>
+          </div>
+
+          {/* Right: Recent & Feed */}
+          <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-700 delay-300">
+            <section className="bg-[#1e293b] rounded-[2.5rem] p-10 text-white shadow-2xl shadow-slate-300">
+              <h2 className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-10 border-b border-white/5 pb-4">
+                Hoạt động Gần đây
+              </h2>
+              <div className="space-y-10 relative">
+                <div className="absolute left-3 top-0 bottom-0 w-px bg-white/5"></div>
+                {recentActivity.map((activity, idx) => (
+                  <ActivityItem
+                    key={idx}
+                    activity={activity}
+                    isLast={idx === recentActivity.length - 1}
+                    onClick={() =>
+                      navigate(
+                        activity.type === "Job Request"
+                          ? `/director/job-requests/${activity.id}`
+                          : `/director/offers/${activity.id}`,
+                      )
+                    }
+                  />
+                ))}
+              </div>
+            </section>
+
+            {/* Responsibilities */}
+            <section className="bg-indigo-50/50 rounded-[2rem] p-8 border border-indigo-100/50">
+              <h3 className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-6">
+                Trách nhiệm chiến lược
+              </h3>
+              <div className="space-y-4">
+                <FeaturePoint
+                  title="Tối ưu Ngân sách"
+                  desc="Thẩm định kỹ lưỡng chi phí tuyển dụng so với thị trường."
+                />
+                <FeaturePoint
+                  title="Đảm bảo Chất lượng"
+                  desc="Phê duyệt các vòng phỏng vấn cấp cao cuối cùng."
+                />
+                <FeaturePoint
+                  title="Định hướng Nhân sự"
+                  desc="Tuyển dụng bám sát kế hoạch phát triển của công ty."
+                />
+              </div>
+            </section>
+          </div>
         </div>
       </div>
 
-      {loading ? (
-        <div style={styles.loading}>Loading...</div>
-      ) : (
-        <>
-          {/* Main Stats Cards */}
-          <div style={styles.statsGrid}>
-            <div style={{...styles.statCard, ...styles.statCardPrimary}}>
-              <div style={styles.statIcon}>📋</div>
-              <div style={styles.statContent}>
-                <h3 style={styles.statLabel}>Pending Job Requests</h3>
-                <p style={styles.statValue}>{stats.pendingJobRequests}</p>
-                <p style={styles.statSubtext}>Awaiting your approval</p>
-              </div>
-            </div>
-
-            <div style={{...styles.statCard, ...styles.statCardSuccess}}>
-              <div style={styles.statIcon}>📄</div>
-              <div style={styles.statContent}>
-                <h3 style={styles.statLabel}>Pending Offers</h3>
-                <p style={styles.statValue}>{stats.pendingOffers}</p>
-                <p style={styles.statSubtext}>Final approval needed</p>
-              </div>
-            </div>
-
-            <div style={{...styles.statCard, ...styles.statCardWarning}}>
-              <div style={styles.statIcon}>🔥</div>
-              <div style={styles.statContent}>
-                <h3 style={styles.statLabel}>Urgent Items</h3>
-                <p style={styles.statValue}>{stats.urgentItems}</p>
-                <p style={styles.statSubtext}>High priority actions</p>
-              </div>
-            </div>
-
-            <div style={{...styles.statCard, ...styles.statCardInfo}}>
-              <div style={styles.statIcon}>📊</div>
-              <div style={styles.statContent}>
-                <h3 style={styles.statLabel}>Total Pending</h3>
-                <p style={styles.statValue}>{stats.totalJobRequests + stats.totalOffers}</p>
-                <p style={styles.statSubtext}>All items to review</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Urgent Requests Section */}
-          {urgentRequests.length > 0 && (
-            <div style={styles.section}>
-              <div style={styles.sectionHeader}>
-                <h2 style={styles.sectionTitle}>🚨 Urgent Requests</h2>
-                <span style={styles.badge}>{urgentRequests.length}</span>
-              </div>
-              <div style={styles.urgentList}>
-                {urgentRequests.map((item, index) => (
-                  <div 
-                    key={index} 
-                    style={styles.urgentItem}
-                    onClick={() => navigate(
-                      item.type === 'Job Request' 
-                        ? `/director/job-requests/${item.id}`
-                        : `/director/offers/${item.id}`
-                    )}
-                  >
-                    <div style={styles.urgentIcon}>
-                      {item.type === 'Job Request' ? '📋' : '📄'}
-                    </div>
-                    <div style={styles.urgentContent}>
-                      <h4 style={styles.urgentTitle}>{item.title}</h4>
-                      <p style={styles.urgentMeta}>
-                        {item.type} • {item.department}
-                      </p>
-                    </div>
-                    <div style={styles.urgentAction}>→</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div style={styles.grid}>
-            {/* Department Breakdown */}
-            <div style={styles.section}>
-              <h2 style={styles.sectionTitle}>📊 Department Breakdown</h2>
-              {departmentBreakdown.length > 0 ? (
-                <div style={styles.departmentList}>
-                  {departmentBreakdown.map((dept, index) => (
-                    <div key={index} style={styles.departmentItem}>
-                      <div style={styles.departmentHeader}>
-                        <h4 style={styles.departmentName}>{dept.name}</h4>
-                        <span style={styles.departmentCount}>{dept.pending} pending</span>
-                      </div>
-                      <div style={styles.departmentBar}>
-                        <div 
-                          style={{
-                            ...styles.departmentBarFill,
-                            width: `${(dept.pending / stats.pendingJobRequests * 100)}%`,
-                          }}
-                        />
-                      </div>
-                      <p style={styles.departmentBudget}>
-                        Budget: {formatCurrency(dept.budget)}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p style={styles.emptyState}>No pending requests by department</p>
-              )}
-            </div>
-
-            {/* Recent Activity */}
-            <div style={styles.section}>
-              <h2 style={styles.sectionTitle}>⏰ Recent Activity</h2>
-              {recentActivity.length > 0 ? (
-                <div style={styles.activityList}>
-                  {recentActivity.map((item, index) => (
-                    <div 
-                      key={index} 
-                      style={styles.activityItem}
-                      onClick={() => navigate(
-                        item.type === 'Job Request' 
-                          ? `/director/job-requests/${item.id}`
-                          : `/director/offers/${item.id}`
-                      )}
-                    >
-                      <div style={styles.activityTimeline}>
-                        <div style={styles.activityDot} />
-                        {index < recentActivity.length - 1 && (
-                          <div style={styles.activityLine} />
-                        )}
-                      </div>
-                      <div style={styles.activityContent}>
-                        <div style={styles.activityHeader}>
-                          <span style={styles.activityType}>{item.type}</span>
-                          {getPriorityBadge(item.priority)}
-                        </div>
-                        <h4 style={styles.activityTitle}>{item.title}</h4>
-                        <p style={styles.activityMeta}>
-                          {item.department} • {formatDate(item.createdAt)}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p style={styles.emptyState}>No recent activity</p>
-              )}
-            </div>
-          </div>
-
-          {/* Responsibilities Info */}
-          <div style={styles.section}>
-            <h2 style={styles.sectionTitle}>Your Responsibilities</h2>
-            <div style={styles.infoGrid}>
-              <div style={styles.infoCard}>
-                <h3 style={styles.infoCardTitle}>🎯 Recruitment Requests</h3>
-                <p style={styles.infoCardText}>
-                  Review and approve recruitment requests at the strategic level. Ensure alignment with company goals and budget.
-                </p>
-              </div>
-              <div style={styles.infoCard}>
-                <h3 style={styles.infoCardTitle}>💼 Job Offers</h3>
-                <p style={styles.infoCardText}>
-                  Final approval of job offers before sending to candidates. Review compensation and ensure fairness.
-                </p>
-              </div>
-              <div style={styles.infoCard}>
-                <h3 style={styles.infoCardTitle}>👥 Key Positions</h3>
-                <p style={styles.infoCardText}>
-                  Participate in interviews for strategic and senior positions to ensure quality hires.
-                </p>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
+      <footer className="mt-24 text-center pb-8 opacity-20">
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.5em]">
+          Executive Management System © 2026
+        </p>
+      </footer>
     </div>
   );
 };
 
-const styles = {
-  container: {
-    padding: "24px",
-    maxWidth: "1400px",
-    margin: "0 auto",
-  },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "32px",
-    flexWrap: "wrap",
-    gap: "16px",
-  },
-  title: {
-    fontSize: "32px",
-    fontWeight: "700",
-    color: "#1f2937",
-    marginBottom: "4px",
-  },
-  subtitle: {
-    fontSize: "16px",
-    color: "#6b7280",
-  },
-  quickActions: {
-    display: "flex",
-    gap: "12px",
-  },
-  quickActionBtn: {
-    padding: "10px 20px",
-    backgroundColor: "#3b82f6",
-    color: "white",
-    border: "none",
-    borderRadius: "8px",
-    fontSize: "14px",
-    fontWeight: "600",
-    cursor: "pointer",
-    transition: "all 0.2s",
-    boxShadow: "0 2px 4px rgba(59, 130, 246, 0.2)",
-  },
-  loading: {
-    textAlign: "center",
-    padding: "60px 20px",
-    color: "#6b7280",
-    fontSize: "16px",
-  },
-  statsGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-    gap: "20px",
-    marginBottom: "32px",
-  },
-  statCard: {
-    backgroundColor: "white",
-    borderRadius: "12px",
-    padding: "24px",
-    display: "flex",
-    alignItems: "center",
-    gap: "20px",
-    boxShadow: "0 4px 6px rgba(0,0,0,0.07)",
-    transition: "transform 0.2s, box-shadow 0.2s",
-    cursor: "pointer",
-  },
-  statCardPrimary: {
-    borderLeft: "4px solid #3b82f6",
-  },
-  statCardSuccess: {
-    borderLeft: "4px solid #10b981",
-  },
-  statCardWarning: {
-    borderLeft: "4px solid #f59e0b",
-  },
-  statCardInfo: {
-    borderLeft: "4px solid #8b5cf6",
-  },
-  statIcon: {
-    fontSize: "40px",
-    lineHeight: "1",
-  },
-  statContent: {
-    flex: 1,
-  },
-  statLabel: {
-    fontSize: "13px",
-    fontWeight: "500",
-    color: "#6b7280",
-    marginBottom: "8px",
-    textTransform: "uppercase",
-    letterSpacing: "0.5px",
-  },
-  statValue: {
-    fontSize: "36px",
-    fontWeight: "700",
-    color: "#1f2937",
-    marginBottom: "4px",
-    lineHeight: "1",
-  },
-  statSubtext: {
-    fontSize: "13px",
-    color: "#9ca3af",
-  },
-  section: {
-    backgroundColor: "white",
-    borderRadius: "12px",
-    padding: "24px",
-    marginBottom: "24px",
-    boxShadow: "0 2px 4px rgba(0,0,0,0.06)",
-  },
-  sectionHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "20px",
-  },
-  sectionTitle: {
-    fontSize: "20px",
-    fontWeight: "600",
-    color: "#1f2937",
-    marginBottom: "20px",
-  },
-  badge: {
-    padding: "4px 12px",
-    backgroundColor: "#fee2e2",
-    color: "#ef4444",
-    borderRadius: "12px",
-    fontSize: "13px",
-    fontWeight: "600",
-  },
-  urgentList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "12px",
-  },
-  urgentItem: {
-    display: "flex",
-    alignItems: "center",
-    gap: "16px",
-    padding: "16px",
-    backgroundColor: "#fef2f2",
-    borderRadius: "8px",
-    border: "2px solid #fee2e2",
-    cursor: "pointer",
-    transition: "all 0.2s",
-  },
-  urgentIcon: {
-    fontSize: "28px",
-  },
-  urgentContent: {
-    flex: 1,
-  },
-  urgentTitle: {
-    fontSize: "15px",
-    fontWeight: "600",
-    color: "#1f2937",
-    marginBottom: "4px",
-  },
-  urgentMeta: {
-    fontSize: "13px",
-    color: "#6b7280",
-  },
-  urgentAction: {
-    fontSize: "20px",
-    color: "#ef4444",
-    fontWeight: "bold",
-  },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(450px, 1fr))",
-    gap: "24px",
-    marginBottom: "24px",
-  },
-  departmentList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "20px",
-  },
-  departmentItem: {
-    padding: "16px",
-    backgroundColor: "#f9fafb",
-    borderRadius: "8px",
-    border: "1px solid #e5e7eb",
-  },
-  departmentHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "12px",
-  },
-  departmentName: {
-    fontSize: "16px",
-    fontWeight: "600",
-    color: "#1f2937",
-  },
-  departmentCount: {
-    fontSize: "14px",
-    fontWeight: "600",
-    color: "#3b82f6",
-  },
-  departmentBar: {
-    height: "8px",
-    backgroundColor: "#e5e7eb",
-    borderRadius: "4px",
-    overflow: "hidden",
-    marginBottom: "8px",
-  },
-  departmentBarFill: {
-    height: "100%",
-    backgroundColor: "#3b82f6",
-    transition: "width 0.3s ease",
-  },
-  departmentBudget: {
-    fontSize: "13px",
-    color: "#6b7280",
-  },
-  activityList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0",
-  },
-  activityItem: {
-    display: "flex",
-    gap: "16px",
-    padding: "16px 0",
-    cursor: "pointer",
-    transition: "background-color 0.2s",
-    borderRadius: "8px",
-  },
-  activityTimeline: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    position: "relative",
-  },
-  activityDot: {
-    width: "12px",
-    height: "12px",
-    backgroundColor: "#3b82f6",
-    borderRadius: "50%",
-    border: "3px solid #dbeafe",
-    zIndex: 1,
-  },
-  activityLine: {
-    width: "2px",
-    flex: 1,
-    backgroundColor: "#e5e7eb",
-    marginTop: "4px",
-  },
-  activityContent: {
-    flex: 1,
-    paddingBottom: "8px",
-  },
-  activityHeader: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    marginBottom: "6px",
-  },
-  activityType: {
-    fontSize: "12px",
-    fontWeight: "600",
-    color: "#3b82f6",
-    textTransform: "uppercase",
-    letterSpacing: "0.5px",
-  },
-  activityTitle: {
-    fontSize: "15px",
-    fontWeight: "600",
-    color: "#1f2937",
-    marginBottom: "4px",
-  },
-  activityMeta: {
-    fontSize: "13px",
-    color: "#6b7280",
-  },
-  emptyState: {
-    textAlign: "center",
-    padding: "40px 20px",
-    color: "#9ca3af",
-    fontSize: "14px",
-  },
-  infoGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-    gap: "20px",
-  },
-  infoCard: {
-    backgroundColor: "#f9fafb",
-    borderRadius: "8px",
-    padding: "20px",
-    border: "1px solid #e5e7eb",
-  },
-  infoCardTitle: {
-    fontSize: "16px",
-    fontWeight: "600",
-    color: "#1f2937",
-    marginBottom: "12px",
-  },
-  infoCardText: {
-    fontSize: "14px",
-    color: "#6b7280",
-    lineHeight: "1.6",
-  },
+// Sub-components
+const StatCard = ({ label, value, icon, color, isUrgent }) => {
+  const colors = {
+    blue: "bg-blue-600 shadow-blue-100",
+    indigo: "bg-[#1e293b] shadow-slate-200",
+    red: "bg-red-600 shadow-red-100",
+    slate: "bg-white border border-slate-100 shadow-slate-50 text-slate-900",
+  };
+
+  return (
+    <div
+      className={`group rounded-[2rem] p-8 transition-all hover:-translate-y-1.5 cursor-default relative overflow-hidden ${colors[color]}`}
+    >
+      {color !== "slate" && (
+        <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-125 duration-700"></div>
+      )}
+      <div className="relative z-10 flex flex-col justify-between h-full">
+        <div className="text-3xl mb-6">{icon}</div>
+        <div>
+          <p
+            className={`text-4xl font-bold mb-1 ${color === "slate" ? "text-slate-900" : "text-white"}`}
+          >
+            {value}
+          </p>
+          <p
+            className={`text-[10px] font-bold uppercase tracking-widest ${color === "slate" ? "text-slate-400" : "text-white/60"}`}
+          >
+            {label}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 };
+
+const UrgentRow = ({ item, onClick }) => (
+  <div
+    onClick={onClick}
+    className="group flex items-center justify-between p-5 bg-white rounded-3xl border border-slate-100 hover:border-blue-200 hover:shadow-lg hover:shadow-slate-100 transition-all cursor-pointer"
+  >
+    <div className="flex items-center gap-4">
+      <div className="w-10 h-10 rounded-2xl bg-slate-50 text-slate-400 group-hover:bg-slate-900 group-hover:text-white transition-all flex items-center justify-center font-bold">
+        {item.type === "Job Request" ? "JR" : "OF"}
+      </div>
+      <div>
+        <h4 className="font-bold text-slate-900 text-[14px] group-hover:text-blue-600 transition-colors">
+          {item.positionTitle || item.candidateName}
+        </h4>
+        <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-tight">
+          {item.departmentName || item.department}
+        </p>
+      </div>
+    </div>
+    <span className="text-blue-500 font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+      XEM NGAY →
+    </span>
+  </div>
+);
+
+const DeptProgress = ({ dept, maxPending }) => {
+  const percentage = maxPending > 0 ? (dept.pending / maxPending) * 100 : 0;
+  return (
+    <div className="space-y-3">
+      <div className="flex justify-between items-end">
+        <p className="text-[13px] font-bold text-slate-900">{dept.name}</p>
+        <span className="text-[11px] font-bold text-blue-600">
+          {dept.pending} ĐANG CHỜ
+        </span>
+      </div>
+      <div className="h-2 bg-slate-50 rounded-full overflow-hidden border border-slate-100/50">
+        <div
+          className="h-full bg-slate-900 rounded-full transition-all duration-1000 ease-out"
+          style={{ width: `${percentage}%` }}
+        ></div>
+      </div>
+      <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">
+        Tổng ngân sách dự kiến: {formatVND(dept.budget)}
+      </p>
+    </div>
+  );
+};
+
+const ActivityItem = ({ activity, isLast, onClick }) => (
+  <div onClick={onClick} className="relative pl-10 cursor-pointer group">
+    <div className="absolute left-[9px] top-1.5 w-2 h-2 rounded-full bg-blue-500 ring-4 ring-blue-500/20 group-hover:scale-150 transition-transform"></div>
+    <div>
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">
+          {activity.type}
+        </span>
+        <span
+          className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${activity.priority === 1 ? "bg-red-500 text-white" : "bg-white/10 text-slate-400"}`}
+        >
+          Mức {activity.priority}
+        </span>
+      </div>
+      <h4 className="font-bold text-[14px] text-white group-hover:text-blue-400 transition-colors mb-1">
+        {activity.title}
+      </h4>
+      <p className="text-[11px] text-slate-500 font-medium">
+        {activity.department} • {formatDateDisplay(activity.createdAt)}
+      </p>
+    </div>
+  </div>
+);
+
+const FeaturePoint = ({ title, desc }) => (
+  <div className="flex items-start gap-3">
+    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5"></div>
+    <div>
+      <p className="font-bold text-slate-900 text-[12px]">{title}</p>
+      <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
+        {desc}
+      </p>
+    </div>
+  </div>
+);
+
+const LoadingSpinner = () => (
+  <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-[#fafbfc]">
+    <div className="relative w-16 h-16">
+      <div className="absolute inset-0 border-4 border-slate-50 rounded-full"></div>
+      <div className="absolute inset-0 border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
+    </div>
+    <span className="text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">
+      Đang nạp dữ liệu quản trị...
+    </span>
+  </div>
+);
 
 export default DirectorDashboard;

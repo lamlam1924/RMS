@@ -28,6 +28,14 @@ const hrService = {
       return response.json();
     },
     
+    getByStatus: async (statusCode) => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/job-requests/status/${statusCode}`, {
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error(`Failed to fetch job requests with status ${statusCode}`);
+      return response.json();
+    },
+    
     getById: async (id) => {
       const response = await fetch(`${API_BASE_URL}/api/hr/job-requests/${id}`, {
         headers: getAuthHeaders()
@@ -36,15 +44,120 @@ const hrService = {
       return response.json();
     },
     
-    // HR Manager: SUBMITTED → IN_REVIEW, IN_REVIEW → IN_REVIEW, IN_REVIEW → REJECTED
+    // Cập nhật trạng thái chung (nếu cần)
     updateStatus: async (id, toStatusId, note = '') => {
       const response = await fetch(`${API_BASE_URL}/api/hr/job-requests/${id}/status`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify({ toStatusId, note })
       });
-      if (!response.ok) throw new Error('Failed to update job request status');
+      if (!response.ok) throw new Error('Không thể cập nhật trạng thái');
       return response.json();
+    },
+
+    // Chuyển tiếp cho Giám đốc duyệt (SUBMITTED -> IN_REVIEW)
+    forwardToDirector: async (id, note = '') => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/job-requests/${id}/forward`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ note })
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Không thể chuyển tiếp yêu cầu');
+      }
+      return response.json();
+    },
+
+    // Trả về cho Trưởng phòng ban chỉnh sửa (SUBMITTED -> RETURNED)
+    returnToDeptManager: async (id, note = '') => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/job-requests/${id}/return`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ note })
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Không thể trả về yêu cầu');
+      }
+      return response.json();
+    },
+
+    // ===== BULK OPERATIONS =====
+    /**
+     * Bulk forward multiple job requests to director
+     * @param {Array<number>} ids - Array of job request IDs
+     * @param {string} note - Optional note for all requests
+     * @returns {Promise<{succeeded: Array, failed: Array, total: number}>}
+     */
+    bulkForward: async (ids, note = '') => {
+      const results = {
+        succeeded: [],
+        failed: [],
+        total: ids.length
+      };
+
+      for (const id of ids) {
+        try {
+          await hrService.jobRequests.forwardToDirector(id, note);
+          results.succeeded.push({ id, success: true });
+        } catch (error) {
+          results.failed.push({ id, success: false, error: error.message });
+        }
+      }
+
+      return results;
+    },
+
+    /**
+     * Bulk return multiple job requests to department manager
+     * @param {Array<number>} ids - Array of job request IDs
+     * @param {string} note - Optional note for all requests
+     * @returns {Promise<{succeeded: Array, failed: Array, total: number}>}
+     */
+    bulkReturn: async (ids, note = '') => {
+      const results = {
+        succeeded: [],
+        failed: [],
+        total: ids.length
+      };
+
+      for (const id of ids) {
+        try {
+          await hrService.jobRequests.returnToDeptManager(id, note);
+          results.succeeded.push({ id, success: true });
+        } catch (error) {
+          results.failed.push({ id, success: false, error: error.message });
+        }
+      }
+
+      return results;
+    },
+
+    /**
+     * Bulk update status for multiple job requests
+     * @param {Array<number>} ids - Array of job request IDs
+     * @param {number} toStatusId - Target status ID
+     * @param {string} note - Optional note for all requests
+     * @returns {Promise<{succeeded: Array, failed: Array, total: number}>}
+     */
+    bulkUpdateStatus: async (ids, toStatusId, note = '') => {
+      const results = {
+        succeeded: [],
+        failed: [],
+        total: ids.length
+      };
+
+      for (const id of ids) {
+        try {
+          await hrService.jobRequests.updateStatus(id, toStatusId, note);
+          results.succeeded.push({ id, success: true });
+        } catch (error) {
+          results.failed.push({ id, success: false, error: error.message });
+        }
+      }
+
+      return results;
     }
   },
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import deptManagerService from '../../services/deptManagerService';
-import { FilterTabs, EmptyState, LoadingSpinner } from '../../components/shared';
+import { LoadingSpinner } from '../../components/shared';
 import { getStatusBadge } from '../../utils/helpers/badge';
 
 export default function DeptManagerInterviewList() {
@@ -67,25 +67,47 @@ export default function DeptManagerInterviewList() {
       </div>
 
       {/* Filter Tabs */}
-      <FilterTabs
-        tabs={[
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24, borderBottom: '1px solid #e5e7eb' }}>
+        {[
           { id: 'upcoming', label: 'Upcoming' },
           { id: 'past', label: 'Past' },
           { id: 'all', label: 'All' }
-        ]}
-        activeTab={filter}
-        onChange={setFilter}
-      />
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setFilter(tab.id)}
+            style={{
+              padding: '12px 20px',
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              fontSize: 14,
+              fontWeight: 500,
+              color: filter === tab.id ? '#3b82f6' : '#6b7280',
+              borderBottom: filter === tab.id ? '2px solid #3b82f6' : '2px solid transparent',
+              transition: 'all 0.2s'
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
       {/* Interviews List */}
       {loading ? (
         <LoadingSpinner />
       ) : interviews.length === 0 ? (
-        <EmptyState
-          icon="📅"
-          title="No interviews found"
-          message={filter === 'upcoming' ? 'No upcoming interviews scheduled' : `No ${filter} interviews`}
-        />
+        <div style={{
+          textAlign: 'center',
+          padding: 60,
+          backgroundColor: 'white',
+          borderRadius: 8,
+          border: '1px solid #e5e7eb'
+        }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>📅</div>
+          <h3 style={{ fontSize: 18, fontWeight: 600, color: '#111827', marginBottom: 8 }}>No interviews found</h3>
+          <p style={{ color: '#6b7280' }}>{filter === 'upcoming' ? 'No upcoming interviews scheduled' : `No ${filter} interviews`}</p>
+        </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {interviews.map((interview) => (

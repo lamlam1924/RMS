@@ -82,4 +82,25 @@ public class DirectorJobRequestsController : ControllerBase
 
         return Ok(result);
     }
+
+    /// <summary>
+    /// Return job request for revision
+    /// </summary>
+    [HttpPost("{id}/return")]
+    public async Task<ActionResult<ApprovalActionResponseDto>> ReturnJobRequest(
+        int id, [FromBody] JobRequestApprovalActionDto request)
+    {
+        request.JobRequestId = id;
+        request.Action = "RETURNED";
+
+        var directorId = CurrentUserHelper.GetCurrentUserId(this);
+        if (directorId == 0)
+            return Unauthorized(new { message = "Invalid user" });
+
+        var result = await _service.ReturnJobRequestAsync(request, directorId);
+        if (!result.Success)
+            return BadRequest(result);
+
+        return Ok(result);
+    }
 }

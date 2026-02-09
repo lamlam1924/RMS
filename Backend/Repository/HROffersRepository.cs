@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using RMS.Common;
 using RMS.Data;
+using RMS.Dto.Common;
 using RMS.Dto.HR;
 using RMS.Entity;
 using RMS.Repository.Interface;
@@ -72,6 +73,7 @@ public class HROffersRepository : IHROffersRepository
                     FromStatus = sh.FromStatus != null ? sh.FromStatus.Name : null,
                     ToStatusId = sh.ToStatusId,
                     ToStatus = sh.ToStatus.Name,
+                    ChangedById = sh.ChangedBy,
                     ChangedByName = sh.ChangedByNavigation.FullName,
                     ChangedAt = sh.ChangedAt ?? DateTime.MinValue,
                     Note = sh.Note

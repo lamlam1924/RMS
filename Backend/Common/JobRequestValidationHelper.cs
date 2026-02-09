@@ -12,7 +12,7 @@ public static class JobRequestValidationHelper
     private const int MinQuantity = 1;
     private const int MaxQuantity = 50;
     private const int MinPriority = 1;
-    private const int MaxPriority = 5;
+    private const int MaxPriority = 3;
     private const int MinReasonLength = 20;
     private const int MaxReasonLength = 500;
     private const decimal MinBudget = 5_000_000m;
@@ -103,7 +103,7 @@ public static class JobRequestValidationHelper
     }
 
     /// <summary>
-    /// Validate priority (1-5, where 1 is highest)
+    /// Validate priority (1-3: 1=Urgent, 2=High, 3=Normal)
     /// </summary>
     public static ValidationResult ValidatePriority(int priority)
     {

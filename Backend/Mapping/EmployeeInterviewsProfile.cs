@@ -1,4 +1,5 @@
 using AutoMapper;
+using RMS.Dto.Common;
 using RMS.Dto.Employee;
 using RMS.Entity;
 
@@ -37,14 +38,15 @@ public class EmployeeInterviewsProfile : AutoMapper.Profile
         CreateMap<Cvexperience, ExperienceDto>();
         CreateMap<Cveducation, EducationDto>();
 
-        // Interview participants mapping
+        // Interview participants mapping (using Common DTO)
         CreateMap<InterviewParticipant, InterviewParticipantDto>()
             .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.User.FullName))
-            .ForMember(dest => dest.InterviewRole, opt => opt.MapFrom(src => src.InterviewRole.Name ?? "Unknown"))
+            .ForMember(dest => dest.InterviewRole, opt => opt.MapFrom(src => src.InterviewRole != null ? src.InterviewRole.Name : "Unknown"))
             .ForMember(dest => dest.HasFeedback, opt => opt.MapFrom(src =>
                 src.Interview.InterviewFeedbacks.Any(f => f.InterviewerId == src.UserId)));
 
-        // Evaluation criteria mapping
-        CreateMap<EvaluationCriterion, EvaluationCriterionDto>();
+        // Evaluation criteria mapping (using Common DTO)
+        CreateMap<EvaluationCriterion, EvaluationCriterionDto>()
+            .ForMember(dest => dest.CriteriaName, opt => opt.MapFrom(src => src.Name));
     }
 }

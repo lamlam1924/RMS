@@ -36,33 +36,61 @@ export async function apiGet(path) {
 
 export async function apiPost(path, body) {
     const url = `${API_BASE_URL}${path}`;
-    const res = await fetch(url, {
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(body)
-    });
+    const token = getAuthToken();
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    
+    const options = { method: "POST", headers };
+    
+    if (body instanceof FormData) {
+        options.body = body;
+        // No Content-Type, browser will handle
+    } else if (body !== undefined && body !== null) {
+        headers['Content-Type'] = 'application/json';
+        options.body = JSON.stringify(body);
+    }
+
+    const res = await fetch(url, options);
     if (!res.ok) throw new Error(await res.text());
     return res.json();
 }
 
 export async function apiPut(path, body) {
     const url = `${API_BASE_URL}${path}`;
-    const res = await fetch(url, {
-        method: "PUT",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(body)
-    });
+    const token = getAuthToken();
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    
+    const options = { method: "PUT", headers };
+    
+    if (body instanceof FormData) {
+        options.body = body;
+    } else if (body !== undefined && body !== null) {
+        headers['Content-Type'] = 'application/json';
+        options.body = JSON.stringify(body);
+    }
+
+    const res = await fetch(url, options);
     if (!res.ok) throw new Error(await res.text());
     return res.json();
 }
 
 export async function apiPatch(path, body) {
     const url = `${API_BASE_URL}${path}`;
-    const res = await fetch(url, {
-        method: "PATCH",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(body)
-    });
+    const token = getAuthToken();
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    
+    const options = { method: "PATCH", headers };
+    
+    if (body instanceof FormData) {
+        options.body = body;
+    } else if (body !== undefined && body !== null) {
+        headers['Content-Type'] = 'application/json';
+        options.body = JSON.stringify(body);
+    }
+
+    const res = await fetch(url, options);
     if (!res.ok) throw new Error(await res.text());
     return res.json();
 }

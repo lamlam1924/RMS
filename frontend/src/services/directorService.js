@@ -49,6 +49,16 @@ export const jobRequestService = {
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },
+
+  async returnJobRequest(id, comment = "") {
+    const res = await fetch(`${API_BASE_URL}/director/job-requests/${id}/return`, {
+      method: "POST",
+      headers: getAuthHeader(),
+      body: JSON.stringify({ comment }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
 };
 
 // ==================== OFFER APPROVALS ====================

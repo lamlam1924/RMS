@@ -43,7 +43,7 @@ public class HRApplicationsService : IHRApplicationsService
         var statusHistory = await _jobRequestsRepository.GetStatusHistoryAsync(id, "Application");
 
         dto.CurrentStatus = entity.Status.Name;
-        dto.StatusHistory = _mapper.Map<List<Dto.HR.StatusHistoryDto>>(statusHistory);
+        dto.StatusHistory = _mapper.Map<List<StatusHistoryDto>>(statusHistory);
 
         return dto;
     }

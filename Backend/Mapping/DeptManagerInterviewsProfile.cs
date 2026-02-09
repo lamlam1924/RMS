@@ -1,4 +1,5 @@
 using AutoMapper;
+using RMS.Dto.Common;
 using RMS.Dto.DepartmentManager;
 using RMS.Entity;
 
@@ -25,13 +26,14 @@ public class DeptManagerInterviewsProfile : AutoMapper.Profile
             .ForMember(dest => dest.HasMyFeedback, opt => opt.Ignore()); // Set in service
 
         CreateMap<InterviewParticipant, InterviewParticipantDto>()
-            .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.User.FullName))
-            .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.InterviewRole.Name ?? "Unknown"))
+            .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.User.FullName))
+            .ForMember(dest => dest.InterviewRole, opt => opt.MapFrom(src => src.InterviewRole != null ? src.InterviewRole.Name : "Unknown"))
             .ForMember(dest => dest.HasFeedback, opt => opt.MapFrom(src => 
                 src.Interview.InterviewFeedbacks.Any(f => f.InterviewerId == src.UserId)));
 
         CreateMap<Cvprofile, CandidateProfileSummaryDto>();
 
-        CreateMap<EvaluationCriterion, EvaluationCriterionDto>();
+        CreateMap<EvaluationCriterion, EvaluationCriterionDto>()
+            .ForMember(dest => dest.CriteriaName, opt => opt.MapFrom(src => src.Name));
     }
 }

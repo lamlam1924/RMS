@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from "sonner";
+import { DarkModeProvider } from "./contexts/DarkModeContext";
 import { ROLES } from "./constants/roles";
 import MainLayout from "./layouts/MainLayout";
 import CandidateLayout from "./layouts/CandidateLayout";
@@ -112,8 +114,10 @@ function RoleBasedRedirect() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
+    <DarkModeProvider>
+      <BrowserRouter>
+        <Toaster position="top-right" richColors closeButton expand={false} duration={3000} />
+        <Routes>
         {/* Landing Page */}
         <Route path="/" element={<LandingPage />} />
 
@@ -455,5 +459,6 @@ export default function App() {
         <Route path="*" element={<RoleBasedRedirect />} />
       </Routes>
     </BrowserRouter>
+    </DarkModeProvider>
   );
 }

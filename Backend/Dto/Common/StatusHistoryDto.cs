@@ -10,6 +10,7 @@ public class StatusHistoryDto
     public string? FromStatus { get; set; }
     public int ToStatusId { get; set; }
     public string ToStatus { get; set; } = "";
+    public int ChangedById { get; set; }
     public string ChangedByName { get; set; } = "";
     public DateTime ChangedAt { get; set; }
     public string? Note { get; set; }

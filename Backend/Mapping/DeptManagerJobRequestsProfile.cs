@@ -31,11 +31,7 @@ public class DeptManagerJobRequestsProfile : AutoMapper.Profile
             .ForMember(dest => dest.CurrentStatus, opt => opt.Ignore()) // Set in service
             .ForMember(dest => dest.StatusHistory, opt => opt.Ignore()); // Mapped separately
 
-        CreateMap<StatusHistory, DeptManagerStatusHistoryDto>()
-            .ForMember(dest => dest.FromStatus, opt => opt.MapFrom(src => src.FromStatus != null ? src.FromStatus.Name : "N/A"))
-            .ForMember(dest => dest.ToStatus, opt => opt.MapFrom(src => src.ToStatus.Name))
-            .ForMember(dest => dest.ChangedByName, opt => opt.MapFrom(src => src.ChangedByNavigation.FullName))
-            .ForMember(dest => dest.Comment, opt => opt.MapFrom(src => src.Note));
+        // Reuse Common.StatusHistoryDto mapping (mapped in service)
 
         CreateMap<Application, ApplicationSummaryDto>()
             .ForMember(dest => dest.CandidateName, opt => opt.MapFrom(src => src.Cvprofile.FullName))

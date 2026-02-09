@@ -8,6 +8,7 @@ public interface IDirectorService
     Task<JobRequestDetailDto?> GetJobRequestDetailAsync(int id);
     Task<ApprovalActionResponseDto> ApproveJobRequestAsync(JobRequestApprovalActionDto request, int directorId);
     Task<ApprovalActionResponseDto> RejectJobRequestAsync(JobRequestApprovalActionDto request, int directorId);
+    Task<ApprovalActionResponseDto> ReturnJobRequestAsync(JobRequestApprovalActionDto request, int directorId);
     
     Task<List<OfferListDto>> GetPendingOffersAsync();
     Task<OfferDetailDto?> GetOfferDetailAsync(int id);

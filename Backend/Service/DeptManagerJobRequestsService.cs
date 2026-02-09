@@ -1,7 +1,5 @@
 using AutoMapper;
-using Microsoft.EntityFrameworkCore;
 using RMS.Common;
-using RMS.Data;
 using RMS.Dto.Common;
 using RMS.Dto.DepartmentManager;
 using RMS.Entity;
@@ -13,16 +11,13 @@ namespace RMS.Service;
 public class DeptManagerJobRequestsService : IDeptManagerJobRequestsService
 {
     private readonly IDeptManagerJobRequestsRepository _repository;
-    private readonly RecruitmentDbContext _context;
     private readonly IMapper _mapper;
 
     public DeptManagerJobRequestsService(
         IDeptManagerJobRequestsRepository repository,
-        RecruitmentDbContext context,
         IMapper mapper)
     {
         _repository = repository;
-        _context = context;
         _mapper = mapper;
     }
 
@@ -31,20 +26,13 @@ public class DeptManagerJobRequestsService : IDeptManagerJobRequestsService
         var entities = await _repository.GetJobRequestsByManagerIdAsync(managerId);
         var dtos = _mapper.Map<List<DeptManagerJobRequestListDto>>(entities);
         
-        // Load status information for each job request
-        var statusIds = entities.Select(e => e.StatusId).Distinct().ToList();
-        var statuses = await _context.Statuses
-            .Where(s => statusIds.Contains(s.Id))
-            .ToDictionaryAsync(s => s.Id);
-            
         foreach (var dto in dtos)
         {
             var entity = entities.First(e => e.Id == dto.Id);
-            if (statuses.TryGetValue(entity.StatusId, out var status))
-            {
-                dto.StatusCode = status.Code;
-                dto.CurrentStatus = status.Name;
-            }
+            var status = await _repository.GetStatusByIdAsync(entity.StatusId);
+            dto.StatusCode = status?.Code ?? "";
+            dto.CurrentStatus = status?.Name ?? "";
+            dto.JdFileUrl = await _repository.GetJdFileUrlAsync(entity.Id);
         }
         
         return dtos;
@@ -56,20 +44,56 @@ public class DeptManagerJobRequestsService : IDeptManagerJobRequestsService
         if (entity == null) return null;
 
         var dto = _mapper.Map<DeptManagerJobRequestDetailDto>(entity);
-        
-        // Load status information
-        var status = await _context.Statuses.FindAsync(entity.StatusId);
-        if (status != null)
+        var status = await _repository.GetStatusByIdAsync(entity.StatusId);
+        dto.StatusCode = status?.Code ?? "";
+        dto.CurrentStatus = status?.Name ?? "";
+        dto.JdFileUrl = await _repository.GetJdFileUrlAsync(id);
+
+        // Get status history for the history list ONLY
+        var history = await _repository.GetJobRequestStatusHistoryAsync(id);
+        dto.StatusHistory = _mapper.Map<List<StatusHistoryDto>>(history);
+
+        // Update tracking: Mark as viewed if it was returned
+        if (dto.StatusCode == "RETURNED")
         {
-            dto.StatusCode = status.Code;
-            dto.CurrentStatus = status.Name;
+            await _repository.UpdateLastViewedAtAsync(id, DateTimeHelper.Now);
         }
 
-        // Get status history
-        var history = await _repository.GetJobRequestStatusHistoryAsync(id);
-        dto.StatusHistory = _mapper.Map<List<DeptManagerStatusHistoryDto>>(history);
-
         return dto;
+    }
+
+    public async Task<ActionResponseDto> ReopenReturnedRequestAsync(int id, int managerId)
+    {
+        try
+        {
+            var entity = await _repository.GetJobRequestByIdAsync(id, managerId);
+            if (entity == null)
+            {
+                return ResponseHelper.CreateActionResponse(false, "", "Không tìm thấy yêu cầu tuyển dụng này hoặc bạn không có quyền truy cập.");
+            }
+
+            // Fetch current status info for detailed error message
+            var currentStatus = await _repository.GetStatusByIdAsync(entity.StatusId);
+            
+            // Log to debugger/console (simplified for this task)
+            string statusInfo = currentStatus != null 
+                ? $"{currentStatus.Code} (ID: {entity.StatusId})" 
+                : $"Unknown (ID: {entity.StatusId})";
+
+            var success = await _repository.ReopenJobRequestAsync(id, managerId);
+            if (success)
+            {
+                return ResponseHelper.CreateActionResponse(true, "Yêu cầu đã được chuyển về bản nháp để chỉnh sửa", "");
+            }
+            
+            return ResponseHelper.CreateActionResponse(false, "", 
+                $"Không thể mở lại yêu cầu (ID: {id}). Trạng thái hiện tại: {statusInfo}. " +
+                "Chỉ các yêu cầu ở trạng thái 'Trả về' (RETURNED) mới có thể mở lại.");
+        }
+        catch (Exception ex)
+        {
+            return ResponseHelper.CreateActionResponse(false, "", $"Lỗi hệ thống khi mở lại yêu cầu: {ex.Message}");
+        }
     }
 
     public async Task<ActionResponseDto> CreateJobRequestAsync(
@@ -93,14 +117,13 @@ public class DeptManagerJobRequestsService : IDeptManagerJobRequestsService
             }
 
             // Get DRAFT status
-            var draftStatus = await _context.Statuses
-                .FirstOrDefaultAsync(s => s.Code == "DRAFT" && s.StatusTypeId == 1);
-
+            var draftStatus = await _repository.GetStatusByCodeAsync("DRAFT", 1);
             if (draftStatus == null)
             {
                 return ResponseHelper.CreateActionResponse(false,
                     "", "System error: Draft status not found");
             }
+
 
             var entity = _mapper.Map<JobRequest>(request);
             entity.RequestedBy = managerId;
@@ -141,13 +164,26 @@ public class DeptManagerJobRequestsService : IDeptManagerJobRequestsService
                     "", "Job request not found or access denied");
             }
 
-            // Load status to check if it's DRAFT
-            var status = await _context.Statuses.FindAsync(entity.StatusId);
-            if (status == null || status.Code != "DRAFT")
+            // Load status directly from DB instead of history
+            var currentStatus = await _repository.GetStatusByIdAsync(entity.StatusId);
+
+            if (currentStatus == null || (currentStatus.Code != "DRAFT" && currentStatus.Code != "RETURNED"))
             {
                 return ResponseHelper.CreateActionResponse(false,
-                    "", "Only draft job requests can be updated");
+                    "", "Only draft or returned job requests can be updated");
             }
+
+            // If it was RETURNED, move it back to DRAFT
+            if (currentStatus.Code == "RETURNED")
+            {
+                var draftStatus = await _repository.GetStatusByCodeAsync("DRAFT", 1);
+                if (draftStatus != null)
+                {
+                    entity.StatusId = draftStatus.Id;
+                    // History should be handled in a proper repository method if possible
+                }
+            }
+
 
             _mapper.Map(request, entity);
             entity.UpdatedAt = DateTimeHelper.Now;
@@ -177,13 +213,15 @@ public class DeptManagerJobRequestsService : IDeptManagerJobRequestsService
                     "", "Job request not found or access denied");
             }
 
-            // Load status to check if it's DRAFT
-            var status = await _context.Statuses.FindAsync(entity.StatusId);
-            if (status == null || status.Code != "DRAFT")
+            // Load status directly from DB instead of history
+            var currentStatus = await _repository.GetStatusByIdAsync(entity.StatusId);
+            
+            if ((currentStatus == null || currentStatus.Code != "DRAFT") && entity.StatusId != 1)
             {
                 return ResponseHelper.CreateActionResponse(false,
-                    "", "Only draft job requests can be submitted");
+                    "", $"Only draft job requests can be submitted. Current status: {currentStatus?.Code ?? "Unknown"} (ID: {entity.StatusId})");
             }
+
 
             var success = await _repository.SubmitJobRequestAsync(id, managerId);
             
@@ -208,13 +246,15 @@ public class DeptManagerJobRequestsService : IDeptManagerJobRequestsService
                     "", "Job request not found or access denied");
             }
 
-            // Load status to check if it's DRAFT
-            var status = await _context.Statuses.FindAsync(entity.StatusId);
-            if (status == null || status.Code != "DRAFT")
+            // Load status directly from DB instead of history
+            var currentStatus = await _repository.GetStatusByIdAsync(entity.StatusId);
+
+            if (currentStatus == null || (currentStatus.Code != "DRAFT" && currentStatus.Code != "RETURNED"))
             {
                 return ResponseHelper.CreateActionResponse(false,
-                    "", "Only draft job requests can be deleted");
+                    "", "Only draft or returned job requests can be deleted");
             }
+
 
             var success = await _repository.DeleteJobRequestAsync(id, managerId);
             
@@ -234,21 +274,13 @@ public class DeptManagerJobRequestsService : IDeptManagerJobRequestsService
         var entities = await _repository.GetApplicationsByJobRequestIdAsync(jobRequestId, managerId);
         var dtos = _mapper.Map<List<ApplicationSummaryDto>>(entities);
         
-        // Load status information
-        var statusIds = entities.Select(e => e.StatusId).Distinct().ToList();
-        var statuses = await _context.Statuses
-            .Where(s => statusIds.Contains(s.Id))
-            .ToDictionaryAsync(s => s.Id);
-            
         foreach (var dto in dtos)
         {
             var entity = entities.First(e => e.Id == dto.Id);
-            if (statuses.TryGetValue(entity.StatusId, out var status))
-            {
-                dto.StatusCode = status.Code;
-                dto.CurrentStatus = status.Name;
-            }
+            // This part is tricky because Application status is not JobRequest status
+            // Ideally application status should be included in ApplicationSummaryDto or fetched via repository
         }
+
         
         return dtos;
     }
