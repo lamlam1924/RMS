@@ -1,7 +1,6 @@
 using AutoMapper;
 using RMS.Dto.Common;
 using RMS.Dto.HR;
-using RMS.Dto.Common;
 using RMS.Entity;
 
 namespace RMS.Mapping;

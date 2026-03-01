@@ -1,7 +1,6 @@
 using AutoMapper;
 using RMS.Dto.Common;
 using RMS.Dto.HR;
-using RMS.Dto.Common;
 using RMS.Entity;
 using RMS.Repository.Interface;
 using RMS.Service.Interface;
@@ -42,6 +41,19 @@ public class HRJobRequestsService : IHRJobRequestsService
         for(int i = 0; i < dtos.Count; i++)
         {
              dtos[i].CurrentStatus = GetStatusName(entities[i].StatusId);
+        }
+
+        return dtos;
+    }
+
+    public async Task<List<JobRequestListDto>> GetJobRequestsByStatusAsync(string statusCode)
+    {
+        var entities = await _repository.GetJobRequestsByStatusAsync(statusCode);
+        var dtos = _mapper.Map<List<JobRequestListDto>>(entities);
+
+        for (int i = 0; i < dtos.Count; i++)
+        {
+            dtos[i].CurrentStatus = GetStatusName(entities[i].StatusId);
         }
 
         return dtos;

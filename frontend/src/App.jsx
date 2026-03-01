@@ -17,7 +17,6 @@ import ForgotPassword from "./pages/auth/ForgotPassword";
 import GoogleCallback from "./pages/auth/GoogleCallback";
 
 // Staff Pages
-import Dashboard from "./pages/dashboard/Dashboard";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -155,7 +154,7 @@ export default function App() {
             </PrivateRoute>
           }
         >
-          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="dashboard" element={<RoleBasedRedirect />} />
 
           {/* Admin Management Routes */}
           <Route
