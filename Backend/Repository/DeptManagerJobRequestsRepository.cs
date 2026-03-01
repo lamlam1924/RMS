@@ -62,7 +62,7 @@ public class DeptManagerJobRequestsRepository : IDeptManagerJobRequestsRepositor
         return await _context.SaveChangesAsync() > 0;
     }
 
-    public async Task<bool> SubmitJobRequestAsync(int id, int managerId)
+    public async Task<bool> SubmitJobRequestAsync(int id, int managerId, string? note = null)
     {
         var jobRequest = await GetJobRequestByIdAsync(id, managerId);
         if (jobRequest == null) return false;
@@ -86,7 +86,7 @@ public class DeptManagerJobRequestsRepository : IDeptManagerJobRequestsRepositor
             ToStatusId = submittedStatus.Id,
             ChangedBy = managerId,
             ChangedAt = DateTimeHelper.Now,
-            Note = "Job request submitted for approval"
+            Note = !string.IsNullOrWhiteSpace(note) ? note : "Đã nộp yêu cầu tuyển dụng để thẩm định"
         };
 
         _context.StatusHistories.Add(statusHistory);
@@ -100,7 +100,7 @@ public class DeptManagerJobRequestsRepository : IDeptManagerJobRequestsRepositor
 
         // Cải thiện kiểm tra trạng thái: Chấp nhận ID 21 HOẶC Code = 'RETURNED'
         var currentStatus = await _context.Statuses.FindAsync(jobRequest.StatusId);
-        if (currentStatus == null || (currentStatus.Code != "RETURNED" && currentStatus.Id != 21)) 
+        if (currentStatus == null || currentStatus.Code != "RETURNED")
         {
             return false;
         }
@@ -220,5 +220,63 @@ public class DeptManagerJobRequestsRepository : IDeptManagerJobRequestsRepositor
             .OrderByDescending(f => f.UploadedAt)
             .Select(f => f.FileUrl)
             .FirstOrDefaultAsync();
+    }
+
+    public async Task<bool> CancelDirectAsync(int id, int managerId, string? note = null)
+    {
+        var jobRequest = await GetJobRequestByIdAsync(id, managerId);
+        if (jobRequest == null) return false;
+
+        var cancelledStatus = await _context.Statuses
+            .FirstOrDefaultAsync(s => s.Code == "CANCELLED" && s.StatusTypeId == 1);
+        if (cancelledStatus == null) return false;
+
+        var oldStatusId = jobRequest.StatusId;
+        jobRequest.StatusId = cancelledStatus.Id;
+        jobRequest.UpdatedAt = DateTimeHelper.Now;
+        jobRequest.UpdatedBy = managerId;
+
+        var statusHistory = new StatusHistory
+        {
+            EntityTypeId = 1,
+            EntityId = id,
+            FromStatusId = oldStatusId,
+            ToStatusId = cancelledStatus.Id,
+            ChangedBy = managerId,
+            ChangedAt = DateTimeHelper.Now,
+            Note = !string.IsNullOrWhiteSpace(note) ? note : "Trưởng bộ phận đã hủy yêu cầu tuyển dụng"
+        };
+
+        _context.StatusHistories.Add(statusHistory);
+        return await _context.SaveChangesAsync() > 0;
+    }
+
+    public async Task<bool> RequestCancelAsync(int id, int managerId, string? note = null)
+    {
+        var jobRequest = await GetJobRequestByIdAsync(id, managerId);
+        if (jobRequest == null) return false;
+
+        var cancelPendingStatus = await _context.Statuses
+            .FirstOrDefaultAsync(s => s.Code == "CANCEL_PENDING" && s.StatusTypeId == 1);
+        if (cancelPendingStatus == null) return false;
+
+        var oldStatusId = jobRequest.StatusId;
+        jobRequest.StatusId = cancelPendingStatus.Id;
+        jobRequest.UpdatedAt = DateTimeHelper.Now;
+        jobRequest.UpdatedBy = managerId;
+
+        var statusHistory = new StatusHistory
+        {
+            EntityTypeId = 1,
+            EntityId = id,
+            FromStatusId = oldStatusId,
+            ToStatusId = cancelPendingStatus.Id,
+            ChangedBy = managerId,
+            ChangedAt = DateTimeHelper.Now,
+            Note = !string.IsNullOrWhiteSpace(note) ? note : "Trưởng bộ phận yêu cầu hủy, đang chờ HR xử lý"
+        };
+
+        _context.StatusHistories.Add(statusHistory);
+        return await _context.SaveChangesAsync() > 0;
     }
 }

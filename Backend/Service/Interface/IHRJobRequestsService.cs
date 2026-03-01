@@ -24,4 +24,10 @@ public interface IHRJobRequestsService
     
     /// <summary>Trả yêu cầu về cho Trưởng phòng chỉnh sửa</summary>
     Task<bool> ReturnToDeptManagerAsync(int id, string? reason, int hrManagerId);
+
+    /// <summary>HR phê duyệt yêu cầu hủy (CANCEL_PENDING → CANCELLED)</summary>
+    Task<bool> ApproveCancelAsync(int id, string? note, int hrManagerId);
+
+    /// <summary>HR từ chối yêu cầu hủy (CANCEL_PENDING → trạng thái trước)</summary>
+    Task<bool> RejectCancelAsync(int id, string? note, int hrManagerId);
 }

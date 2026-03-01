@@ -33,7 +33,16 @@ public interface IHRJobRequestsRepository
     
     /// <summary>Lấy trạng thái theo code</summary>
     Task<Status?> GetStatusByCodeAsync(string code, int typeId);
-    
+
+    /// <summary>Lấy trạng thái theo ID</summary>
+    Task<Status?> GetStatusByIdAsync(int statusId);
+
     /// <summary>Lấy URL file JD</summary>
     Task<string?> GetJdFileUrlAsync(int jobRequestId);
+
+    /// <summary>HR phê duyệt hủy (CANCEL_PENDING → CANCELLED)</summary>
+    Task<bool> ApproveCancelAsync(int id, int hrManagerId, string? note);
+
+    /// <summary>HR từ chối hủy (CANCEL_PENDING → trạng thái trước đó)</summary>
+    Task<bool> RejectCancelAsync(int id, int hrManagerId, string? note);
 }

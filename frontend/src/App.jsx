@@ -32,7 +32,7 @@ import WorkflowManagement from "./pages/admin/WorkflowManagement";
 
 // Director Pages
 import DirectorDashboard from "./pages/director/DirectorDashboard";
-import JobRequestApprovals from "./pages/director/JobRequestApprovals";
+import DirectorJobRequestList from "./pages/director/DirectorJobRequestList";
 import OfferApprovals from "./pages/director/OfferApprovals";
 
 // Department Manager Pages
@@ -295,7 +295,7 @@ export default function App() {
             path="director/job-requests"
             element={
               <PrivateRoute roles={[ROLES.DIRECTOR]}>
-                <JobRequestApprovals />
+                <DirectorJobRequestList />
               </PrivateRoute>
             }
           />

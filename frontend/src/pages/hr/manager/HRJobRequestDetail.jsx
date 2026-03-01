@@ -4,6 +4,7 @@ import hrService from "../../../services/hrService";
 import { formatVND } from "../../../utils/formatters/currency";
 import { formatDateDisplay } from "../../../utils/formatters/date";
 import { toast } from "../../../utils";
+import { getPriorityBadge } from "../../../utils/helpers/badge";
 import StatusHistoryTimeline from "../../../components/common/StatusHistoryTimeline";
 import { useHRJobRequestActions } from "../../../hooks/hr/manager/useHRJobRequestActions";
 
@@ -17,12 +18,15 @@ export default function HRJobRequestDetail() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [jobRequest, setJobRequest] = useState(null);
-  const { forward, returnRequest, loading: actionLoading, error: actionError } = useHRJobRequestActions();
+  const { forward, returnRequest, approveCancel, rejectCancel, loading: actionLoading, error: actionError } = useHRJobRequestActions();
 
   // Modal states
   const [showForwardModal, setShowForwardModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
+  const [showApproveCancelModal, setShowApproveCancelModal] = useState(false);
+  const [showRejectCancelModal, setShowRejectCancelModal] = useState(false);
   const [note, setNote] = useState("");
+  const [cancelDecisionNote, setCancelDecisionNote] = useState("");
 
   useEffect(() => {
     loadJobRequest();
@@ -70,6 +74,32 @@ export default function HRJobRequestDetail() {
     }
   };
 
+  const handleApproveCancel = async () => {
+    try {
+      await approveCancel(id, cancelDecisionNote, () => {
+        toast.success("Đã phê duyệt hủy yêu cầu tuyển dụng.");
+        navigate("/staff/hr-manager/job-requests");
+      });
+    } catch (error) {
+      toast.error(actionError || "Lỗi khi phê duyệt hủy.");
+    } finally {
+      setShowApproveCancelModal(false);
+    }
+  };
+
+  const handleRejectCancel = async () => {
+    try {
+      await rejectCancel(id, cancelDecisionNote, () => {
+        toast.success("Đã từ chối yêu cầu hủy. Yêu cầu được khôi phục trạng thái trước.");
+        loadJobRequest();
+      });
+    } catch (error) {
+      toast.error(actionError || "Lỗi khi từ chối hủy.");
+    } finally {
+      setShowRejectCancelModal(false);
+    }
+  };
+
   if (loading) return <LoadingSpinner />;
   if (!jobRequest) return <NotFound />;
 
@@ -97,6 +127,14 @@ export default function HRJobRequestDetail() {
     RETURNED: {
       label: "Đã trả lại",
       color: "text-rose-700 dark:text-rose-200 bg-rose-50 dark:bg-rose-900/30 border-rose-200 dark:border-rose-700",
+    },
+    CANCEL_PENDING: {
+      label: "Chờ duyệt hủy",
+      color: "text-orange-700 dark:text-orange-200 bg-orange-50 dark:bg-orange-900/30 border-orange-200 dark:border-orange-700",
+    },
+    CANCELLED: {
+      label: "Đã hủy",
+      color: "text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600",
     },
   };
 
@@ -164,11 +202,30 @@ export default function HRJobRequestDetail() {
           {jobRequest.status?.code === "IN_REVIEW" && (
             <div className="flex gap-2 w-full md:w-auto">
               <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700">
-                <div className="w-2 h-2 rounded-full bg-amber-500 dark:bg-amber-400 animate-pulse"></div>
+                <div className="w-2 h-2 rounded-full bg-amber-500 dark:bg-amber-400"></div>
                 <span className="text-amber-700 dark:text-amber-200 font-bold text-xs">
                   Đang chờ Giám đốc phê duyệt
                 </span>
               </div>
+            </div>
+          )}
+
+          {jobRequest.status?.code === "CANCEL_PENDING" && (
+            <div className="flex gap-2 w-full md:w-auto">
+              <button
+                onClick={() => { setCancelDecisionNote(""); setShowRejectCancelModal(true); }}
+                disabled={actionLoading}
+                className="flex-1 md:flex-none px-6 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all text-xs shadow-sm disabled:opacity-50"
+              >
+                Từ chối hủy
+              </button>
+              <button
+                onClick={() => { setCancelDecisionNote(""); setShowApproveCancelModal(true); }}
+                disabled={actionLoading}
+                className="flex-1 md:flex-none px-8 py-2.5 rounded-xl bg-red-600 dark:bg-red-700 text-white font-bold hover:bg-red-700 dark:hover:bg-red-600 transition-all text-xs shadow-xl shadow-red-200 dark:shadow-red-900/50 active:scale-95 disabled:opacity-50"
+              >
+                Phê duyệt hủy
+              </button>
             </div>
           )}
 
@@ -208,6 +265,23 @@ export default function HRJobRequestDetail() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* LEFT: CORE INFO */}
           <div className="lg:col-span-2 space-y-8">
+            {/* CANCEL_PENDING alert panel */}
+            {jobRequest.status?.code === "CANCEL_PENDING" && (
+              <div className="rounded-3xl border-2 border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/20 p-6 flex items-start gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-orange-500 dark:bg-orange-600 flex items-center justify-center flex-shrink-0">
+                  <span className="text-white text-xl">⏳</span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-orange-900 dark:text-orange-100 text-base mb-1">
+                    Trưởng phòng đã yêu cầu hủy
+                  </h3>
+                  <p className="text-sm text-orange-700 dark:text-orange-300 font-medium">
+                    Yêu cầu tuyển dụng này đang chờ bạn phê duyệt hoặc từ chối hủy. Sử dụng các nút ở góc phải phía trên để xử lý.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Hero Card */}
             <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] p-8 sm:p-12 shadow-[0_20px_50px_rgba(0,0,0,0.03)] border border-slate-200 dark:border-slate-700 relative overflow-hidden transition-colors">
               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/50 dark:bg-blue-900/20 rounded-full blur-3xl -mr-16 -mt-16"></div>
@@ -222,25 +296,29 @@ export default function HRJobRequestDetail() {
                   </h2>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-8">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
                   <StatItem
                     label="Số lượng"
                     value={jobRequest.quantity}
                     unit="nhân sự"
+                    tint="blue"
                   />
                   <StatItem
                     label="Ưu tiên"
                     value={`Mức ${jobRequest.priority}`}
                     isPriority
                     priority={jobRequest.priority}
+                    tint={jobRequest.priority === 1 ? 'red' : jobRequest.priority === 2 ? 'amber' : 'slate'}
                   />
                   <StatItem
                     label="Ngân sách"
                     value={formatVND(jobRequest.budget)}
+                    tint="green"
                   />
                   <StatItem
                     label="Bắt đầu"
                     value={formatDateDisplay(jobRequest.expectedStartDate)}
+                    tint="purple"
                   />
                 </div>
               </section>
@@ -387,6 +465,66 @@ export default function HRJobRequestDetail() {
         </div>
       </Modal>
 
+      <Modal
+        isOpen={showApproveCancelModal}
+        onClose={() => setShowApproveCancelModal(false)}
+        title="Phê duyệt yêu cầu hủy"
+        onConfirm={handleApproveCancel}
+        loading={actionLoading}
+        confirmLabel="Xác nhận Phê duyệt hủy"
+        variant="red"
+      >
+        <div className="space-y-6">
+          <p className="text-sm text-slate-500 font-medium leading-relaxed">
+            Bạn đang phê duyệt yêu cầu hủy tuyển dụng từ{" "}
+            <strong className="text-slate-900 font-bold">
+              {jobRequest.departmentName}
+            </strong>
+            . Sau khi phê duyệt, yêu cầu sẽ được đánh dấu <strong className="text-red-600">Đã hủy</strong>.
+          </p>
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">
+              Ghi chú phê duyệt (Tùy chọn)
+            </label>
+            <textarea
+              value={cancelDecisionNote}
+              onChange={(e) => setCancelDecisionNote(e.target.value)}
+              rows="3"
+              placeholder="VD: Đã xác nhận với trưởng phòng, đồng ý hủy..."
+              className="elegant-textarea"
+            />
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showRejectCancelModal}
+        onClose={() => setShowRejectCancelModal(false)}
+        title="Từ chối yêu cầu hủy"
+        onConfirm={handleRejectCancel}
+        loading={actionLoading}
+        confirmLabel="Xác nhận Từ chối hủy"
+        variant="indigo"
+      >
+        <div className="space-y-6">
+          <p className="text-sm text-slate-500 font-medium leading-relaxed">
+            Bạn đang từ chối yêu cầu hủy. Yêu cầu sẽ được khôi phục về trạng thái trước đó và tiếp tục xử lý bình thường.
+          </p>
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">
+              Lý do từ chối (Tùy chọn)
+            </label>
+            <textarea
+              value={cancelDecisionNote}
+              onChange={(e) => setCancelDecisionNote(e.target.value)}
+              rows="3"
+              placeholder="VD: Yêu cầu tuyển dụng vẫn cần thiết theo kế hoạch nhân sự..."
+              className="elegant-textarea"
+            />
+          </div>
+        </div>
+      </Modal>
+
       <style jsx="true">{`
         .elegant-textarea {
           width: 100%;
@@ -412,32 +550,52 @@ export default function HRJobRequestDetail() {
 }
 
 // Sub-components
-const StatItem = ({ label, value, unit, isPriority, priority }) => {
-  const getPriorityStyle = (priority) => {
-    if (priority === 1) return { label: "Khẩn cấp", color: "text-red-700 dark:text-red-200 bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700", dot: "bg-red-500 dark:bg-red-400" };
-    if (priority === 2) return { label: "Cao", color: "text-orange-700 dark:text-orange-200 bg-orange-50 dark:bg-orange-900/30 border-orange-200 dark:border-orange-700", dot: "bg-orange-500 dark:bg-orange-400" };
-    return { label: "Bình thường", color: "text-blue-700 dark:text-blue-200 bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700", dot: "bg-blue-500 dark:bg-blue-400" };
+const StatItem = ({ label, value, unit, isPriority, priority, tint = 'slate' }) => {
+  const _pb = isPriority ? getPriorityBadge(priority || 3) : null;
+  const priorityStyle = _pb ? { label: _pb.label, color: _pb.tailwindColor, dot: _pb.dot } : null;
+
+  const tintBg = {
+    blue:   'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800',
+    green:  'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800',
+    purple: 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800',
+    amber:  'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800',
+    red:    'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
+    slate:  'bg-slate-50 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600',
   };
-  
-  const priorityStyle = isPriority ? getPriorityStyle(priority || 3) : null;
-  
+  const tintLabel = {
+    blue:   'text-blue-500/80 dark:text-blue-400/80',
+    green:  'text-emerald-500/80 dark:text-emerald-400/80',
+    purple: 'text-purple-500/80 dark:text-purple-400/80',
+    amber:  'text-amber-500/80 dark:text-amber-400/80',
+    red:    'text-red-500/80 dark:text-red-400/80',
+    slate:  'text-slate-500 dark:text-slate-400',
+  };
+  const tintValue = {
+    blue:   'text-blue-700 dark:text-blue-300',
+    green:  'text-emerald-700 dark:text-emerald-300',
+    purple: 'text-purple-700 dark:text-purple-300',
+    amber:  'text-amber-700 dark:text-amber-300',
+    red:    'text-red-700 dark:text-red-300',
+    slate:  'text-slate-700 dark:text-slate-200',
+  };
+
   return (
-    <div>
-      <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 px-0.5">
+    <div className={`rounded-2xl p-4 border ${tintBg[tint]} transition-all`}>
+      <p className={`text-[9px] font-bold uppercase tracking-wider mb-2 ${tintLabel[tint]}`}>
         {label}
       </p>
       {isPriority && priorityStyle ? (
-        <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide border ${priorityStyle.color}`}>
-          <span className={`w-2 h-2 rounded-full ${priorityStyle.dot} ${priority <= 2 ? 'animate-pulse' : ''}`}></span>
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide border ${priorityStyle.color}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${priorityStyle.dot}`}></span>
           {priorityStyle.label}
         </span>
       ) : (
-        <div className="flex items-center gap-2">
-          <span className="text-xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+        <div className="flex items-baseline gap-1.5 flex-wrap">
+          <span className={`text-[15px] font-bold tracking-tight leading-snug ${tintValue[tint]}`}>
             {value}
           </span>
           {unit && (
-            <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">
+            <span className={`text-[9px] font-bold uppercase ${tintLabel[tint]}`}>
               {unit}
             </span>
           )}
@@ -507,7 +665,7 @@ const LoadingSpinner = () => (
       <div className="absolute inset-0 border-4 border-blue-50 rounded-full"></div>
       <div className="absolute inset-0 border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
     </div>
-    <span className="text-slate-400 text-xs font-black uppercase tracking-[0.2em] animate-pulse">
+    <span className="text-slate-400 text-xs font-black uppercase tracking-[0.2em]">
       Đang nạp dữ liệu...
     </span>
   </div>

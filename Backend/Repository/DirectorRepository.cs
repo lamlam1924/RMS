@@ -28,6 +28,35 @@ public class DirectorRepository : IDirectorRepository
             .ToListAsync();
     }
 
+    public async Task<List<JobRequest>> GetProcessedJobRequestsAsync(int directorId)
+    {
+        // Chỉ lấy request mà chính Director này đã xử lý (có record trong StatusHistory do Director tạo)
+        // Trạng thái Director có thể xử lý: APPROVED (4), REJECTED (5), RETURNED (21)
+        var directorActionStatuses = new[] { 4, 5, 21 };
+
+        // Lấy các EntityId mà director này đã tạo action trong StatusHistory
+        var processedIds = await _context.StatusHistories
+            .Where(sh => sh.EntityTypeId == 1  // JOB_REQUEST
+                      && sh.ChangedBy == directorId
+                      && directorActionStatuses.Contains(sh.ToStatusId))
+            .Select(sh => sh.EntityId)
+            .Distinct()
+            .ToListAsync();
+
+        if (!processedIds.Any()) return new List<JobRequest>();
+
+        // Lấy request với status hiện tại thuộc nhóm đã xử lý bởi Director này
+        return await _context.JobRequests
+            .Include(jr => jr.Position)
+                .ThenInclude(p => p.Department)
+            .Include(jr => jr.RequestedByNavigation)
+            .Where(jr => processedIds.Contains(jr.Id)
+                      && directorActionStatuses.Contains(jr.StatusId)
+                      && jr.IsDeleted == false)
+            .OrderByDescending(jr => jr.UpdatedAt)
+            .ToListAsync();
+    }
+
     public async Task<JobRequest?> GetJobRequestDetailAsync(int id)
     {
         return await _context.JobRequests
@@ -252,5 +281,12 @@ public class DirectorRepository : IDirectorRepository
         return await _context.Statuses
             .Where(s => statusIds.Contains(s.Id))
             .ToDictionaryAsync(s => s.Id, s => s.Name);
+    }
+
+    public async Task<Dictionary<int, string>> GetStatusCodesAsync(IEnumerable<int> statusIds)
+    {
+        return await _context.Statuses
+            .Where(s => statusIds.Contains(s.Id))
+            .ToDictionaryAsync(s => s.Id, s => s.Code);
     }
 }

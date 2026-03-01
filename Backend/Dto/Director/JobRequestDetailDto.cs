@@ -15,6 +15,7 @@ public class JobRequestDetailDto
     public string? Reason { get; set; }
     public int Priority { get; set; }
     public required string CurrentStatus { get; set; }
+    public required string CurrentStatusCode { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? ExpectedStartDate { get; set; }
     public string? JdFileUrl { get; set; }

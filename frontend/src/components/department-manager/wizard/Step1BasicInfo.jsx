@@ -8,7 +8,7 @@ import SmartHelper, { TimelineEstimator } from '../../common/SmartHelper';
  * Step1BasicInfo - Wizard Step 1: Basic Information
  * Position, Priority, Quantity, Expected Start Date
  */
-export default function Step1BasicInfo({ formData, errors, handleChange, positions }) {
+export default function Step1BasicInfo({ formData, errors, handleChange, positions, isEdit = false }) {
   const [quantityValidation, setQuantityValidation] = useState(null);
   const [timeline, setTimeline] = useState(null);
   const [prioritySuggestion, setPrioritySuggestion] = useState(null);
@@ -58,13 +58,14 @@ export default function Step1BasicInfo({ formData, errors, handleChange, positio
           label="Vị trí công việc"
           error={errors.positionId}
           required
-          hint="Chọn vị trí cần tuyển dụng"
+          hint={isEdit ? '🔒 Vị trí không thể thay đổi sau khi tạo' : 'Chọn vị trí cần tuyển dụng'}
         >
           <select
             name="positionId"
             value={formData.positionId}
             onChange={handleChange}
-            className="elegant-select"
+            disabled={isEdit}
+            className={`elegant-select${isEdit ? ' opacity-60 cursor-not-allowed' : ''}`}
           >
             <option value="">Chọn vị trí...</option>
             {positions.map((pos) => (

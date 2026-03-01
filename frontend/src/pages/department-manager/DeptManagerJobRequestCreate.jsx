@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { CheckCircle, ArrowRight, PlusCircle } from "lucide-react";
 import deptManagerService from "../../services/deptManagerService";
 import { useJobRequestForm } from "../../hooks/department-manager/useJobRequestForm";
 import { useAutoSave } from "../../hooks/useAutoSave";
@@ -17,6 +18,8 @@ export default function DeptManagerJobRequestCreate() {
   const [loading, setLoading] = useState(false);
   const [positions, setPositions] = useState([]);
   const [showRecoveryModal, setShowRecoveryModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [createdId, setCreatedId] = useState(null);
 
   const {
     formData,
@@ -56,30 +59,30 @@ export default function DeptManagerJobRequestCreate() {
     }
   };
 
-  const handleSubmit = async (isDraft = false) => {
-    if (!isDraft && !validate()) {
-      return;
-    }
-
+  const handleSaveDraft = async () => {
+    if (!validate()) return;
     try {
       setLoading(true);
       const payload = buildPayload();
       const response = await deptManagerService.jobRequests.create(payload);
-
-      if (!isDraft && response?.id) {
-        await deptManagerService.jobRequests.submit(response.id);
-      }
-
-      // Clear draft on successful submission
       clearDraft();
-      
-      navigate("/staff/dept-manager/job-requests");
+      setCreatedId(response?.data?.id ?? null);
+      setShowSuccessModal(true);
     } catch (error) {
-      console.error("Lỗi khi tạo yêu cầu:", error);
-      alert(error.message || "Có lỗi xảy ra khi tạo yêu cầu tuyển dụng.");
+      console.error("Lỗi khi lưu nháp:", error);
+      alert(error.message || "Có lỗi xảy ra khi lưu nháp.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleViewDetail = () => {
+    navigate(`/staff/dept-manager/job-requests/${createdId}`);
+  };
+
+  const handleCreateAnother = () => {
+    // Navigate to same route to fully reset the component + auto-save state
+    navigate(0);
   };
 
   const handleRestoreDraft = () => {
@@ -136,8 +139,7 @@ export default function DeptManagerJobRequestCreate() {
           positions={positions}
           handleChange={handleChange}
           handleFileChange={handleFileChange}
-          handleSubmit={() => handleSubmit(false)}
-          handleSaveDraft={() => handleSubmit(true)}
+          handleSaveDraft={handleSaveDraft}
         />
 
         {/* Footer Info */}
@@ -156,6 +158,54 @@ export default function DeptManagerJobRequestCreate() {
         onRestore={handleRestoreDraft}
         onDiscard={handleDiscardDraft}
       />
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+            {/* Header */}
+            <div className="px-8 pt-10 pb-6 text-center">
+              <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                Tạo yêu cầu thành công!
+              </h3>
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                Yêu cầu đã được lưu ở trạng thái <span className="font-semibold text-slate-700 dark:text-slate-300">Bản nháp</span>.
+                Vào trang chi tiết để xem lại và gửi duyệt lên HR.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="px-8 pb-8 flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={handleViewDetail}
+                className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-500 dark:to-indigo-500 text-white font-bold hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-200 dark:shadow-blue-900 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+              >
+                <ArrowRight className="w-4 h-4" />
+                Xem chi tiết &amp; Gửi duyệt
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateAnother}
+                className="w-full py-3.5 px-6 rounded-2xl border-2 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 font-semibold hover:bg-slate-50 dark:hover:bg-slate-700 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+              >
+                <PlusCircle className="w-4 h-4" />
+                Tạo yêu cầu khác
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("/staff/dept-manager/job-requests")}
+                className="w-full py-2 text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+              >
+                Về danh sách
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Global Styles for Wizard */}
       <style jsx="true">{`

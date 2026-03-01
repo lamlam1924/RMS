@@ -27,11 +27,18 @@ public class HRJobRequestsRepository : IHRJobRequestsRepository
 
     public async Task<List<JobRequest>> GetPendingJobRequestsAsync()
     {
+        // Use code-based lookup — never hardcode status IDs
+        var pendingCodes = new[] { "SUBMITTED", "IN_REVIEW", "CANCEL_PENDING" };
+        var statusIds = await _context.Statuses
+            .Where(s => pendingCodes.Contains(s.Code) && s.StatusTypeId == 1)
+            .Select(s => s.Id)
+            .ToListAsync();
+
         return await _context.JobRequests
             .Include(jr => jr.Position)
                 .ThenInclude(p => p.Department)
             .Include(jr => jr.RequestedByNavigation)
-            .Where(jr => (jr.StatusId == 2 || jr.StatusId == 3) && jr.IsDeleted == false)
+            .Where(jr => statusIds.Contains(jr.StatusId) && jr.IsDeleted == false)
             .OrderBy(jr => jr.Priority)
             .ThenByDescending(jr => jr.CreatedAt)
             .ToListAsync();
@@ -151,6 +158,52 @@ public class HRJobRequestsRepository : IHRJobRequestsRepository
     {
         return await _context.Statuses
             .FirstOrDefaultAsync(s => s.Code == code && s.StatusTypeId == typeId);
+    }
+
+    public async Task<Status?> GetStatusByIdAsync(int statusId)
+    {
+        return await _context.Statuses.FindAsync(statusId);
+    }
+
+    public async Task<bool> ApproveCancelAsync(int id, int hrManagerId, string? note)
+    {
+        // Guard: job must currently be in CANCEL_PENDING
+        var jobRequest = await GetJobRequestByIdAsync(id);
+        if (jobRequest == null) return false;
+
+        var currentStatus = await GetStatusByIdAsync(jobRequest.StatusId);
+        if (currentStatus?.Code != "CANCEL_PENDING") return false;
+
+        var cancelledStatus = await GetStatusByCodeAsync("CANCELLED", 1);
+        if (cancelledStatus == null) return false;
+
+        return await UpdateStatusAsync(id, cancelledStatus.Id, hrManagerId,
+            string.IsNullOrWhiteSpace(note) ? "HR đã phê duyệt hủy yêu cầu tuyển dụng" : note);
+    }
+
+    public async Task<bool> RejectCancelAsync(int id, int hrManagerId, string? note)
+    {
+        // Guard: job must currently be in CANCEL_PENDING
+        var jobRequest = await GetJobRequestByIdAsync(id);
+        if (jobRequest == null) return false;
+
+        var currentStatus = await GetStatusByIdAsync(jobRequest.StatusId);
+        if (currentStatus?.Code != "CANCEL_PENDING") return false;
+
+        var cancelPendingStatus = await GetStatusByCodeAsync("CANCEL_PENDING", 1);
+        if (cancelPendingStatus == null) return false;
+
+        // Find the status before CANCEL_PENDING transition
+        var history = await GetStatusHistoryAsync(id, "JOB_REQUEST");
+        var cancelTransition = history
+            .Where(h => h.ToStatusId == cancelPendingStatus.Id)
+            .OrderByDescending(h => h.ChangedAt)
+            .FirstOrDefault();
+
+        if (cancelTransition?.FromStatusId == null) return false;
+
+        return await UpdateStatusAsync(id, cancelTransition.FromStatusId.Value, hrManagerId,
+            string.IsNullOrWhiteSpace(note) ? "HR từ chối hủy, yêu cầu khôi phục trạng thái" : note);
     }
 
     public async Task<string?> GetJdFileUrlAsync(int jobRequestId)

@@ -169,7 +169,7 @@ export default function QuickReviewModal({
                   icon={AlertCircle}
                   label="Ưu tiên"
                   value={getPriorityBadge(request.priority).label}
-                  color={request.priority <= 2 ? 'red' : 'slate'}
+                  color={request.priority === 1 ? 'red' : request.priority === 2 ? 'amber' : 'slate'}
                 />
               </div>
 
@@ -313,11 +313,12 @@ export default function QuickReviewModal({
  */
 function InfoCard({ icon: Icon, label, value, color = 'blue' }) {
   const colorClasses = {
-    blue: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400',
-    green: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-600 dark:text-green-400',
+    blue:   'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400',
+    green:  'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-600 dark:text-green-400',
     purple: 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400',
-    red: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400',
-    slate: 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400',
+    amber:  'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400',
+    red:    'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400',
+    slate:  'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400',
   };
 
   return (

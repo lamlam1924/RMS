@@ -9,15 +9,13 @@ import { getSLAStatus, formatRemainingTime, getSLAStyle, SLA_STATUS } from '../.
  * @param {string} status - Request status
  * @param {boolean} showTime - Show remaining time countdown (default: true)
  * @param {string} size - Badge size: 'sm', 'md', 'lg' (default: 'md')
- * @param {boolean} pulse - Add pulse animation for critical/overdue (default: true)
  */
 export default function SLABadge({ 
   createdDate, 
   priority, 
   status, 
   showTime = true,
-  size = 'md',
-  pulse = true 
+  size = 'md'
 }) {
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -52,22 +50,16 @@ export default function SLABadge({
     lg: 'text-base',
   };
 
-  // Determine if should pulse
-  const shouldPulse = pulse && (
-    slaData.status === SLA_STATUS.CRITICAL || 
-    slaData.status === SLA_STATUS.OVERDUE
-  );
-
   return (
     <div className="inline-flex items-center gap-2">
       {/* SLA Badge */}
+      {/* SLA shape: left-border stripe (border-l-[3px] rounded-r-md) — phân biệt với priority rounded-md và status rounded-full */}
       <span
         className={`
-          inline-flex items-center gap-1.5 rounded-lg font-semibold
-          border ${styles.borderColor}
-          ${styles.bgColor} ${styles.textColor}
-          ${sizeClasses[size]}
-          ${shouldPulse ? 'animate-pulse' : ''}
+          inline-flex items-center gap-1.5
+          border-l-[3px] rounded-r-md rounded-l-none
+          ${styles.borderColor} ${styles.bgColor} ${styles.textColor}
+          ${sizeClasses[size]} font-semibold
           transition-all duration-300
         `}
       >
@@ -102,16 +94,11 @@ export function SLAIndicator({ createdDate, priority, status }) {
   const slaData = getSLAStatus(createdDate, priority, status);
   const styles = getSLAStyle(slaData.status);
 
-  const shouldPulse = 
-    slaData.status === SLA_STATUS.CRITICAL || 
-    slaData.status === SLA_STATUS.OVERDUE;
-
   return (
     <div 
       className={`
         w-2.5 h-2.5 rounded-full
         ${styles.bgColor.replace('100', '500').replace('900', '500')}
-        ${shouldPulse ? 'animate-pulse' : ''}
       `}
       title={`SLA: ${styles.label}`}
     />

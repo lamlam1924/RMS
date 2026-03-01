@@ -27,13 +27,11 @@ public class HRJobRequestsService : IHRJobRequestsService
 
         foreach (var dto in dtos)
         {
-            var statusHistory = await _repository.GetStatusHistoryAsync(dto.Id, "JOB_REQUEST");
-            var currentStatus = statusHistory.FirstOrDefault()?.ToStatus;
-            dto.CurrentStatus = currentStatus?.Name ?? "Unknown";
-            if (currentStatus != null)
-            {
-                dto.Status = _mapper.Map<StatusDto>(currentStatus);
-            }
+            var entity = entities.First(e => e.Id == dto.Id);
+            var status = await _repository.GetStatusByIdAsync(entity.StatusId);
+            dto.CurrentStatus = status?.Name ?? "Unknown";
+            if (status != null)
+                dto.Status = _mapper.Map<StatusDto>(status);
         }
 
         return dtos;
@@ -46,13 +44,11 @@ public class HRJobRequestsService : IHRJobRequestsService
 
         foreach (var dto in dtos)
         {
-            var statusHistory = await _repository.GetStatusHistoryAsync(dto.Id, "JOB_REQUEST");
-            var currentStatus = statusHistory.FirstOrDefault()?.ToStatus;
-            dto.CurrentStatus = currentStatus?.Name ?? "Unknown";
-            if (currentStatus != null)
-            {
-                dto.Status = _mapper.Map<StatusDto>(currentStatus);
-            }
+            var entity = entities.First(e => e.Id == dto.Id);
+            var status = await _repository.GetStatusByIdAsync(entity.StatusId);
+            dto.CurrentStatus = status?.Name ?? "Unknown";
+            if (status != null)
+                dto.Status = _mapper.Map<StatusDto>(status);
         }
 
         return dtos;
@@ -65,13 +61,11 @@ public class HRJobRequestsService : IHRJobRequestsService
 
         foreach (var dto in dtos)
         {
-            var statusHistory = await _repository.GetStatusHistoryAsync(dto.Id, "JOB_REQUEST");
-            var currentStatus = statusHistory.FirstOrDefault()?.ToStatus;
-            dto.CurrentStatus = currentStatus?.Name ?? "Unknown";
-            if (currentStatus != null)
-            {
-                dto.Status = _mapper.Map<StatusDto>(currentStatus);
-            }
+            var entity = entities.First(e => e.Id == dto.Id);
+            var status = await _repository.GetStatusByIdAsync(entity.StatusId);
+            dto.CurrentStatus = status?.Name ?? "Unknown";
+            if (status != null)
+                dto.Status = _mapper.Map<StatusDto>(status);
         }
 
         return dtos;
@@ -88,13 +82,11 @@ public class HRJobRequestsService : IHRJobRequestsService
         // Map status history
         dto.StatusHistory = _mapper.Map<List<StatusHistoryDto>>(statusHistory);
         
-        // Set current status
-        var currentStatus = statusHistory.FirstOrDefault()?.ToStatus;
+        // Set current status from entity.StatusId (authoritative source)
+        var currentStatus = await _repository.GetStatusByIdAsync(entity.StatusId);
         dto.CurrentStatus = currentStatus?.Name ?? "Unknown";
         if (currentStatus != null)
-        {
             dto.Status = _mapper.Map<StatusDto>(currentStatus);
-        }
 
         // Lấy JD Link
         dto.JdFileUrl = await _repository.GetJdFileUrlAsync(id);
@@ -104,29 +96,47 @@ public class HRJobRequestsService : IHRJobRequestsService
 
     public async Task<bool> ForwardToDirectorAsync(int id, string? note, int hrManagerId)
     {
-        // 1. Tìm trạng thái IN_REVIEW linh hoạt (Code hoặc ID 3)
-        var inReviewStatus = await _repository.GetStatusByCodeAsync("IN_REVIEW", 1);
-        int targetStatusId = inReviewStatus?.Id ?? 3;
+        // Guard: only SUBMITTED jobs can be forwarded to Director
+        var jobRequest = await _repository.GetJobRequestByIdAsync(id);
+        if (jobRequest == null) return false;
 
-        // 2. Cập nhật trạng thái
-        return await _repository.UpdateStatusAsync(id, targetStatusId, hrManagerId, note);
+        var currentStatus = await _repository.GetStatusByIdAsync(jobRequest.StatusId);
+        if (currentStatus?.Code != "SUBMITTED") return false;
+
+        var inReviewStatus = await _repository.GetStatusByCodeAsync("IN_REVIEW", 1);
+        if (inReviewStatus == null) return false;
+
+        return await _repository.UpdateStatusAsync(id, inReviewStatus.Id, hrManagerId, note);
     }
 
     public async Task<bool> ReturnToDeptManagerAsync(int id, string? reason, int hrManagerId)
     {
-        // 1. Tìm trạng thái RETURNED linh hoạt (Code hoặc ID 21)
-        var returnedStatus = await _repository.GetStatusByCodeAsync("RETURNED", 1);
-        int targetStatusId = returnedStatus?.Id ?? 21;
+        // Guard: only SUBMITTED or IN_REVIEW jobs can be returned
+        var jobRequest = await _repository.GetJobRequestByIdAsync(id);
+        if (jobRequest == null) return false;
 
-        // 2. Cập nhật trạng thái
-        var success = await _repository.UpdateStatusAsync(id, targetStatusId, hrManagerId, reason);
-        
+        var currentStatus = await _repository.GetStatusByIdAsync(jobRequest.StatusId);
+        if (currentStatus?.Code != "SUBMITTED" && currentStatus?.Code != "IN_REVIEW") return false;
+
+        var returnedStatus = await _repository.GetStatusByCodeAsync("RETURNED", 1);
+        if (returnedStatus == null) return false;
+
+        var success = await _repository.UpdateStatusAsync(id, returnedStatus.Id, hrManagerId, reason);
+
         if (success)
         {
-            // 3. Cập nhật tracking time
             await _repository.UpdateLastReturnedAtAsync(id, DateTime.Now);
         }
-        
         return success;
+    }
+
+    public async Task<bool> ApproveCancelAsync(int id, string? note, int hrManagerId)
+    {
+        return await _repository.ApproveCancelAsync(id, hrManagerId, note);
+    }
+
+    public async Task<bool> RejectCancelAsync(int id, string? note, int hrManagerId)
+    {
+        return await _repository.RejectCancelAsync(id, hrManagerId, note);
     }
 }

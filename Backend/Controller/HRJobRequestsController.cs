@@ -135,4 +135,48 @@ public class HRJobRequestsController : ControllerBase
             return StatusCode(500, new { message = "Error returning job request", error = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Approve a cancel request (CANCEL_PENDING -> CANCELLED)
+    /// </summary>
+    [HttpPost("{id}/approve-cancel")]
+    [Authorize(Roles = "HR_MANAGER")]
+    public async Task<IActionResult> ApproveCancel(int id, [FromBody] HRJobRequestReviewDto? reviewDto = null)
+    {
+        try
+        {
+            var hrManagerId = CurrentUserHelper.GetCurrentUserId(this);
+            var result = await _hrJobRequestsService.ApproveCancelAsync(id, reviewDto?.Note, hrManagerId);
+
+            if (!result) return BadRequest(new { message = "Failed to approve cancel request" });
+
+            return Ok(new { message = "Cancel request approved. Job request has been cancelled." });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Error approving cancel request", error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Reject a cancel request (CANCEL_PENDING -> previous status)
+    /// </summary>
+    [HttpPost("{id}/reject-cancel")]
+    [Authorize(Roles = "HR_MANAGER")]
+    public async Task<IActionResult> RejectCancel(int id, [FromBody] HRJobRequestReviewDto? reviewDto = null)
+    {
+        try
+        {
+            var hrManagerId = CurrentUserHelper.GetCurrentUserId(this);
+            var result = await _hrJobRequestsService.RejectCancelAsync(id, reviewDto?.Note, hrManagerId);
+
+            if (!result) return BadRequest(new { message = "Failed to reject cancel request" });
+
+            return Ok(new { message = "Cancel request rejected. Job request restored to previous status." });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Error rejecting cancel request", error = ex.Message });
+        }
+    }
 }

@@ -29,6 +29,20 @@ public class DirectorJobRequestsController : ControllerBase
     }
 
     /// <summary>
+    /// Get all processed job requests (approved, rejected, returned) by this Director
+    /// </summary>
+    [HttpGet("processed")]
+    public async Task<ActionResult<List<JobRequestListDto>>> GetProcessedJobRequests()
+    {
+        var directorId = CurrentUserHelper.GetCurrentUserId(this);
+        if (directorId == 0)
+            return Unauthorized(new { message = "Invalid user" });
+
+        var jobRequests = await _service.GetProcessedJobRequestsAsync(directorId);
+        return Ok(jobRequests);
+    }
+
+    /// <summary>
     /// Get detailed information of a specific job request
     /// </summary>
     [HttpGet("{id}")]

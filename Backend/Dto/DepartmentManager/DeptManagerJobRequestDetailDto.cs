@@ -16,7 +16,7 @@ public class DeptManagerJobRequestDetailDto
     public decimal? Budget { get; set; }
     public string? Reason { get; set; }
     public DateTime? ExpectedStartDate { get; set; }
-    public required string StatusCode { get; set; }
+    public string? StatusCode { get; set; }
     public required string CurrentStatus { get; set; }
     public string? JdFileUrl { get; set; }
     public DateTime CreatedAt { get; set; }

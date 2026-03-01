@@ -21,7 +21,7 @@ public interface IDeptManagerJobRequestsService
     Task<ActionResponseDto> UpdateJobRequestAsync(int id, UpdateJobRequestDto request, int managerId);
     
     /// <summary>Gửi yêu cầu tuyển dụng lên HR</summary>
-    Task<ActionResponseDto> SubmitJobRequestAsync(int id, int managerId);
+    Task<ActionResponseDto> SubmitJobRequestAsync(int id, int managerId, string? note = null);
     
     /// <summary>Xóa yêu cầu tuyển dụng (chỉ draft)</summary>
     Task<ActionResponseDto> DeleteJobRequestAsync(int id, int managerId);
@@ -34,4 +34,7 @@ public interface IDeptManagerJobRequestsService
     
     /// <summary>Mở lại yêu cầu đã bị trả về để chỉnh sửa</summary>
     Task<ActionResponseDto> ReopenReturnedRequestAsync(int id, int managerId);
+
+    /// <summary>Hủy yêu cầu (trực tiếp hoặc qua HR tùy trạng thái)</summary>
+    Task<ActionResponseDto> CancelJobRequestAsync(int id, int managerId, string? note);
 }

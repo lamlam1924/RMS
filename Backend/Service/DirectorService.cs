@@ -25,11 +25,32 @@ public class DirectorService : IDirectorService
 
         var statusIds = entities.Select(e => e.StatusId).Distinct();
         var statusNames = await _repository.GetStatusNamesAsync(statusIds);
+        var statusCodes = await _repository.GetStatusCodesAsync(statusIds);
 
         foreach (var dto in dtos)
         {
             var entity = entities.First(e => e.Id == dto.Id);
             dto.CurrentStatus = statusNames.GetValueOrDefault(entity.StatusId) ?? "Unknown";
+            dto.CurrentStatusCode = statusCodes.GetValueOrDefault(entity.StatusId) ?? "UNKNOWN";
+        }
+
+        return dtos;
+    }
+
+    public async Task<List<JobRequestListDto>> GetProcessedJobRequestsAsync(int directorId)
+    {
+        var entities = await _repository.GetProcessedJobRequestsAsync(directorId);
+        var dtos = _mapper.Map<List<JobRequestListDto>>(entities);
+
+        var statusIds = entities.Select(e => e.StatusId).Distinct();
+        var statusNames = await _repository.GetStatusNamesAsync(statusIds);
+        var statusCodes = await _repository.GetStatusCodesAsync(statusIds);
+
+        foreach (var dto in dtos)
+        {
+            var entity = entities.First(e => e.Id == dto.Id);
+            dto.CurrentStatus = statusNames.GetValueOrDefault(entity.StatusId) ?? "Unknown";
+            dto.CurrentStatusCode = statusCodes.GetValueOrDefault(entity.StatusId) ?? "UNKNOWN";
         }
 
         return dtos;
@@ -42,9 +63,11 @@ public class DirectorService : IDirectorService
 
         var dto = _mapper.Map<JobRequestDetailDto>(entity);
         
-        // Get status names
+        // Get status names and codes
         var statusNames = await _repository.GetStatusNamesAsync(new[] { entity.StatusId });
+        var statusCodes = await _repository.GetStatusCodesAsync(new[] { entity.StatusId });
         dto.CurrentStatus = statusNames.GetValueOrDefault(entity.StatusId) ?? "Unknown";
+        dto.CurrentStatusCode = statusCodes.GetValueOrDefault(entity.StatusId) ?? "UNKNOWN";
 
         // Get and map approval history
         var history = await _repository.GetJobRequestStatusHistoryAsync(id);

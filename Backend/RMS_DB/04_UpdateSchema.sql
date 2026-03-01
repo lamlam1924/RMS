@@ -307,3 +307,82 @@ BEGIN
     VALUES (4, 'JOB_DESCRIPTION', N'Bản mô tả công việc (Job Description)');
 END
 GO
+
+/* =========================================================
+   2026-02-24 | Lâm
+   Change: CANCEL_PENDING + CANCELLED cho Job Request
+   Purpose: Hỗ trợ Trưởng phòng yêu cầu hủy sau khi đã gửi;
+            HR Manager phê duyệt hoặc từ chối yêu cầu hủy đó.
+   ========================================================= */
+IF NOT EXISTS (SELECT 1 FROM Statuses WHERE Code = 'CANCEL_PENDING' AND StatusTypeId = 1)
+BEGIN
+    INSERT INTO Statuses (Id, StatusTypeId, Code, Name, OrderNo, IsFinal)
+    VALUES (22, 1, 'CANCEL_PENDING', N'Đang chờ duyệt hủy', 7, 0);
+    PRINT 'Added status CANCEL_PENDING (ID: 22)';
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM Statuses WHERE Code = 'CANCELLED' AND StatusTypeId = 1)
+BEGIN
+    INSERT INTO Statuses (Id, StatusTypeId, Code, Name, OrderNo, IsFinal)
+    VALUES (23, 1, 'CANCELLED', N'Đã hủy', 8, 1);
+    PRINT 'Added status CANCELLED (ID: 23)';
+END
+GO
+
+-- DRAFT → CANCELLED (Trưởng phòng hủy trực tiếp, RoleId 5 = DEPARTMENT_MANAGER)
+IF NOT EXISTS (SELECT 1 FROM WorkflowTransitions WHERE StatusTypeId = 1 AND FromStatusId = 1 AND ToStatusId = 23)
+BEGIN
+    INSERT INTO WorkflowTransitions (StatusTypeId, FromStatusId, ToStatusId, RequiredRoleId)
+    VALUES (1, 1, 23, 5);
+    PRINT 'Added transition: DRAFT -> CANCELLED (Dept Manager)';
+END
+
+-- RETURNED → CANCELLED (Trưởng phòng hủy khi bị trả về)
+IF NOT EXISTS (SELECT 1 FROM WorkflowTransitions WHERE StatusTypeId = 1 AND FromStatusId = 21 AND ToStatusId = 23)
+BEGIN
+    INSERT INTO WorkflowTransitions (StatusTypeId, FromStatusId, ToStatusId, RequiredRoleId)
+    VALUES (1, 21, 23, 5);
+    PRINT 'Added transition: RETURNED -> CANCELLED (Dept Manager)';
+END
+
+-- SUBMITTED → CANCEL_PENDING (Trưởng phòng yêu cầu hủy, cần HR duyệt)
+IF NOT EXISTS (SELECT 1 FROM WorkflowTransitions WHERE StatusTypeId = 1 AND FromStatusId = 2 AND ToStatusId = 22)
+BEGIN
+    INSERT INTO WorkflowTransitions (StatusTypeId, FromStatusId, ToStatusId, RequiredRoleId)
+    VALUES (1, 2, 22, 5);
+    PRINT 'Added transition: SUBMITTED -> CANCEL_PENDING (Dept Manager)';
+END
+
+-- IN_REVIEW → CANCEL_PENDING (Trưởng phòng yêu cầu hủy khi đang xem xét)
+IF NOT EXISTS (SELECT 1 FROM WorkflowTransitions WHERE StatusTypeId = 1 AND FromStatusId = 3 AND ToStatusId = 22)
+BEGIN
+    INSERT INTO WorkflowTransitions (StatusTypeId, FromStatusId, ToStatusId, RequiredRoleId)
+    VALUES (1, 3, 22, 5);
+    PRINT 'Added transition: IN_REVIEW -> CANCEL_PENDING (Dept Manager)';
+END
+
+-- CANCEL_PENDING → CANCELLED (HR Manager phê duyệt hủy)
+IF NOT EXISTS (SELECT 1 FROM WorkflowTransitions WHERE StatusTypeId = 1 AND FromStatusId = 22 AND ToStatusId = 23)
+BEGIN
+    INSERT INTO WorkflowTransitions (StatusTypeId, FromStatusId, ToStatusId, RequiredRoleId)
+    VALUES (1, 22, 23, 3);
+    PRINT 'Added transition: CANCEL_PENDING -> CANCELLED (HR Manager approves)';
+END
+
+-- CANCEL_PENDING → SUBMITTED (HR Manager từ chối hủy, hoàn lại SUBMITTED)
+IF NOT EXISTS (SELECT 1 FROM WorkflowTransitions WHERE StatusTypeId = 1 AND FromStatusId = 22 AND ToStatusId = 2)
+BEGIN
+    INSERT INTO WorkflowTransitions (StatusTypeId, FromStatusId, ToStatusId, RequiredRoleId)
+    VALUES (1, 22, 2, 3);
+    PRINT 'Added transition: CANCEL_PENDING -> SUBMITTED (HR Manager rejects cancel)';
+END
+
+-- CANCEL_PENDING → IN_REVIEW (HR Manager từ chối hủy, hoàn lại IN_REVIEW)
+IF NOT EXISTS (SELECT 1 FROM WorkflowTransitions WHERE StatusTypeId = 1 AND FromStatusId = 22 AND ToStatusId = 3)
+BEGIN
+    INSERT INTO WorkflowTransitions (StatusTypeId, FromStatusId, ToStatusId, RequiredRoleId)
+    VALUES (1, 22, 3, 3);
+    PRINT 'Added transition: CANCEL_PENDING -> IN_REVIEW (HR Manager rejects cancel)';
+END
+GO

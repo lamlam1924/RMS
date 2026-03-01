@@ -17,12 +17,12 @@ export const validateQuantity = (value) => {
 };
 
 /**
- * Validate priority input (1-5)
+ * Validate priority input (1-3)
  */
 export const validatePriority = (value) => {
   const num = parseInt(value);
-  if (isNaN(num) || num < 1 || num > 5) {
-    return 'Priority must be between 1 and 5';
+  if (isNaN(num) || num < 1 || num > 3) {
+    return 'Độ ưu tiên phải từ 1 (Khẩn cấp) đến 3 (Bình thường)';
   }
   return null;
 };

@@ -160,13 +160,13 @@ public class DeptManagerJobRequestsController : ControllerBase
     /// Submit a job request for approval (DRAFT -> SUBMITTED)
     /// </summary>
     [HttpPost("{id}/submit")]
-    public async Task<ActionResult> SubmitJobRequest(int id)
+    public async Task<ActionResult> SubmitJobRequest(int id, [FromBody] NoteDto? body = null)
     {
         var managerId = CurrentUserHelper.GetCurrentUserId(this);
         if (managerId == 0)
             return Unauthorized(new { message = "Invalid user" });
 
-        var result = await _service.SubmitJobRequestAsync(id, managerId);
+        var result = await _service.SubmitJobRequestAsync(id, managerId, body?.Note);
         if (!result.Success)
             return BadRequest(new { message = result.Message });
 
@@ -218,6 +218,25 @@ public class DeptManagerJobRequestsController : ControllerBase
         }
         
         return Ok(response);
+    }
+
+    /// <summary>
+    /// Cancel a job request.
+    /// DRAFT/RETURNED → CANCELLED directly.
+    /// SUBMITTED/IN_REVIEW → CANCEL_PENDING (awaits HR approval).
+    /// </summary>
+    [HttpPost("{id}/cancel")]
+    public async Task<IActionResult> CancelJobRequest(int id, [FromBody] NoteDto? body = null)
+    {
+        var managerId = CurrentUserHelper.GetCurrentUserId(this);
+        if (managerId == 0)
+            return Unauthorized(new { message = "Invalid user" });
+
+        var result = await _service.CancelJobRequestAsync(id, managerId, body?.Note);
+        if (!result.Success)
+            return BadRequest(new { message = result.Message });
+
+        return Ok(result);
     }
 }
 

@@ -30,8 +30,8 @@ public class DeptManagerJobRequestsService : IDeptManagerJobRequestsService
         {
             var entity = entities.First(e => e.Id == dto.Id);
             var status = await _repository.GetStatusByIdAsync(entity.StatusId);
-            dto.StatusCode = status?.Code ?? "";
             dto.CurrentStatus = status?.Name ?? "";
+            dto.StatusCode = status?.Code ?? "";
             dto.JdFileUrl = await _repository.GetJdFileUrlAsync(entity.Id);
         }
         
@@ -45,8 +45,8 @@ public class DeptManagerJobRequestsService : IDeptManagerJobRequestsService
 
         var dto = _mapper.Map<DeptManagerJobRequestDetailDto>(entity);
         var status = await _repository.GetStatusByIdAsync(entity.StatusId);
-        dto.StatusCode = status?.Code ?? "";
         dto.CurrentStatus = status?.Name ?? "";
+        dto.StatusCode = status?.Code ?? "";
         dto.JdFileUrl = await _repository.GetJdFileUrlAsync(id);
 
         // Get status history for the history list ONLY
@@ -54,7 +54,7 @@ public class DeptManagerJobRequestsService : IDeptManagerJobRequestsService
         dto.StatusHistory = _mapper.Map<List<StatusHistoryDto>>(history);
 
         // Update tracking: Mark as viewed if it was returned
-        if (dto.StatusCode == "RETURNED")
+        if (status?.Code == "RETURNED")
         {
             await _repository.UpdateLastViewedAtAsync(id, DateTimeHelper.Now);
         }
@@ -173,15 +173,17 @@ public class DeptManagerJobRequestsService : IDeptManagerJobRequestsService
                     "", "Only draft or returned job requests can be updated");
             }
 
-            // If it was RETURNED, move it back to DRAFT
+            // If it was RETURNED, use ReopenJobRequestAsync which records StatusHistory properly
             if (currentStatus.Code == "RETURNED")
             {
-                var draftStatus = await _repository.GetStatusByCodeAsync("DRAFT", 1);
-                if (draftStatus != null)
-                {
-                    entity.StatusId = draftStatus.Id;
-                    // History should be handled in a proper repository method if possible
-                }
+                var reopened = await _repository.ReopenJobRequestAsync(id, managerId);
+                if (!reopened)
+                    return ResponseHelper.CreateActionResponse(false, "", "Không thể chuyển trạng thái về bản nháp.");
+
+                // Reload entity so subsequent update uses fresh state
+                entity = await _repository.GetJobRequestByIdAsync(id, managerId);
+                if (entity == null)
+                    return ResponseHelper.CreateActionResponse(false, "", "Không tìm thấy yêu cầu sau khi chuyển trạng thái.");
             }
 
 
@@ -202,7 +204,7 @@ public class DeptManagerJobRequestsService : IDeptManagerJobRequestsService
         }
     }
 
-    public async Task<ActionResponseDto> SubmitJobRequestAsync(int id, int managerId)
+    public async Task<ActionResponseDto> SubmitJobRequestAsync(int id, int managerId, string? note = null)
     {
         try
         {
@@ -216,14 +218,14 @@ public class DeptManagerJobRequestsService : IDeptManagerJobRequestsService
             // Load status directly from DB instead of history
             var currentStatus = await _repository.GetStatusByIdAsync(entity.StatusId);
             
-            if ((currentStatus == null || currentStatus.Code != "DRAFT") && entity.StatusId != 1)
+            if (currentStatus == null || currentStatus.Code != "DRAFT")
             {
                 return ResponseHelper.CreateActionResponse(false,
                     "", $"Only draft job requests can be submitted. Current status: {currentStatus?.Code ?? "Unknown"} (ID: {entity.StatusId})");
             }
 
 
-            var success = await _repository.SubmitJobRequestAsync(id, managerId);
+            var success = await _repository.SubmitJobRequestAsync(id, managerId, note);
             
             return ResponseHelper.CreateActionResponse(success,
                 "Job request submitted successfully", "Failed to submit job request");
@@ -274,12 +276,7 @@ public class DeptManagerJobRequestsService : IDeptManagerJobRequestsService
         var entities = await _repository.GetApplicationsByJobRequestIdAsync(jobRequestId, managerId);
         var dtos = _mapper.Map<List<ApplicationSummaryDto>>(entities);
         
-        foreach (var dto in dtos)
-        {
-            var entity = entities.First(e => e.Id == dto.Id);
-            // This part is tricky because Application status is not JobRequest status
-            // Ideally application status should be included in ApplicationSummaryDto or fetched via repository
-        }
+        // ...existing code...
 
         
         return dtos;
@@ -289,5 +286,47 @@ public class DeptManagerJobRequestsService : IDeptManagerJobRequestsService
     {
         var positions = await _repository.GetPositionsByManagerIdAsync(managerId);
         return _mapper.Map<List<PositionDto>>(positions);
+    }
+
+    public async Task<ActionResponseDto> CancelJobRequestAsync(int id, int managerId, string? note)
+    {
+        try
+        {
+            var entity = await _repository.GetJobRequestByIdAsync(id, managerId);
+            if (entity == null)
+                return ResponseHelper.CreateActionResponse(false, "", "Không tìm thấy yêu cầu tuyển dụng này hoặc bạn không có quyền truy cập.");
+
+            var currentStatus = await _repository.GetStatusByIdAsync(entity.StatusId);
+            if (currentStatus == null)
+                return ResponseHelper.CreateActionResponse(false, "", "Không xác định được trạng thái hiện tại.");
+
+            var code = currentStatus.Code;
+
+            // DRAFT / RETURNED → Hủy trực tiếp
+            if (code == "DRAFT" || code == "RETURNED")
+            {
+                var success = await _repository.CancelDirectAsync(id, managerId, note);
+                return ResponseHelper.CreateActionResponse(success,
+                    "Yêu cầu tuyển dụng đã được hủy.",
+                    "Không thể hủy yêu cầu tuyển dụng.");
+            }
+
+            // SUBMITTED / IN_REVIEW → Yêu cầu hủy, chờ HR phê duyệt
+            if (code == "SUBMITTED" || code == "IN_REVIEW")
+            {
+                var success = await _repository.RequestCancelAsync(id, managerId, note);
+                return ResponseHelper.CreateActionResponse(success,
+                    "Yêu cầu hủy đã được gửi đến HR Manager để xem xét.",
+                    "Không thể gửi yêu cầu hủy.");
+            }
+
+            // Các trạng thái khác không cho phép hủy
+            return ResponseHelper.CreateActionResponse(false, "",
+                $"Không thể hủy yêu cầu ở trạng thái '{currentStatus.Name}' ({code}).");
+        }
+        catch (Exception ex)
+        {
+            return ResponseHelper.CreateActionResponse(false, "", $"Lỗi hệ thống khi hủy yêu cầu: {ex.Message}");
+        }
     }
 }

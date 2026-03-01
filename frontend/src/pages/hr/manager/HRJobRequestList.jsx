@@ -1,27 +1,25 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import hrService from "../../../services/hrService";
-import { formatVND } from "../../../utils/formatters/currency";
-import { formatDateDisplay } from "../../../utils/formatters/date";
 import {
   Search,
-  Filter,
-  Briefcase,
-  Clock,
-  ChevronRight,
-  RefreshCw,
   FileText,
   AlertCircle,
-  MoreVertical,
+  CheckCircle,
   Layers,
   Send,
   CornerUpLeft,
-  Eye,
+  Clock,
+  Inbox,
+  XCircle,
 } from "lucide-react";
-import SLABadge from "../../../components/common/SLABadge";
-import BulkActionBar, { BulkSelectCheckbox, BulkSelectAll } from "../../../components/common/BulkActionBar";
+import ActionBanners from "../../../components/common/ActionBanners";
+import BulkActionBar, { BulkSelectAll } from "../../../components/common/BulkActionBar";
+import HRJobRequestCard from "../../../components/hr/job-requests/HRJobRequestCard";
 import ConfirmationModal, { BulkProgressModal } from "../../../components/common/ConfirmationModal";
 import QuickReviewModal from "../../../components/hr/QuickReviewModal";
+import CommonFilterTab from "../../../components/common/CommonFilterTab";
+import CommonPagination from "../../../components/common/CommonPagination";
+import StatCards from "../../../components/hr/job-requests/StatCards";
 import { toast } from "../../../utils";
 
 /**
@@ -29,11 +27,13 @@ import { toast } from "../../../utils";
  * Quản lý danh sách yêu cầu cho HR Manager với tiêu chuẩn chuyên nghiệp
  */
 export default function HRJobRequestList() {
-  const navigate = useNavigate();
-  const [jobRequests, setJobRequests] = useState([]);
+  const [allJobRequests, setAllJobRequests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("pending"); // 'pending', 'all', 'in_review', 'returned', 'approved', 'rejected'
+  const [filter, setFilter] = useState("needs_action");
   const [searchTerm, setSearchTerm] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 9;
   
   // Bulk selection state
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -55,34 +55,13 @@ export default function HRJobRequestList() {
 
   useEffect(() => {
     loadJobRequests();
-  }, [filter]);
+  }, []);
 
   const loadJobRequests = async () => {
     try {
       setLoading(true);
-      let data;
-      
-      if (filter === "pending") {
-        data = await hrService.jobRequests.getPending();
-      } else if (filter === "all") {
-        data = await hrService.jobRequests.getAll();
-      } else {
-        // Gọi API theo status code: in_review, returned, approved, rejected
-        const statusMap = {
-          'in_review': 'IN_REVIEW',
-          'returned': 'RETURNED',
-          'approved': 'APPROVED',
-          'rejected': 'REJECTED'
-        };
-        const statusCode = statusMap[filter];
-        if (statusCode) {
-          data = await hrService.jobRequests.getByStatus(statusCode);
-        } else {
-          data = await hrService.jobRequests.getAll();
-        }
-      }
-      
-      setJobRequests(data || []);
+      const allData = await hrService.jobRequests.getAll();
+      setAllJobRequests(allData || []);
     } catch (error) {
       console.error("Lỗi khi tải danh sách:", error);
     } finally {
@@ -90,15 +69,37 @@ export default function HRJobRequestList() {
     }
   };
 
+  // Client-side filter by tab
+  const filterByTab = (list, key) => {
+    switch (key) {
+      case 'needs_action':   return list.filter(r => r.status?.code === 'SUBMITTED');
+      case 'in_review':      return list.filter(r => r.status?.code === 'IN_REVIEW');
+      case 'returned':       return list.filter(r => r.status?.code === 'RETURNED');
+      case 'approved':       return list.filter(r => r.status?.code === 'APPROVED');
+      case 'rejected':       return list.filter(r => r.status?.code === 'REJECTED');
+      case 'cancel_pending': return list.filter(r => r.status?.code === 'CANCEL_PENDING');
+      case 'cancelled':      return list.filter(r => r.status?.code === 'CANCELLED');
+      default:               return list.filter(r => r.status?.code !== 'DRAFT');
+    }
+  };
+
   const filteredRequests = useMemo(() => {
-    // Không cần filter nữa vì đã filter từ backend
-    return jobRequests.filter(
-      (req) =>
-        req.positionTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        req.departmentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        req.id.toString().includes(searchTerm),
-    );
-  }, [jobRequests, searchTerm]);
+    let list = filterByTab(allJobRequests, filter);
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase();
+      list = list.filter(r =>
+        r.positionTitle?.toLowerCase().includes(q) ||
+        r.departmentName?.toLowerCase().includes(q) ||
+        r.id?.toString().includes(q)
+      );
+    }
+    if (priorityFilter !== "all") {
+      if (priorityFilter === "urgent") list = list.filter(r => r.priority === 1);
+      else if (priorityFilter === "high") list = list.filter(r => r.priority === 2);
+      else if (priorityFilter === "normal") list = list.filter(r => r.priority >= 3 || !r.priority);
+    }
+    return list;
+  }, [allJobRequests, filter, searchTerm, priorityFilter]);
 
   // Bulk selection handlers
   const handleSelectAll = () => {
@@ -222,6 +223,83 @@ export default function HRJobRequestList() {
     }));
   }, [filteredRequests, selectedIds]);
 
+  // Stat counts — always from full unfiltered list
+  const statCounts = useMemo(() => {
+    const submitted     = allJobRequests.filter(r => r.status?.code === 'SUBMITTED').length;
+    const cancelPending = allJobRequests.filter(r => r.status?.code === 'CANCEL_PENDING').length;
+    const inReview      = allJobRequests.filter(r => r.status?.code === 'IN_REVIEW').length;
+    const approved      = allJobRequests.filter(r => r.status?.code === 'APPROVED').length;
+    const returned      = allJobRequests.filter(r => r.status?.code === 'RETURNED').length;
+    const rejected      = allJobRequests.filter(r => r.status?.code === 'REJECTED').length;
+    const cancelled     = allJobRequests.filter(r => r.status?.code === 'CANCELLED').length;
+    return {
+      submitted,
+      cancel_pending: cancelPending,
+      cancelPending,
+      in_review: inReview,
+      inReview,
+      approved,
+      returned,
+      rejected,
+      cancelled,
+      needs_action: submitted,
+      needsAction: submitted,
+      all: allJobRequests.filter(r => r.status?.code !== 'DRAFT').length,
+    };
+  }, [allJobRequests]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
+  const paginatedRequests = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredRequests.slice(start, start + itemsPerPage);
+  }, [filteredRequests, currentPage]);
+
+  // Reset page khi filter hoặc search thay đổi
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, searchTerm, priorityFilter]);
+
+  // Danh sách tabs cho CommonFilterTab
+  const filterTabs = [
+    { id: "all",            label: "Tất cả",          icon: <Inbox className="w-3 h-3" /> },
+    { id: "needs_action",   label: "Cần xử lý",       icon: <Send className="w-3 h-3" /> },
+    { id: "cancel_pending", label: "Duyệt hủy",       icon: <AlertCircle className="w-3 h-3" /> },
+    { id: "in_review",      label: "Chờ Director",    icon: <Clock className="w-3 h-3" /> },
+    { id: "returned",       label: "Đã trả lại",      icon: <CornerUpLeft className="w-3 h-3" /> },
+    { id: "approved",       label: "Đã duyệt",        icon: <CheckCircle className="w-3 h-3" /> },
+    { id: "rejected",       label: "Từ chối",          icon: <AlertCircle className="w-3 h-3" /> },
+    { id: "cancelled",      label: "Đã hủy",           icon: <XCircle className="w-3 h-3" /> },
+  ];
+
+  // Action banners — standardized shape for common/ActionBanners
+  const banners = useMemo(() => {
+    const result = [];
+    if (statCounts.cancelPending > 0) result.push({
+      id: 'cancel_pending',
+      color: 'border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/30',
+      iconBg: 'bg-orange-100 dark:bg-orange-900/60',
+      iconColor: 'text-orange-600 dark:text-orange-400',
+      icon: <AlertCircle className="w-4 h-4" />,
+      text: `${statCounts.cancelPending} yêu cầu hủy đang chờ xử lý`,
+      sub: 'Trưởng bộ phận đã gửi yêu cầu hủy — cần phê duyệt hoặc từ chối.',
+      actionLabel: `Xem (${statCounts.cancelPending})`,
+      filterTarget: 'cancel_pending',
+    });
+    if (statCounts.submitted > 0) result.push({
+      id: 'submitted',
+      color: 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30',
+      iconBg: 'bg-blue-100 dark:bg-blue-900/60',
+      iconColor: 'text-blue-600 dark:text-blue-400',
+      icon: <Send className="w-4 h-4" />,
+      text: `${statCounts.submitted} yêu cầu mới chờ thẩm định`,
+      sub: 'Trưởng bộ phận đã gửi yêu cầu, đang chờ bạn xem xét.',
+      actionLabel: `Xem (${statCounts.submitted})`,
+      filterTarget: 'needs_action',
+    });
+    return result;
+  }, [statCounts]);
+
   // Quick review handlers
   const handleOpenQuickReview = (e, id) => {
     e.stopPropagation();
@@ -246,10 +324,10 @@ export default function HRJobRequestList() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div className="min-h-screen bg-[#f8fafc] dark:bg-slate-900 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden transition-colors">
       {/* Background Decor */}
       <div className="fixed top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 to-indigo-600"></div>
-      <div className="fixed top-20 -right-20 w-80 h-80 bg-blue-50/50 rounded-full blur-3xl -z-10"></div>
+      <div className="fixed top-20 -right-20 w-80 h-80 bg-blue-50/50 dark:bg-blue-900/20 rounded-full blur-3xl -z-10"></div>
 
       <div className="max-w-6xl mx-auto relative z-10">
         {/* Header Section */}
@@ -263,58 +341,60 @@ export default function HRJobRequestList() {
                 Recruitment Management
               </span>
             </div>
-            <h1 className="text-4xl font-bold text-slate-900 tracking-tight">
+            <h1 className="text-4xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
               Yêu cầu Tuyển dụng
             </h1>
-            <p className="mt-2 text-slate-400 font-semibold text-xs uppercase tracking-widest">
-              Đang có {jobRequests.length} hồ sơ cần theo dõi
+            <p className="mt-2 text-slate-400 dark:text-slate-500 font-semibold text-xs uppercase tracking-widest">
+              Đang có {filteredRequests.length} hồ sơ cần theo dõi
             </p>
           </div>
         </div>
 
+        {/* Stat Cards */}
+        <StatCards
+          statCounts={statCounts}
+          currentFilter={filter}
+          onFilterChange={setFilter}
+        />
+
+        {/* Action Banners */}
+        <ActionBanners banners={banners} onFilterChange={setFilter} />
+
         {/* Search & Filters Section */}
         <div className="space-y-6 mb-10 animate-in fade-in duration-700 delay-100">
           {/* Filter Tabs */}
-          <div className="flex bg-white p-1.5 rounded-2xl border border-slate-100 shadow-sm overflow-x-auto">
-            <TabButton
-              active={filter === "pending"}
-              onClick={() => setFilter("pending")}
-              label="CHỜ XỬ LÝ"
-            />
-            <TabButton
-              active={filter === "in_review"}
-              onClick={() => setFilter("in_review")}
-              label="CHỜ DIRECTOR"
-              icon="🔍"
-            />
-            <TabButton
-              active={filter === "returned"}
-              onClick={() => setFilter("returned")}
-              label="ĐÃ TRẢ LẠI"
-              icon="↩"
-            />
-            <TabButton
-              active={filter === "approved"}
-              onClick={() => setFilter("approved")}
-              label="ĐÃ DUYỆT"
-              icon="✓"
-            />
-            <TabButton
-              active={filter === "rejected"}
-              onClick={() => setFilter("rejected")}
-              label="TỪ CHỐI"
-              icon="✕"
-            />
-            <TabButton
-              active={filter === "all"}
-              onClick={() => setFilter("all")}
-              label="TẤT CẢ"
-            />
+          <CommonFilterTab
+            filters={filterTabs}
+            statCounts={statCounts}
+            currentFilter={filter}
+            onFilterChange={setFilter}
+          />
+
+          {/* Priority Filters */}
+          <div className="flex bg-white dark:bg-slate-800 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-x-auto">
+            {[
+              { id: "all",    label: "Tất cả ưu tiên" },
+              { id: "urgent", label: "🔥 Khẩn cấp" },
+              { id: "high",   label: "⚡ Cao" },
+              { id: "normal", label: "Bình thường" },
+            ].map(p => (
+              <button
+                key={p.id}
+                onClick={() => setPriorityFilter(p.id)}
+                className={`px-5 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
+                  priorityFilter === p.id
+                    ? "bg-blue-600 dark:bg-blue-500 text-white shadow-md"
+                    : "text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
           </div>
 
           {/* Search Bar */}
           <div className="flex gap-4 items-center">
-            {filter === "pending" && filteredRequests.length > 0 && (
+            {filter === "needs_action" && filteredRequests.filter(r => r.status?.code === 'SUBMITTED').length > 0 && (
               <BulkSelectAll
                 checked={selectedIds.size === filteredRequests.length && filteredRequests.length > 0}
                 indeterminate={selectedIds.size > 0 && selectedIds.size < filteredRequests.length}
@@ -324,13 +404,13 @@ export default function HRJobRequestList() {
               />
             )}
             <div className="relative flex-1">
-              <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+              <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 dark:text-slate-400" />
               <input
                 type="text"
                 placeholder="Tìm kiếm vị trí, bộ phận, mã yêu cầu..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-14 pr-6 py-4 bg-white border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
+                className="w-full pl-14 pr-6 py-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-semibold text-slate-800 dark:text-slate-200 placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shadow-sm"
               />
             </div>
           </div>
@@ -352,159 +432,40 @@ export default function HRJobRequestList() {
             ))}
           </div>
         ) : filteredRequests.length === 0 ? (
-          <div className="text-center py-32 bg-white rounded-[3rem] border border-dashed border-slate-100 shadow-sm animate-in zoom-in duration-700">
-            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-8">
-              <FileText className="w-8 h-8 text-slate-200" />
+          <div className="text-center py-32 bg-white dark:bg-slate-800 rounded-[3rem] border border-dashed border-slate-100 dark:border-slate-700 shadow-sm animate-in zoom-in duration-700">
+            <div className="w-20 h-20 bg-slate-50 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-8">
+              <FileText className="w-8 h-8 text-slate-200 dark:text-slate-500" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
               Trống trải quá...
             </h2>
-            <p className="text-slate-400 mt-2 font-medium uppercase text-[10px] tracking-widest">
+            <p className="text-slate-400 dark:text-slate-500 mt-2 font-medium uppercase text-[10px] tracking-widest">
               {filter === "pending"
                 ? "Mọi yêu cầu đã được xử lý xong!"
                 : "Chưa có dữ liệu nào."}
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {filteredRequests.map((request) => {
-              const isSelected = selectedIds.has(request.id);
-              const canSelect = filter === "pending";
-              
-              return (
-                <div
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+              {paginatedRequests.map((request) => (
+                <HRJobRequestCard
                   key={request.id}
-                  onClick={() => {
-                    if (!canSelect) {
-                      navigate(`/staff/hr-manager/job-requests/${request.id}`);
-                    }
-                  }}
-                  className={`group relative bg-white rounded-[2.5rem] p-10 border shadow-sm hover:shadow-[0_40px_80px_rgba(0,0,0,0.06)] hover:-translate-y-2 transition-all cursor-pointer overflow-hidden ${
-                    isSelected ? 'border-blue-500 ring-2 ring-blue-200' : 'border-slate-100'
-                  }`}
-                >
-                  {/* Selection Checkbox */}
-                  {canSelect && (
-                    <div className="absolute top-6 left-6 z-20">
-                      <BulkSelectCheckbox
-                        checked={isSelected}
-                        onChange={() => handleSelectOne(request.id)}
-                      />
-                    </div>
-                  )}
-
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/20 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700"></div>
-
-                  <div className="relative z-10">
-                    <div className="flex justify-between items-start mb-8">
-                      <div 
-                        onClick={(e) => {
-                          if (canSelect) {
-                            e.stopPropagation();
-                            navigate(`/staff/hr-manager/job-requests/${request.id}`);
-                          }
-                        }}
-                        className="w-14 h-14 rounded-2xl bg-slate-50 text-slate-400 group-hover:bg-slate-900 group-hover:text-white transition-all flex items-center justify-center font-bold text-xl shadow-sm"
-                      >
-                        {request.positionTitle.charAt(0)}
-                      </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <span
-                        className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border ${
-                          request.statusId === 21
-                            ? "bg-indigo-50 text-indigo-600 border-indigo-100"
-                            : "bg-slate-50 text-slate-500 border-slate-100"
-                        }`}
-                      >
-                        {request.currentStatus}
-                      </span>
-                      {request.priority <= 2 && (
-                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-red-50 text-red-500 rounded-md animate-pulse">
-                          <AlertCircle className="w-3 h-3" />
-                          <span className="text-[8px] font-bold uppercase tracking-tighter">
-                            Urgent
-                          </span>
-                        </div>
-                      )}
-                      {/* SLA Badge */}
-                      <SLABadge 
-                        createdDate={request.createdAt} 
-                        priority={request.priority} 
-                        status={request.currentStatus}
-                        size="sm"
-                        showTime={false}
-                      />
-                    </div>
-                  </div>
-
-                  <h3 className="text-xl font-bold text-slate-900 leading-tight mb-2 truncate group-hover:text-blue-600 transition-colors">
-                    {request.positionTitle}
-                  </h3>
-                  <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-10">
-                    <Briefcase className="w-3.5 h-3.5" />
-                    <span>{request.departmentName}</span>
-                    <span className="mx-1 opacity-30">•</span>
-                    <span>#{request.id}</span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-6 pt-8 border-t border-slate-50">
-                    <div>
-                      <p className="text-[9px] text-slate-300 font-bold uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                        <ListIcon className="w-3 h-3" /> Số lượng
-                      </p>
-                      <p className="font-bold text-slate-800 text-[16px]">
-                        {request.quantity}{" "}
-                        <span className="text-[9px] font-bold text-slate-400 uppercase ml-1">
-                          Nhân sự
-                        </span>
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[9px] text-slate-300 font-bold uppercase tracking-widest mb-1.5">
-                        Ngân sách
-                      </p>
-                      <p className="font-bold text-emerald-600 text-[16px] truncate">
-                        {formatVND(request.budget)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-10 flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-slate-300">
-                      <Clock className="w-3.5 h-3.5" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest">
-                        {formatDateDisplay(request.createdAt)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {/* Quick Review Button */}
-                      {canSelect && (
-                        <button
-                          onClick={(e) => handleOpenQuickReview(e, request.id)}
-                          className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all"
-                          title="Đánh giá nhanh"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                      )}
-                      <div 
-                        onClick={(e) => {
-                          if (canSelect) {
-                            e.stopPropagation();
-                            navigate(`/staff/hr-manager/job-requests/${request.id}`);
-                          }
-                        }}
-                        className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-blue-600 group-hover:text-white group-hover:translate-x-1 transition-all"
-                      >
-                        <ChevronRight className="w-5 h-5" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-          </div>
+                  request={request}
+                  isSelected={selectedIds.has(request.id)}
+                  onSelect={handleSelectOne}
+                  onQuickReview={handleOpenQuickReview}
+                />
+              ))}
+            </div>
+            {totalPages > 1 && (
+              <CommonPagination
+                totalPages={totalPages}
+                currentPage={currentPage}
+                setCurrentPage={setCurrentPage}
+              />
+            )}
+          </>
         )}
       </div>
 
@@ -513,6 +474,8 @@ export default function HRJobRequestList() {
           RMS Recruitment Excellence Engine
         </p>
       </footer>
+
+
 
       {/* Bulk Action Bar */}
       <BulkActionBar
@@ -565,37 +528,6 @@ export default function HRJobRequestList() {
   );
 }
 
-// TabButton component
-const TabButton = ({ active, onClick, label, icon }) => (
-  <button
-    onClick={onClick}
-    className={`px-4 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-1.5 ${
-      active
-        ? "bg-slate-900 text-white shadow-lg shadow-slate-200"
-        : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
-    }`}
-  >
-    {icon && <span className="text-xs">{icon}</span>}
-    {label}
-  </button>
-);
 
-// Icon helper for consistency
-const ListIcon = ({ className }) => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <line x1="8" y1="6" x2="21" y2="6"></line>
-    <line x1="8" y1="12" x2="21" y2="12"></line>
-    <line x1="8" y1="18" x2="21" y2="18"></line>
-    <line x1="3" y1="6" x2="3.01" y2="6"></line>
-    <line x1="3" y1="12" x2="3.01" y2="12"></line>
-    <line x1="3" y1="18" x2="3.01" y2="18"></line>
-  </svg>
-);
+
+

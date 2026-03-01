@@ -8,11 +8,9 @@
  * Default SLA times in hours based on priority
  */
 export const SLA_CONFIG = {
-  1: 24,   // Priority 1 (Urgent): 24 hours
-  2: 48,   // Priority 2 (High): 48 hours
-  3: 72,   // Priority 3 (Medium): 72 hours
-  4: 96,   // Priority 4 (Normal): 96 hours
-  5: 120,  // Priority 5 (Low): 120 hours
+  1: 48,   // Priority 1 (Khẩn cấp): ~2 ngày làm việc
+  2: 120,  // Priority 2 (Cao): ~5 ngày làm việc (1 tuần)
+  3: 240,  // Priority 3 (Bình thường): ~10 ngày làm việc (2 tuần)
 };
 
 /**
@@ -148,38 +146,43 @@ function formatPositiveTime(milliseconds) {
  */
 export function getSLAStyle(slaStatus) {
   const styles = {
+    // Tier 3 — Light: còn nhiều thời gian
     [SLA_STATUS.ON_TIME]: {
-      bgColor: 'bg-green-100 dark:bg-green-900',
+      bgColor: 'bg-green-100 dark:bg-green-900/30',
       textColor: 'text-green-700 dark:text-green-300',
       borderColor: 'border-green-200 dark:border-green-700',
       icon: '✓',
       label: 'Đúng hạn',
     },
+    // Tier 2 — Medium: bắt đầu chú ý
     [SLA_STATUS.WARNING]: {
-      bgColor: 'bg-yellow-100 dark:bg-yellow-900',
-      textColor: 'text-yellow-700 dark:text-yellow-300',
-      borderColor: 'border-yellow-200 dark:border-yellow-700',
+      bgColor: 'bg-yellow-200 dark:bg-yellow-800/60',
+      textColor: 'text-yellow-900 dark:text-yellow-200',
+      borderColor: 'border-yellow-300 dark:border-yellow-600',
       icon: '⚠',
-      label: 'Cảnh báo',
+      label: 'Sắp hết hạn',
     },
+    // Solid tím: đồng hồ sắp hết — khác hoàn toàn với priority đỏ/cam
     [SLA_STATUS.CRITICAL]: {
-      bgColor: 'bg-orange-100 dark:bg-orange-900',
-      textColor: 'text-orange-700 dark:text-orange-300',
-      borderColor: 'border-orange-200 dark:border-orange-700',
+      bgColor: 'bg-violet-600 dark:bg-violet-500',
+      textColor: 'text-white dark:text-white',
+      borderColor: 'border-violet-700 dark:border-violet-400',
       icon: '⏰',
-      label: 'Khẩn cấp',
+      label: 'Sắp quá hạn',
     },
+    // Nền đen + chữ đỏ: đã trễ — nghịch ảnh với badge solid khác
     [SLA_STATUS.OVERDUE]: {
-      bgColor: 'bg-red-100 dark:bg-red-900',
-      textColor: 'text-red-700 dark:text-red-300',
-      borderColor: 'border-red-200 dark:border-red-700',
-      icon: '🔥',
+      bgColor: 'bg-gray-900 dark:bg-gray-950',
+      textColor: 'text-rose-400 dark:text-rose-400',
+      borderColor: 'border-gray-700 dark:border-gray-800',
+      icon: '⛔',
       label: 'Quá hạn',
     },
+    // Neutral: không còn SLA
     [SLA_STATUS.COMPLETED]: {
-      bgColor: 'bg-gray-100 dark:bg-gray-700',
-      textColor: 'text-gray-600 dark:text-gray-400',
-      borderColor: 'border-gray-200 dark:border-gray-600',
+      bgColor: 'bg-slate-100 dark:bg-slate-700',
+      textColor: 'text-slate-500 dark:text-slate-400',
+      borderColor: 'border-slate-200 dark:border-slate-600',
       icon: '✓',
       label: 'Hoàn thành',
     },

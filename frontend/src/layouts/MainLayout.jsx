@@ -8,25 +8,25 @@ const MENU_CONFIG = [
   // ADMIN Section
   {
     key: "admin",
-    label: "Admin",
+    label: "Quản trị viên",
     roles: [ROLES.ADMIN],
     children: [
-      { key: "adminDashboard", label: "Dashboard", to: "/staff/admin" },
-      { key: "adminUsers", label: "User Management", to: "/staff/admin/users" },
-      { key: "adminRoles", label: "Role Management", to: "/staff/admin/roles" },
+      { key: "adminDashboard", label: "Tổng quan", to: "/staff/admin" },
+      { key: "adminUsers", label: "Quản lý Người dùng", to: "/staff/admin/users" },
+      { key: "adminRoles", label: "Quản lý Vai trò", to: "/staff/admin/roles" },
       {
         key: "adminDepartments",
-        label: "Department Management",
+        label: "Quản lý Phòng ban",
         to: "/staff/admin/departments",
       },
       {
         key: "adminWorkflow",
-        label: "Workflow Management",
+        label: "Quản lý Quy trình",
         to: "/staff/admin/workflow",
       },
       {
         key: "adminConfig",
-        label: "System Configuration",
+        label: "Cấu hình Hệ thống",
         to: "/staff/admin/config",
       },
     ],
@@ -35,18 +35,18 @@ const MENU_CONFIG = [
   // DIRECTOR Section
   {
     key: "director",
-    label: "Director",
+    label: "Giám đốc",
     roles: [ROLES.DIRECTOR],
     children: [
-      { key: "directorDashboard", label: "Dashboard", to: "/staff/director" },
+      { key: "directorDashboard", label: "Tổng quan", to: "/staff/director" },
       {
         key: "directorJobRequests",
-        label: "Job Request Approvals",
+        label: "Duyệt Yêu cầu Tuyển dụng",
         to: "/staff/director/job-requests",
       },
       {
         key: "directorOffers",
-        label: "Offer Approvals",
+        label: "Duyệt Đề nghị Tuyển dụng",
         to: "/staff/director/offers",
       },
     ],
@@ -55,69 +55,69 @@ const MENU_CONFIG = [
   // DEPARTMENT MANAGER Section
   {
     key: "deptManager",
-    label: "Department Manager",
+    label: "Trưởng phòng ban",
     roles: [ROLES.DEPARTMENT_MANAGER],
     children: [
       {
         key: "deptManagerDashboard",
-        label: "Dashboard",
+        label: "Tổng quan",
         to: "/staff/dept-manager",
       },
       {
         key: "deptManagerJobRequests",
-        label: "Job Requests",
+        label: "Yêu cầu Tuyển dụng",
         to: "/staff/dept-manager/job-requests",
       },
       {
         key: "deptManagerInterviews",
-        label: "My Interviews",
+        label: "Phỏng vấn của tôi",
         to: "/staff/dept-manager/interviews",
       },
     ],
   },
 
-  // HR MANAGER Section (Strategic Dashboard + Approval Functions)
+  // HR MANAGER Section
   {
     key: "hrManager",
-    label: "HR Manager",
+    label: "Trưởng phòng nhân sự",
     roles: [ROLES.HR_MANAGER],
     children: [
       {
         key: "hrManagerDashboard",
-        label: "Dashboard",
+        label: "Tổng quan",
         to: "/staff/hr-manager",
       },
       {
         key: "hrManagerJobRequests",
-        label: "Job Requests",
+        label: "Yêu cầu Tuyển dụng",
         to: "/staff/hr-manager/job-requests",
       },
     ],
   },
 
-  // HR STAFF Section (Operational Functions)
+  // HR STAFF Section
   {
     key: "hrStaff",
-    label: "HR Staff",
+    label: "Nhân viên nhân sự",
     roles: [ROLES.HR_STAFF],
     children: [
       {
         key: "hrStaffJobPostings",
-        label: "Job Postings",
+        label: "Tin tuyển dụng",
         to: "/staff/hr-staff/job-postings",
       },
     ],
   },
 
-  // EMPLOYEE Section (Interview Participation)
+  // EMPLOYEE Section
   {
     key: "employee",
-    label: "Employee",
+    label: "Nhân viên",
     roles: [ROLES.EMPLOYEE],
     children: [
       {
         key: "employeeInterviews",
-        label: "My Interviews",
+        label: "Phỏng vấn của tôi",
         to: "/staff/employee/interviews",
       },
     ],
@@ -133,19 +133,19 @@ const MENU_CONFIG = [
   // Shared Operations (HR Manager + HR Staff)
   {
     key: "sharedApplications",
-    label: "Applications",
+    label: "Hồ sơ Ứng tuyển",
     to: "/staff/hr-manager/applications",
     roles: [ROLES.HR_MANAGER, ROLES.HR_STAFF],
   },
   {
     key: "sharedInterviews",
-    label: "Interviews",
+    label: "Phỏng vấn",
     to: "/staff/hr-manager/interviews",
     roles: [ROLES.HR_MANAGER, ROLES.HR_STAFF],
   },
   {
     key: "sharedOffers",
-    label: "Offers",
+    label: "Đề nghị Tuyển dụng",
     to: "/staff/hr-manager/offers",
     roles: [ROLES.HR_MANAGER, ROLES.HR_STAFF],
   },
@@ -193,7 +193,7 @@ export default function MainLayout() {
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 transition-colors lg:hidden"
-            aria-label="toggle menu"
+            aria-label="mở/đóng menu"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -204,8 +204,8 @@ export default function MainLayout() {
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             className="hidden lg:block p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 transition-colors"
-            aria-label="collapse sidebar"
-            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label="thu gọn thanh bên"
+            title={sidebarCollapsed ? "Mở rộng thanh bên" : "Thu gọn thanh bên"}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               {sidebarCollapsed ? (
@@ -222,7 +222,7 @@ export default function MainLayout() {
             </div>
             <div className="hidden sm:block">
               <div className="font-bold text-xl text-gray-900 dark:text-slate-100">RMS</div>
-              <div className="text-xs text-gray-500 dark:text-slate-400 -mt-0.5">Recruitment Management</div>
+              <div className="text-xs text-gray-500 dark:text-slate-400 -mt-0.5">Quản lý Tuyển dụng</div>
             </div>
           </div>
         </div>
@@ -231,8 +231,8 @@ export default function MainLayout() {
           {/* Notifications */}
           <button
             className="relative p-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-600 dark:text-slate-300 transition-all"
-            aria-label="notifications"
-            title="Notifications"
+            aria-label="thông báo"
+            title="Thông báo"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -248,8 +248,8 @@ export default function MainLayout() {
           <button
             onClick={toggleDarkMode}
             className="p-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-600 dark:text-slate-300 transition-all"
-            aria-label="toggle dark mode"
-            title={isDark ? "Light Mode" : "Dark Mode"}
+            aria-label="chuyển chế độ tối/sáng"
+            title={isDark ? "Chế độ Sáng" : "Chế độ Tối"}
           >
             {isDark ? (
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -277,8 +277,8 @@ export default function MainLayout() {
           <button
             onClick={handleLogout}
             className="p-2.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-600 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400 transition-all border border-transparent hover:border-red-200 dark:hover:border-red-800"
-            aria-label="logout"
-            title="Logout"
+            aria-label="đăng xuất"
+            title="Đăng xuất"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />

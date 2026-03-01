@@ -23,7 +23,7 @@ public interface IDeptManagerJobRequestsRepository
     Task<bool> DeleteJobRequestAsync(int id, int managerId);
     
     /// <summary>Gửi yêu cầu (chuyển trạng thái DRAFT -> SUBMITTED)</summary>
-    Task<bool> SubmitJobRequestAsync(int id, int managerId);
+    Task<bool> SubmitJobRequestAsync(int id, int managerId, string? note = null);
     
     /// <summary>Mở lại yêu cầu đã bị trả về</summary>
     Task<bool> ReopenJobRequestAsync(int id, int managerId);
@@ -51,4 +51,10 @@ public interface IDeptManagerJobRequestsRepository
     
     /// <summary>Lấy URL file JD</summary>
     Task<string?> GetJdFileUrlAsync(int jobRequestId);
+
+    /// <summary>Hủy trực tiếp (DRAFT/RETURNED → CANCELLED)</summary>
+    Task<bool> CancelDirectAsync(int id, int managerId, string? note = null);
+
+    /// <summary>Yêu cầu hủy qua HR (SUBMITTED/IN_REVIEW → CANCEL_PENDING)</summary>
+    Task<bool> RequestCancelAsync(int id, int managerId, string? note = null);
 }

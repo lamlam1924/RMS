@@ -5,6 +5,7 @@ namespace RMS.Service.Interface;
 public interface IDirectorService
 {
     Task<List<JobRequestListDto>> GetPendingJobRequestsAsync();
+    Task<List<JobRequestListDto>> GetProcessedJobRequestsAsync(int directorId);
     Task<JobRequestDetailDto?> GetJobRequestDetailAsync(int id);
     Task<ApprovalActionResponseDto> ApproveJobRequestAsync(JobRequestApprovalActionDto request, int directorId);
     Task<ApprovalActionResponseDto> RejectJobRequestAsync(JobRequestApprovalActionDto request, int directorId);

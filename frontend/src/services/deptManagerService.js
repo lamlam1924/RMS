@@ -19,8 +19,9 @@ const deptManagerService = {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
     },
-    submit: (id) => api.post(`/dept-manager/job-requests/${id}/submit`),
+    submit: (id, note) => api.post(`/dept-manager/job-requests/${id}/submit`, { note: note || null }),
     reopen: (id) => api.post(`/dept-manager/job-requests/${id}/reopen`),
+    cancel: (id, note) => api.post(`/dept-manager/job-requests/${id}/cancel`, { note: note || null }),
     delete: (id) => api.delete(`/dept-manager/job-requests/${id}`),
 
     getPositions: () => api.get('/dept-manager/job-requests/positions'),

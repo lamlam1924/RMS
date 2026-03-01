@@ -1,30 +1,24 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import deptManagerService from "../../services/deptManagerService";
-import { formatVND } from "../../utils/formatters/currency";
-import { formatDateDisplay } from "../../utils/formatters/date";
-import { calculateDaysPending, getDaysPendingLabel, isPendingUrgent } from "../../utils/helpers/dateUtils";
-import { toast } from "../../utils";
+import { calculateDaysPending } from "../../utils/helpers/dateUtils";
 import {
   Plus,
   Search,
   Briefcase,
   Clock,
-  ChevronRight,
-  Filter,
+  ChevronLeft,
+  ChevronRight as ChevronRightIcon,
   FilePlus,
-  AlertCircle,
   FileText,
   CheckCircle2,
   Inbox,
-  MoreVertical,
-  Edit,
-  Send,
-  Trash2,
-  ChevronLeft,
-  ChevronRight as ChevronRightIcon,
+  RotateCcw,
+  Hourglass,
 } from "lucide-react";
-import SLABadge from "../../components/common/SLABadge";
+import StatCards from "../../components/department-manager/job-requests/StatCards";
+import ActionBanners from "../../components/common/ActionBanners";
+import JobRequestCard from "../../components/department-manager/job-requests/JobRequestCard";
 
 /**
  * DeptManagerJobRequestList Component - Refined Edition
@@ -33,10 +27,11 @@ import SLABadge from "../../components/common/SLABadge";
 export default function DeptManagerJobRequestList() {
   const navigate = useNavigate();
   const [jobRequests, setJobRequests] = useState([]);
+  const [allJobRequests, setAllJobRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [priorityFilter, setPriorityFilter] = useState("all"); // all, urgent, high, normal
+  const [priorityFilter, setPriorityFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 9;
 
@@ -48,17 +43,26 @@ export default function DeptManagerJobRequestList() {
     try {
       setLoading(true);
       const data = await deptManagerService.jobRequests.getAll();
+      const all = data || [];
+      setAllJobRequests(all);
 
-      let filtered = data || [];
+      let filtered = all;
       if (filter === "draft") {
-        filtered = data.filter((jr) => jr.statusCode === "DRAFT");
+        filtered = all.filter((jr) => jr.statusCode === "DRAFT");
       } else if (filter === "pending") {
-        filtered = data.filter(
-          (jr) =>
-            jr.statusCode === "SUBMITTED" || jr.statusCode === "IN_REVIEW",
+        filtered = all.filter((jr) =>
+          ["SUBMITTED", "IN_REVIEW"].includes(jr.statusCode)
         );
       } else if (filter === "approved") {
-        filtered = data.filter((jr) => jr.statusCode === "APPROVED");
+        filtered = all.filter((jr) => jr.statusCode === "APPROVED");
+      } else if (filter === "returned") {
+        filtered = all.filter((jr) => jr.statusCode === "RETURNED");
+      } else if (filter === "cancel_pending") {
+        filtered = all.filter((jr) => jr.statusCode === "CANCEL_PENDING");
+      } else if (filter === "cancelled") {
+        filtered = all.filter((jr) => jr.statusCode === "CANCELLED");
+      } else if (filter === "rejected") {
+        filtered = all.filter((jr) => jr.statusCode === "REJECTED");
       }
 
       setJobRequests(filtered);
@@ -67,7 +71,7 @@ export default function DeptManagerJobRequestList() {
     } finally {
       setLoading(false);
     }
-  };
+  };;
 
   const filteredRequests = useMemo(() => {
     let filtered = jobRequests.filter(
@@ -98,33 +102,67 @@ export default function DeptManagerJobRequestList() {
     setCurrentPage(1);
   }, [filter, searchTerm, priorityFilter]);
 
-  const getPriorityStyle = (priority) => {
-    if (priority === 1) {
-      return {
-        label: "Khẩn cấp",
-        bg: "bg-red-600",
-        text: "text-white",
-        border: "border-red-600",
-        dot: "bg-red-500"
-      };
+  // Stat counts (always from full unfiltered list)
+  const statCounts = useMemo(() => ({
+    draft:      allJobRequests.filter(jr => jr.statusCode === "DRAFT").length,
+    returned:   allJobRequests.filter(jr => jr.statusCode === "RETURNED").length,
+    processing: allJobRequests.filter(jr => ["SUBMITTED","IN_REVIEW","CANCEL_PENDING"].includes(jr.statusCode)).length,
+    approved:   allJobRequests.filter(jr => jr.statusCode === "APPROVED").length,
+    // per-tab counts
+    pending:      allJobRequests.filter(jr => ["SUBMITTED","IN_REVIEW"].includes(jr.statusCode)).length,
+    cancelPending: allJobRequests.filter(jr => jr.statusCode === "CANCEL_PENDING").length,
+    cancelled:    allJobRequests.filter(jr => jr.statusCode === "CANCELLED").length,
+    rejected:     allJobRequests.filter(jr => jr.statusCode === "REJECTED").length,
+    all:          allJobRequests.length,
+  }), [allJobRequests]);
+
+  // Action banners
+  const allBanners = useMemo(() => {
+    const banners = [];
+    if (statCounts.returned > 0) {
+      banners.push({
+        id: "returned",
+        priority: 1,
+        color: "bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-800",
+        iconBg: "bg-orange-100 dark:bg-orange-900/60",
+        iconColor: "text-orange-600 dark:text-orange-400",
+        icon: <RotateCcw className="w-4 h-4" />,
+        text: `${statCounts.returned} yêu cầu bị trả về — cần chỉnh sửa theo phản hồi HR`,
+        actionLabel: `Xem (${statCounts.returned})`,
+        filterTarget: "returned",
+      });
     }
-    if (priority === 2) {
-      return {
-        label: "Cao",
-        bg: "bg-orange-600",
-        text: "text-white",
-        border: "border-orange-600",
-        dot: "bg-orange-500"
-      };
+    const oldDrafts = allJobRequests.filter(
+      jr => jr.statusCode === "DRAFT" && calculateDaysPending(jr.createdAt) > 1
+    ).length;
+    if (oldDrafts > 0) {
+      banners.push({
+        id: "old_draft",
+        priority: 2,
+        color: "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800",
+        iconBg: "bg-amber-100 dark:bg-amber-900/60",
+        iconColor: "text-amber-600 dark:text-amber-400",
+        icon: <FileText className="w-4 h-4" />,
+        text: `${oldDrafts} bản nháp chưa gửi duyệt hơn 1 ngày`,
+        actionLabel: `Xem (${oldDrafts})`,
+        filterTarget: "draft",
+      });
     }
-    return {
-      label: "Bình thường",
-      bg: "bg-blue-600",
-      text: "text-white",
-      border: "border-blue-600",
-      dot: "bg-blue-500"
-    };
-  };
+    if (statCounts.cancelPending > 0) {
+      banners.push({
+        id: "cancel_pending",
+        priority: 3,
+        color: "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800",
+        iconBg: "bg-blue-100 dark:bg-blue-900/60",
+        iconColor: "text-blue-600 dark:text-blue-400",
+        icon: <Hourglass className="w-4 h-4" />,
+        text: `${statCounts.cancelPending} yêu cầu hủy đang chờ HR xử lý`,
+        actionLabel: `Xem (${statCounts.cancelPending})`,
+        filterTarget: "cancel_pending",
+      });
+    }
+    return banners;
+  }, [allJobRequests, statCounts]);
 
   return (
     <div className="min-h-screen bg-[#f8fafc] dark:bg-slate-900 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden transition-colors">
@@ -163,27 +201,50 @@ export default function DeptManagerJobRequestList() {
           </button>
         </div>
 
+        {/* === ROW 1: Stat Cards === */}
+        <StatCards
+          statCounts={statCounts}
+          currentFilter={filter}
+          onFilterChange={setFilter}
+        />
+
+        {/* === ROW 2: Action Banners === */}
+        <ActionBanners banners={allBanners} onFilterChange={setFilter} />
+
         {/* Search & Filters */}
         <div className="space-y-6 mb-10 animate-in fade-in duration-700 delay-100">
           {/* Status Filters */}
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex bg-white dark:bg-slate-800 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-x-auto">
               {[
-                {  id: "all", label: "Tất cả", icon: <Inbox className="w-3 h-3" /> },
-                { id: "draft", label: "Bản nháp", icon: <FileText className="w-3 h-3" /> },
-                { id: "pending", label: "Đang chờ", icon: <Clock className="w-3 h-3" /> },
-                { id: "approved", label: "Đã duyệt", icon: <CheckCircle2 className="w-3 h-3" /> },
+                { id: "all",            label: "Tất cả",       icon: <Inbox className="w-3 h-3" />,                    count: statCounts.all },
+                { id: "draft",          label: "Bản nháp",     icon: <FileText className="w-3 h-3" />,                  count: statCounts.draft },
+                { id: "pending",        label: "Đang chờ",     icon: <Clock className="w-3 h-3" />,                     count: statCounts.pending },
+                { id: "approved",       label: "Đã duyệt",     icon: <CheckCircle2 className="w-3 h-3" />,              count: statCounts.approved },
+                { id: "returned",       label: "Bị trả",       icon: <span className="text-[10px]">↩</span>,            count: statCounts.returned },
+                { id: "cancel_pending", label: "Chờ duyệt hủy", icon: <span className="text-[10px]">⏳</span>,           count: statCounts.cancelPending },
+                { id: "cancelled",      label: "Đã hủy",        icon: <span className="text-[10px]">×</span>,             count: statCounts.cancelled },
+                { id: "rejected",       label: "Từ chối",        icon: <span className="text-[10px]">🚫</span>,            count: statCounts.rejected },
               ].map((f) => (
                 <button
                   key={f.id}
                   onClick={() => setFilter(f.id)}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
+                  className={`flex items-center gap-2 px-5 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
                     filter === f.id
                       ? "bg-slate-900 dark:bg-slate-700 text-white shadow-md"
                       : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-700"
                   }`}
                 >
                   {f.icon} {f.label}
+                  {f.count > 0 && (
+                    <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold ${
+                      filter === f.id
+                        ? "bg-white/20 text-white"
+                        : "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
+                    }`}>
+                      {f.count}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -259,115 +320,9 @@ export default function DeptManagerJobRequestList() {
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-              {paginatedRequests.map((request) => {
-                const daysPending = calculateDaysPending(request.createdAt);
-                const priorityStyle = getPriorityStyle(request.priority || 3);
-                
-                return (
-                  <div
-                    key={request.id}
-                    className="group relative bg-white dark:bg-slate-800 rounded-[2.5rem] p-10 border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:-translate-y-1 hover:border-slate-300 dark:hover:border-slate-600 transition-all cursor-pointer overflow-hidden"
-                  >
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/30 dark:bg-blue-900/20 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700"></div>
-
-                    <div className="relative z-10">
-                      <div className="flex justify-between items-start mb-8">
-                        <div className="w-14 h-14 rounded-2xl bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 shadow-sm flex items-center justify-center font-bold text-xl text-slate-800 dark:text-slate-200 group-hover:bg-gradient-to-br group-hover:from-slate-900 group-hover:to-slate-800 group-hover:text-white group-hover:border-slate-800 transition-all">
-                          {request.positionTitle.charAt(0)}
-                        </div>
-                        <div className="flex flex-col gap-2 items-end">
-                          <span
-                            className={`px-3 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest border-2 transition-all ${
-                              request.statusCode === "RETURNED"
-                                ? "bg-red-50 text-red-700 border-red-200 animate-pulse"
-                                : request.statusCode === "APPROVED"
-                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                  : "bg-blue-50 text-blue-700 border-blue-200"
-                            }`}
-                          >
-                            {request.statusCode === "RETURNED"
-                              ? "⚠️ Yêu cầu sửa"
-                              : request.statusCode}
-                          </span>
-                          {/* Priority Badge */}
-                          <span className={`px-3 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest border-2 ${priorityStyle.bg} ${priorityStyle.text} ${priorityStyle.border} shadow-sm ${request.priority === 1 ? 'animate-pulse' : ''}`}>
-                            {priorityStyle.label}
-                          </span>
-                          {/* SLA Badge */}
-                          <SLABadge 
-                            createdDate={request.createdAt} 
-                            priority={request.priority || 3} 
-                            status={request.statusCode}
-                            size="sm"
-                            showTime={false}
-                          />
-                        </div>
-                      </div>
-
-                      <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight mb-2 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                        {request.positionTitle}
-                      </h3>
-                      <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-10">
-                        <span>#{request.id}</span>
-                        <span className="mx-1 opacity-30">•</span>
-                        <span className="truncate">{request.departmentName}</span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-6 pt-8 border-t-2 border-slate-200 dark:border-slate-700">
-                        <div>
-                          <p className="text-[9px] text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                            <Plus className="w-3 h-3 rotate-45" /> Số lượng
-                          </p>
-                          <p className="font-bold text-slate-900 dark:text-slate-100 text-[16px]">
-                            {request.quantity}{" "}
-                            <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase ml-1">
-                              NS
-                            </span>
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-[9px] text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest mb-1.5">
-                            Ngân sách
-                          </p>
-                          <p className="font-bold text-emerald-700 dark:text-emerald-400 text-[16px] truncate">
-                            {formatVND(request.budget)}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="mt-10 flex items-center justify-between">
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                            <Clock className="w-3.5 h-3.5" />
-                            <span className="text-[10px] font-bold uppercase tracking-widest">
-                              {formatDateDisplay(request.createdAt)}
-                            </span>
-                          </div>
-                          {/* Days Pending */}
-                          {daysPending > 0 && (
-                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md ${
-                              isPendingUrgent(daysPending) 
-                                ? 'bg-red-100 text-red-700' 
-                                : 'bg-slate-100 text-slate-600'
-                            }`}>
-                              {getDaysPendingLabel(daysPending)} trước
-                            </span>
-                          )}
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/staff/dept-manager/job-requests/${request.id}`);
-                          }}
-                          className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-300 group-hover:bg-gradient-to-br group-hover:from-blue-600 group-hover:to-indigo-600 group-hover:text-white group-hover:translate-x-1 transition-all shadow-sm"
-                        >
-                          <ChevronRight className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+              {paginatedRequests.map((request) => (
+                <JobRequestCard key={request.id} request={request} />
+              ))}
             </div>
 
             {/* Pagination Controls */}

@@ -8,11 +8,11 @@ export const useJobRequestActions = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    const submit = async (id, onSuccess) => {
+    const submit = async (id, note, onSuccess) => {
         try {
             setLoading(true);
             setError(null);
-            await deptManagerService.jobRequests.submit(id);
+            await deptManagerService.jobRequests.submit(id, note);
             if (onSuccess) onSuccess();
             return true;
         } catch (err) {
@@ -64,10 +64,27 @@ export const useJobRequestActions = () => {
         }
     };
 
+    const cancel = async (id, note, onSuccess) => {
+        try {
+            setLoading(true);
+            setError(null);
+            await deptManagerService.jobRequests.cancel(id, note);
+            if (onSuccess) onSuccess();
+            return true;
+        } catch (err) {
+            const msg = err.response?.data?.message || 'Không thể hủy yêu cầu.';
+            setError(msg);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return {
         submit,
         reopen,
         deleteRequest,
+        cancel,
         loading,
         error
     };

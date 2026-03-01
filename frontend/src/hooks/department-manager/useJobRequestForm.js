@@ -63,7 +63,7 @@ export const useJobRequestForm = (initialData = {}) => {
    * Handle file input change
    */
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0] ?? null;
     setFormData(prev => ({
       ...prev,
       jdFile: file

@@ -83,6 +83,34 @@ const hrService = {
       return response.json();
     },
 
+    // Phê duyệt yêu cầu hủy (CANCEL_PENDING -> CANCELLED)
+    approveCancelRequest: async (id, note = '') => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/job-requests/${id}/approve-cancel`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ note })
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Không thể phê duyệt yêu cầu hủy');
+      }
+      return response.json();
+    },
+
+    // Từ chối yêu cầu hủy (CANCEL_PENDING -> trạng thái trước)
+    rejectCancelRequest: async (id, note = '') => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/job-requests/${id}/reject-cancel`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ note })
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Không thể từ chối yêu cầu hủy');
+      }
+      return response.json();
+    },
+
     // ===== BULK OPERATIONS =====
     /**
      * Bulk forward multiple job requests to director

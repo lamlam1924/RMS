@@ -40,9 +40,43 @@ export const useHRJobRequestActions = () => {
         }
     };
 
+    const approveCancel = async (id, note, onSuccess) => {
+        try {
+            setLoading(true);
+            setError(null);
+            await hrService.jobRequests.approveCancelRequest(id, note);
+            if (onSuccess) onSuccess();
+            return true;
+        } catch (err) {
+            const msg = err.message || 'Không thể phê duyệt yêu cầu hủy.';
+            setError(msg);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const rejectCancel = async (id, note, onSuccess) => {
+        try {
+            setLoading(true);
+            setError(null);
+            await hrService.jobRequests.rejectCancelRequest(id, note);
+            if (onSuccess) onSuccess();
+            return true;
+        } catch (err) {
+            const msg = err.message || 'Không thể từ chối yêu cầu hủy.';
+            setError(msg);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return {
         forward,
         returnRequest,
+        approveCancel,
+        rejectCancel,
         loading,
         error
     };

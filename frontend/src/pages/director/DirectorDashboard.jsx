@@ -166,7 +166,7 @@ const DirectorDashboard = () => {
                   <h2 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
                     <span className="text-2xl">🚨</span> Ưu tiên xử lý ngay
                   </h2>
-                  <span className="px-3 py-1 bg-red-50 text-red-500 rounded-full text-[10px] font-bold uppercase tracking-widest border border-red-100 animate-pulse">
+                  <span className="px-3 py-1 bg-red-50 text-red-500 rounded-full text-[10px] font-bold uppercase tracking-widest border border-red-100">
                     {urgentRequests.length} tin mới
                   </span>
                 </div>
@@ -388,7 +388,7 @@ const LoadingSpinner = () => (
       <div className="absolute inset-0 border-4 border-slate-50 rounded-full"></div>
       <div className="absolute inset-0 border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
     </div>
-    <span className="text-slate-400 text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">
+    <span className="text-slate-400 text-[10px] font-black uppercase tracking-[0.3em]">
       Đang nạp dữ liệu quản trị...
     </span>
   </div>
