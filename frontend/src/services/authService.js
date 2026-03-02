@@ -140,8 +140,15 @@ export const authService = {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Login failed');
+      const text = await response.text();
+      let message = 'Đăng nhập thất bại';
+      try {
+        const error = JSON.parse(text);
+        message = error.message || message;
+      } catch (_) {
+        if (text) message = text;
+      }
+      throw new Error(message);
     }
 
     const data = await response.json();

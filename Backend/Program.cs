@@ -175,6 +175,7 @@ builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IAdminUserService, AdminUserService>();
+builder.Services.AddScoped<IAdminRoleService, AdminRoleService>();
 builder.Services.AddScoped<IMediaService, MediaService>();
 builder.Services.AddScoped<IDeptManagerDashboardService, DeptManagerDashboardService>();
 builder.Services.AddScoped<IAdminDepartmentService, AdminDepartmentService>();

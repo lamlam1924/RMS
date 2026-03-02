@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import PageShell from "../../layouts/PageShell";
 import { roleService } from "../../services/adminService";
 
 export default function RoleDetail() {
   const { id } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
-  const isNew = id === "new";
-  const isEdit = window.location.pathname.includes("/edit");
+  const isNew = id === "new" || (id === undefined && location.pathname.endsWith("/new"));
+  const isEdit = location.pathname.includes("/edit");
+  const isValidId = isNew || (id != null && id !== "undefined" && !Number.isNaN(Number(id)));
 
   const [role, setRole] = useState({
     roleName: "",
+    code: "",
     description: "",
     permissions: [],
   });
@@ -18,23 +21,35 @@ export default function RoleDetail() {
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [submitError, setSubmitError] = useState(null);
 
   useEffect(() => {
+    if (!isValidId && !isNew) {
+      navigate("/staff/admin/roles", { replace: true });
+      return;
+    }
     loadData();
-  }, [id]);
+  }, [id, isValidId]);
 
   const loadData = async () => {
     try {
-      setLoading(true);
+      if (!isNew) setLoading(true);
 
-      // Load available permissions
-      const permissions = await roleService.getPermissions();
-      setAvailablePermissions(permissions);
+      try {
+        const permissions = await roleService.getPermissions();
+        setAvailablePermissions(permissions || []);
+      } catch {
+        setAvailablePermissions([]);
+      }
 
-      // Load role data if editing
-      if (!isNew) {
+      if (!isNew && id != null && id !== "undefined") {
         const roleData = await roleService.getById(id);
-        setRole(roleData);
+        setRole({
+          roleName: roleData.roleName ?? "",
+          code: roleData.code ?? "",
+          description: roleData.description ?? "",
+          permissions: roleData.permissions || [],
+        });
       }
 
       setError(null);
@@ -48,21 +63,20 @@ export default function RoleDetail() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    setSubmitError(null);
     try {
       setSaving(true);
-
       if (isNew) {
         await roleService.create(role);
-        alert("Role created successfully!");
+        alert("Tạo vai trò thành công!");
+        navigate("/staff/admin/roles");
       } else {
         await roleService.update(id, role);
-        alert("Role updated successfully!");
+        alert("Cập nhật vai trò thành công!");
+        navigate("/staff/admin/roles");
       }
-
-      navigate("/admin/roles");
     } catch (err) {
-      alert("Error saving role: " + err.message);
+      setSubmitError(err.message || "Không thể lưu. Vui lòng thử lại.");
     } finally {
       setSaving(false);
     }
@@ -90,9 +104,10 @@ export default function RoleDetail() {
     });
   };
 
-  if (loading) {
+  if (!isValidId && !isNew) return null;
+  if (loading && !isNew) {
     return (
-      <PageShell title={isNew ? "New Role" : "Role Details"}>
+      <PageShell title="Role Details">
         <div style={centerText}>Loading...</div>
       </PageShell>
     );
@@ -115,13 +130,13 @@ export default function RoleDetail() {
           <div style={actionButtons}>
             <button
               style={btnSecondary}
-              onClick={() => navigate("/admin/roles")}
+              onClick={() => navigate("/staff/admin/roles")}
             >
               ← Back
             </button>
             <button
               style={btnPrimary}
-              onClick={() => navigate(`/admin/roles/${id}/edit`)}
+              onClick={() => navigate(`/staff/admin/roles/${id}/edit`)}
             >
               ✏️ Edit
             </button>
@@ -133,6 +148,7 @@ export default function RoleDetail() {
             <h3 style={sectionTitle}>Basic Information</h3>
             <div style={detailGrid}>
               <DetailItem label="Role Name" value={role.roleName} />
+              <DetailItem label="Code" value={role.code} />
               <DetailItem
                 label="System Role"
                 value={role.isSystemRole ? "Yes" : "No"}
@@ -185,12 +201,17 @@ export default function RoleDetail() {
     <PageShell
       title={isNew ? "Create New Role" : "Edit Role"}
       right={
-        <button style={btnSecondary} onClick={() => navigate("/admin/roles")}>
+        <button style={btnSecondary} onClick={() => navigate("/staff/admin/roles")}>
           ← Cancel
         </button>
       }
     >
       <form onSubmit={handleSubmit} style={formCard}>
+        {submitError && (
+          <div style={{ marginBottom: 16, padding: 12, background: "#fef2f2", color: "#b91c1c", borderRadius: 8 }}>
+            {submitError}
+          </div>
+        )}
         <div style={formSection}>
           <h3 style={sectionTitle}>Basic Information</h3>
 
@@ -202,9 +223,28 @@ export default function RoleDetail() {
               onChange={handleChange}
               required
               style={input}
-              placeholder="Enter role name"
+              placeholder="Nhập tên vai trò"
             />
           </FormField>
+
+          {isNew && (
+            <FormField label="Code" required>
+              <input
+                type="text"
+                name="code"
+                value={role.code}
+                onChange={handleChange}
+                required
+                style={input}
+                placeholder="VD: CUSTOM_ROLE (viết hoa, gạch dưới)"
+              />
+            </FormField>
+          )}
+          {!isNew && role.code && (
+            <FormField label="Code">
+              <input type="text" value={role.code} readOnly style={{ ...input, backgroundColor: "#f1f5f9", cursor: "not-allowed" }} />
+            </FormField>
+          )}
 
           <FormField label="Description">
             <textarea
@@ -247,7 +287,7 @@ export default function RoleDetail() {
           <button
             type="button"
             style={btnSecondary}
-            onClick={() => navigate("/admin/roles")}
+            onClick={() => navigate("/staff/admin/roles")}
           >
             Cancel
           </button>

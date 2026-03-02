@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import deptManagerService from '../../services/deptManagerService';
 import { useJobRequestForm } from '../../hooks/department-manager/useJobRequestForm';

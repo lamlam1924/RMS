@@ -71,7 +71,7 @@ export default function RoleList() {
     <PageShell
       title="Role Management"
       right={
-        <button style={btnPrimary} onClick={() => navigate("/admin/roles/new")}>
+        <button style={btnPrimary} onClick={() => navigate("/staff/admin/roles/new")}>
           + Add New Role
         </button>
       }
@@ -99,14 +99,14 @@ export default function RoleList() {
                 <div style={actionButtons}>
                   <button
                     style={{ ...btnIcon, color: "#3b82f6" }}
-                    onClick={() => navigate(`/admin/roles/${role.roleId}`)}
+                    onClick={() => navigate(`/staff/admin/roles/${role.roleId}`)}
                     title="View Details"
                   >
                     <ViewIcon />
                   </button>
                   <button
                     style={{ ...btnIcon, color: "#10b981" }}
-                    onClick={() => navigate(`/admin/roles/${role.roleId}/edit`)}
+                    onClick={() => navigate(`/staff/admin/roles/${role.roleId}/edit`)}
                     title="Edit"
                   >
                     <EditIcon />
