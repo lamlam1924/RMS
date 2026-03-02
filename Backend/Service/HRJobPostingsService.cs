@@ -85,9 +85,9 @@ public class HRJobPostingsService : IHRJobPostingsService
             return ResponseHelper.CreateActionResponse(false, "", "Job posting not found");
         }
 
-        if (jobPosting.StatusId != 6) // Check if DRAFT
+        if (jobPosting.StatusId == 8) // Block if CLOSED
         {
-            return ResponseHelper.CreateActionResponse(false, "", "Only draft job postings can be updated");
+            return ResponseHelper.CreateActionResponse(false, "", "Closed job postings cannot be updated");
         }
 
         jobPosting.Title = dto.Title;

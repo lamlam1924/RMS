@@ -88,6 +88,29 @@ export default function EditJobPosting() {
   if (loading) return <div style={{ padding: 24 }}>Loading...</div>;
   if (!jobPosting) return <div style={{ padding: 24 }}>Job Posting not found</div>;
 
+  if (jobPosting.statusId === 8) {
+    return (
+      <div style={{ padding: 24, backgroundColor: '#f9fafb', minHeight: '100vh' }}>
+        <div style={{ maxWidth: 800, margin: '0 auto' }}>
+          <div style={{ backgroundColor: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 8, padding: 24 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: '#92400e', marginBottom: 8 }}>
+              Cannot Edit This Job Posting
+            </h2>
+            <p style={{ color: '#78350f', marginBottom: 16 }}>
+              Job posting đã <strong>Đóng</strong> không thể chỉnh sửa. Trạng thái hiện tại: <strong>{jobPosting.currentStatus}</strong>
+            </p>
+            <button
+              onClick={() => navigate('/staff/hr-staff/job-postings')}
+              style={{ padding: '8px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+            >
+              Quay lại danh sách
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: 24, backgroundColor: '#f9fafb', minHeight: '100vh' }}>
       <div style={{ maxWidth: 800, margin: '0 auto' }}>
