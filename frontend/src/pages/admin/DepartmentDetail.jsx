@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import PageShell from "../../layouts/PageShell";
 import { departmentService, userService } from "../../services/adminService";
 
 export default function DepartmentDetail() {
   const { id } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
-  const isNew = id === "new";
-  const isEdit = window.location.pathname.includes("/edit");
+  const isNew = id === "new" || (id === undefined && location.pathname.endsWith("/new"));
+  const isEdit = location.pathname.includes("/edit");
+  const isValidId = isNew || (id != null && id !== "undefined" && !Number.isNaN(Number(id)));
 
   const [department, setDepartment] = useState({
     departmentName: "",
@@ -20,35 +22,49 @@ export default function DepartmentDetail() {
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [submitError, setSubmitError] = useState(null);
 
   useEffect(() => {
+    if (!isValidId && !isNew) {
+      navigate("/staff/admin/departments", { replace: true });
+      return;
+    }
     loadData();
-  }, [id]);
+  }, [id, isValidId]);
 
   const loadData = async () => {
     try {
-      setLoading(true);
+      if (!isNew) setLoading(true);
 
-      // Load potential managers (users with manager roles)
       const usersData = await userService.getAll();
-      setManagers(
-        usersData.filter(
-          (u) =>
-            u.roleName?.toLowerCase().includes("manager") ||
-            u.roleName?.toLowerCase().includes("director"),
-        ),
-      );
+      const managerRoleIds = [1, 2, 3, 5]; // ADMIN, DIRECTOR, HR_MANAGER, DEPARTMENT_MANAGER
 
-      // Load department data if editing
-      if (!isNew) {
+      if (!isNew && id != null && id !== "undefined") {
+        const deptId = parseInt(id, 10);
         const deptData = await departmentService.getById(id);
-        setDepartment(deptData);
-
-        // Load employees of this department
-        const deptEmployees = usersData.filter(
-          (u) => u.departmentId === parseInt(id),
-        );
+        setDepartment({
+          ...deptData,
+          managerId: deptData.managerId != null ? String(deptData.managerId) : "",
+        });
+        const deptEmployees = usersData.filter((u) => u.departmentId === deptId);
         setEmployees(deptEmployees);
+        setManagers(
+          usersData.filter(
+            (u) =>
+              u.roleId != null &&
+              managerRoleIds.includes(Number(u.roleId)) &&
+              u.departmentId === deptId,
+          ),
+        );
+      } else {
+        setManagers(
+          usersData.filter(
+            (u) =>
+              u.roleId != null &&
+              managerRoleIds.includes(Number(u.roleId)) &&
+              u.departmentId != null,
+          ),
+        );
       }
 
       setError(null);
@@ -62,21 +78,20 @@ export default function DepartmentDetail() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    setSubmitError(null);
     try {
       setSaving(true);
-
       if (isNew) {
         await departmentService.create(department);
-        alert("Department created successfully!");
+        alert("Tạo phòng ban thành công!");
+        navigate("/staff/admin/departments");
       } else {
         await departmentService.update(id, department);
-        alert("Department updated successfully!");
+        alert("Cập nhật phòng ban thành công!");
+        navigate("/staff/admin/departments");
       }
-
-      navigate("/admin/departments");
     } catch (err) {
-      alert("Error saving department: " + err.message);
+      setSubmitError(err.message || "Không thể lưu. Vui lòng thử lại.");
     } finally {
       setSaving(false);
     }
@@ -90,9 +105,10 @@ export default function DepartmentDetail() {
     }));
   };
 
-  if (loading) {
+  if (!isValidId && !isNew) return null;
+  if (loading && !isNew) {
     return (
-      <PageShell title={isNew ? "New Department" : "Department Details"}>
+      <PageShell title="Department Details">
         <div style={centerText}>Loading...</div>
       </PageShell>
     );
@@ -115,13 +131,13 @@ export default function DepartmentDetail() {
           <div style={actionButtons}>
             <button
               style={btnSecondary}
-              onClick={() => navigate("/admin/departments")}
+              onClick={() => navigate("/staff/admin/departments")}
             >
               ← Back
             </button>
             <button
               style={btnPrimary}
-              onClick={() => navigate(`/admin/departments/${id}/edit`)}
+              onClick={() => navigate(`/staff/admin/departments/${id}/edit`)}
             >
               ✏️ Edit
             </button>
@@ -213,13 +229,18 @@ export default function DepartmentDetail() {
       right={
         <button
           style={btnSecondary}
-          onClick={() => navigate("/admin/departments")}
+          onClick={() => navigate("/staff/admin/departments")}
         >
           ← Cancel
         </button>
       }
     >
       <form onSubmit={handleSubmit} style={formCard}>
+        {submitError && (
+          <div style={{ marginBottom: 16, padding: 12, background: "#fef2f2", color: "#b91c1c", borderRadius: 8 }}>
+            {submitError}
+          </div>
+        )}
         <div style={formSection}>
           <h3 style={sectionTitle}>Basic Information</h3>
 
@@ -285,7 +306,7 @@ export default function DepartmentDetail() {
           <button
             type="button"
             style={btnSecondary}
-            onClick={() => navigate("/admin/departments")}
+            onClick={() => navigate("/staff/admin/departments")}
           >
             Cancel
           </button>

@@ -163,16 +163,17 @@ export default function App() {
             }
           />
 
+          {/* Admin Users: specific routes first */}
           <Route
-            path="admin/users"
+            path="admin/users/new"
             element={
               <PrivateRoute roles={[ROLES.ADMIN]}>
-                <UserList />
+                <UserDetail />
               </PrivateRoute>
             }
           />
           <Route
-            path="admin/users/new"
+            path="admin/users/:id/edit"
             element={
               <PrivateRoute roles={[ROLES.ADMIN]}>
                 <UserDetail />
@@ -188,24 +189,25 @@ export default function App() {
             }
           />
           <Route
-            path="admin/users/:id/edit"
+            path="admin/users"
             element={
               <PrivateRoute roles={[ROLES.ADMIN]}>
-                <UserDetail />
+                <UserList />
               </PrivateRoute>
             }
           />
 
+          {/* Admin Roles: specific routes first */}
           <Route
-            path="admin/roles"
+            path="admin/roles/new"
             element={
               <PrivateRoute roles={[ROLES.ADMIN]}>
-                <RoleList />
+                <RoleDetail />
               </PrivateRoute>
             }
           />
           <Route
-            path="admin/roles/new"
+            path="admin/roles/:id/edit"
             element={
               <PrivateRoute roles={[ROLES.ADMIN]}>
                 <RoleDetail />
@@ -221,24 +223,25 @@ export default function App() {
             }
           />
           <Route
-            path="admin/roles/:id/edit"
+            path="admin/roles"
             element={
               <PrivateRoute roles={[ROLES.ADMIN]}>
-                <RoleDetail />
+                <RoleList />
               </PrivateRoute>
             }
           />
 
+          {/* Admin Departments: specific routes first */}
           <Route
-            path="admin/departments"
+            path="admin/departments/new"
             element={
               <PrivateRoute roles={[ROLES.ADMIN]}>
-                <DepartmentList />
+                <DepartmentDetail />
               </PrivateRoute>
             }
           />
           <Route
-            path="admin/departments/new"
+            path="admin/departments/:id/edit"
             element={
               <PrivateRoute roles={[ROLES.ADMIN]}>
                 <DepartmentDetail />
@@ -254,10 +257,10 @@ export default function App() {
             }
           />
           <Route
-            path="admin/departments/:id/edit"
+            path="admin/departments"
             element={
               <PrivateRoute roles={[ROLES.ADMIN]}>
-                <DepartmentDetail />
+                <DepartmentList />
               </PrivateRoute>
             }
           />

@@ -2,7 +2,7 @@
  * API Configuration & Helpers
  */
 
-// Auto-detect protocol based on environment
+// Direct URL to backend - use http://localhost:3000/api khi dev
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||
     (import.meta.env.DEV ? 'http://localhost:3000/api' : '/api');
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import PageShell from "../../layouts/PageShell";
 import {
   userService,
@@ -9,9 +9,11 @@ import {
 
 export default function UserDetail() {
   const { id } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
-  const isNew = id === "new";
-  const isEdit = window.location.pathname.includes("/edit");
+  const isNew = id === "new" || (id === undefined && location.pathname.endsWith("/new"));
+  const isEdit = location.pathname.includes("/edit");
+  const isValidId = isNew || (id != null && id !== "undefined" && !Number.isNaN(Number(id)));
 
   const [user, setUser] = useState({
     email: "",
@@ -27,27 +29,37 @@ export default function UserDetail() {
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [submitError, setSubmitError] = useState(null);
+  const [optionsLoaded, setOptionsLoaded] = useState(false);
 
   useEffect(() => {
+    if (!isValidId) {
+      navigate("/staff/admin/users", { replace: true });
+      return;
+    }
     loadData();
-  }, [id]);
+  }, [id, isValidId]);
 
   const loadData = async () => {
     try {
-      setLoading(true);
+      if (!isNew) setLoading(true);
 
-      // Load roles and departments
       const [rolesData, deptData] = await Promise.all([
         roleService.getAll(),
         departmentService.getAll(),
       ]);
       setRoles(rolesData);
       setDepartments(deptData);
+      setOptionsLoaded(true);
 
-      // Load user data if editing
-      if (!isNew) {
+      if (!isNew && id != null && id !== "undefined") {
         const userData = await userService.getById(id);
-        setUser(userData);
+        setUser({
+          ...userData,
+          roleId: userData.roleId != null ? String(userData.roleId) : "",
+          departmentId: userData.departmentId != null ? String(userData.departmentId) : "",
+          password: "",
+        });
       }
 
       setError(null);
@@ -61,21 +73,30 @@ export default function UserDetail() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitError(null);
+
+    if (isNew && (!user.password || user.password.length < 6)) {
+      setSubmitError("Mật khẩu tối thiểu 6 ký tự.");
+      return;
+    }
+    if (isNew && (!user.roleId || user.roleId === "")) {
+      setSubmitError("Vui lòng chọn vai trò (Role).");
+      return;
+    }
 
     try {
       setSaving(true);
-
       if (isNew) {
         await userService.create(user);
-        alert("User created successfully!");
+        alert("Tạo user thành công!");
+        navigate("/staff/admin/users");
       } else {
         await userService.update(id, user);
-        alert("User updated successfully!");
+        alert("Cập nhật user thành công!");
+        navigate("/staff/admin/users");
       }
-
-      navigate("/admin/users");
     } catch (err) {
-      alert("Error saving user: " + err.message);
+      setSubmitError(err.message || "Không thể lưu. Vui lòng thử lại.");
     } finally {
       setSaving(false);
     }
@@ -89,9 +110,10 @@ export default function UserDetail() {
     }));
   };
 
-  if (loading) {
+  if (!isValidId) return null;
+  if (loading && !isNew) {
     return (
-      <PageShell title={isNew ? "New User" : "User Details"}>
+      <PageShell title="User Details">
         <div style={centerText}>Loading...</div>
       </PageShell>
     );
@@ -114,13 +136,13 @@ export default function UserDetail() {
           <div style={actionButtons}>
             <button
               style={btnSecondary}
-              onClick={() => navigate("/admin/users")}
+              onClick={() => navigate("/staff/admin/users")}
             >
               ← Back
             </button>
             <button
               style={btnPrimary}
-              onClick={() => navigate(`/admin/users/${id}/edit`)}
+              onClick={() => navigate(`/staff/admin/users/${id}/edit`)}
             >
               ✏️ Edit
             </button>
@@ -187,12 +209,17 @@ export default function UserDetail() {
     <PageShell
       title={isNew ? "Create New User" : "Edit User"}
       right={
-        <button style={btnSecondary} onClick={() => navigate("/admin/users")}>
+        <button style={btnSecondary} onClick={() => navigate("/staff/admin/users")}>
           ← Cancel
         </button>
       }
     >
       <form onSubmit={handleSubmit} style={formCard}>
+        {submitError && (
+          <div style={{ marginBottom: 16, padding: 12, background: "#fef2f2", color: "#b91c1c", borderRadius: 8 }}>
+            {submitError}
+          </div>
+        )}
         <div style={formSection}>
           <h3 style={sectionTitle}>Basic Information</h3>
 
@@ -253,12 +280,12 @@ export default function UserDetail() {
           <FormField label="Role" required>
             <select
               name="roleId"
-              value={user.roleId}
+              value={user.roleId ?? ""}
               onChange={handleChange}
               required
               style={select}
             >
-              <option value="">Select a role...</option>
+              <option value="">{optionsLoaded ? "Select a role..." : "Loading roles..."}</option>
               {roles.map((role) => (
                 <option key={role.roleId} value={role.roleId}>
                   {role.roleName}
@@ -270,11 +297,11 @@ export default function UserDetail() {
           <FormField label="Department">
             <select
               name="departmentId"
-              value={user.departmentId}
+              value={user.departmentId ?? ""}
               onChange={handleChange}
               style={select}
             >
-              <option value="">Select a department...</option>
+              <option value="">{optionsLoaded ? "Select a department..." : "Loading departments..."}</option>
               {departments.map((dept) => (
                 <option key={dept.departmentId} value={dept.departmentId}>
                   {dept.departmentName}
@@ -303,7 +330,7 @@ export default function UserDetail() {
           <button
             type="button"
             style={btnSecondary}
-            onClick={() => navigate("/admin/users")}
+            onClick={() => navigate("/staff/admin/users")}
           >
             Cancel
           </button>

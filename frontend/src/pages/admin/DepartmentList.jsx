@@ -88,7 +88,7 @@ export default function DepartmentList() {
       right={
         <button
           style={btnPrimary}
-          onClick={() => navigate("/admin/departments/new")}
+          onClick={() => navigate("/staff/admin/departments/new")}
         >
           + Add New Department
         </button>
@@ -132,7 +132,7 @@ export default function DepartmentList() {
                   <button
                     style={{ ...btnIcon, color: "#3b82f6" }}
                     onClick={() =>
-                      navigate(`/admin/departments/${dept.departmentId}`)
+                      navigate(`/staff/admin/departments/${dept.departmentId}`)
                     }
                     title="View Details"
                   >
@@ -141,7 +141,7 @@ export default function DepartmentList() {
                   <button
                     style={{ ...btnIcon, color: "#10b981" }}
                     onClick={() =>
-                      navigate(`/admin/departments/${dept.departmentId}/edit`)
+                      navigate(`/staff/admin/departments/${dept.departmentId}/edit`)
                     }
                     title="Edit"
                   >

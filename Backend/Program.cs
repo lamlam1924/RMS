@@ -16,7 +16,9 @@ var config = builder.Configuration;
 
 // ======================= DATABASE =======================
 builder.Services.AddDbContext<RecruitmentDbContext>(options =>
-    options.UseSqlServer(config.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(
+        config.GetConnectionString("DefaultConnection"),
+        sqlOptions => sqlOptions.EnableRetryOnFailure()));
 
 // ======================= CONTROLLERS =======================
 builder.Services.AddControllers()

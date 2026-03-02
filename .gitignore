@@ -13,11 +13,11 @@ out/
 *.dbmdl
 *.jfm
 
-# ASP.NET Core config (local only)
-appsettings.json
-appsettings.Development.json
-appsettings.Production.json
-appsettings.Local.json
+# ASP.NET Core config (local only - copy from appsettings.Example.json)
+**/appsettings.json
+**/appsettings.Development.json
+**/appsettings.Production.json
+**/appsettings.Local.json
 
 ############################################
 # Node.js / React / Vite

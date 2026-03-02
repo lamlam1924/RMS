@@ -12,6 +12,24 @@ const getAuthHeader = () => {
   };
 };
 
+async function parseErrorResponse(res) {
+  const text = await res.text();
+  try {
+    const data = JSON.parse(text);
+    if (data?.message) return data.message;
+    if (data?.errors && typeof data.errors === "object") {
+      const parts = [];
+      for (const [field, messages] of Object.entries(data.errors)) {
+        if (Array.isArray(messages)) parts.push(`${field}: ${messages.join(", ")}`);
+      }
+      if (parts.length) return parts.join("; ");
+    }
+    return data?.title || text || `Error ${res.status}`;
+  } catch {
+    return text || `Error ${res.status}`;
+  }
+}
+
 // ==================== USER MANAGEMENT ====================
 export const userService = {
   async getAll(params = {}) {
@@ -20,7 +38,7 @@ export const userService = {
     const res = await fetch(url, {
       headers: getAuthHeader(),
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) throw new Error(await parseErrorResponse(res));
     return res.json();
   },
 
@@ -28,27 +46,44 @@ export const userService = {
     const res = await fetch(`${API_BASE_URL}/admin/users/${id}`, {
       headers: getAuthHeader(),
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) throw new Error(await parseErrorResponse(res));
     return res.json();
   },
 
   async create(userData) {
+    const payload = {
+      fullName: userData.fullName,
+      email: userData.email,
+      phoneNumber: userData.phoneNumber || null,
+      password: userData.password,
+      roleId: Number(userData.roleId) || 0,
+      departmentId: userData.departmentId ? Number(userData.departmentId) : null,
+      isActive: Boolean(userData.isActive),
+    };
     const res = await fetch(`${API_BASE_URL}/admin/users`, {
       method: "POST",
       headers: getAuthHeader(),
-      body: JSON.stringify(userData),
+      body: JSON.stringify(payload),
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) throw new Error(await parseErrorResponse(res));
     return res.json();
   },
 
   async update(id, userData) {
+    const payload = {
+      fullName: userData.fullName,
+      email: userData.email,
+      phoneNumber: userData.phoneNumber || null,
+      roleId: Number(userData.roleId) || 0,
+      departmentId: userData.departmentId ? Number(userData.departmentId) : null,
+      isActive: Boolean(userData.isActive),
+    };
     const res = await fetch(`${API_BASE_URL}/admin/users/${id}`, {
       method: "PUT",
       headers: getAuthHeader(),
-      body: JSON.stringify(userData),
+      body: JSON.stringify(payload),
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) throw new Error(await parseErrorResponse(res));
     return res.json();
   },
 
@@ -57,7 +92,7 @@ export const userService = {
       method: "DELETE",
       headers: getAuthHeader(),
     });
-    if (!res.ok && res.status !== 204) throw new Error(await res.text());
+    if (!res.ok && res.status !== 204) throw new Error(await parseErrorResponse(res));
     return true;
   },
 
@@ -67,7 +102,7 @@ export const userService = {
       headers: getAuthHeader(),
       body: JSON.stringify({ isActive }),
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) throw new Error(await parseErrorResponse(res));
     return res.json();
   },
 
@@ -76,8 +111,9 @@ export const userService = {
       method: "POST",
       headers: getAuthHeader(),
     });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    if (!res.ok) throw new Error(await parseErrorResponse(res));
+    const data = await res.json();
+    return { newPassword: data.newPassword, message: data.message };
   },
 };
 
@@ -89,7 +125,7 @@ export const roleService = {
     const res = await fetch(url, {
       headers: getAuthHeader(),
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) throw new Error(await parseErrorResponse(res));
     return res.json();
   },
 
@@ -97,27 +133,38 @@ export const roleService = {
     const res = await fetch(`${API_BASE_URL}/admin/roles/${id}`, {
       headers: getAuthHeader(),
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) throw new Error(await parseErrorResponse(res));
     return res.json();
   },
 
   async create(roleData) {
+    const payload = {
+      roleName: roleData.roleName,
+      code: (roleData.code || "").trim().toUpperCase().replace(/\s+/g, "_"),
+      description: roleData.description || null,
+      permissions: Array.isArray(roleData.permissions) ? roleData.permissions : [],
+    };
     const res = await fetch(`${API_BASE_URL}/admin/roles`, {
       method: "POST",
       headers: getAuthHeader(),
-      body: JSON.stringify(roleData),
+      body: JSON.stringify(payload),
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) throw new Error(await parseErrorResponse(res));
     return res.json();
   },
 
   async update(id, roleData) {
+    const payload = {
+      roleName: roleData.roleName,
+      description: roleData.description || null,
+      permissions: Array.isArray(roleData.permissions) ? roleData.permissions : [],
+    };
     const res = await fetch(`${API_BASE_URL}/admin/roles/${id}`, {
       method: "PUT",
       headers: getAuthHeader(),
-      body: JSON.stringify(roleData),
+      body: JSON.stringify(payload),
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) throw new Error(await parseErrorResponse(res));
     return res.json();
   },
 
@@ -126,7 +173,7 @@ export const roleService = {
       method: "DELETE",
       headers: getAuthHeader(),
     });
-    if (!res.ok && res.status !== 204) throw new Error(await res.text());
+    if (!res.ok && res.status !== 204) throw new Error(await parseErrorResponse(res));
     return true;
   },
 
@@ -134,7 +181,7 @@ export const roleService = {
     const res = await fetch(`${API_BASE_URL}/admin/roles/permissions`, {
       headers: getAuthHeader(),
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) throw new Error(await parseErrorResponse(res));
     return res.json();
   },
 };
@@ -147,7 +194,7 @@ export const departmentService = {
     const res = await fetch(url, {
       headers: getAuthHeader(),
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) throw new Error(await parseErrorResponse(res));
     return res.json();
   },
 
@@ -155,27 +202,39 @@ export const departmentService = {
     const res = await fetch(`${API_BASE_URL}/admin/departments/${id}`, {
       headers: getAuthHeader(),
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) throw new Error(await parseErrorResponse(res));
     return res.json();
   },
 
   async create(departmentData) {
+    const payload = {
+      departmentName: departmentData.departmentName,
+      description: departmentData.description || null,
+      managerId: departmentData.managerId ? Number(departmentData.managerId) : null,
+      isActive: Boolean(departmentData.isActive),
+    };
     const res = await fetch(`${API_BASE_URL}/admin/departments`, {
       method: "POST",
       headers: getAuthHeader(),
-      body: JSON.stringify(departmentData),
+      body: JSON.stringify(payload),
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) throw new Error(await parseErrorResponse(res));
     return res.json();
   },
 
   async update(id, departmentData) {
+    const payload = {
+      departmentName: departmentData.departmentName,
+      description: departmentData.description || null,
+      managerId: departmentData.managerId ? Number(departmentData.managerId) : null,
+      isActive: Boolean(departmentData.isActive),
+    };
     const res = await fetch(`${API_BASE_URL}/admin/departments/${id}`, {
       method: "PUT",
       headers: getAuthHeader(),
-      body: JSON.stringify(departmentData),
+      body: JSON.stringify(payload),
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) throw new Error(await parseErrorResponse(res));
     return res.json();
   },
 
@@ -184,7 +243,7 @@ export const departmentService = {
       method: "DELETE",
       headers: getAuthHeader(),
     });
-    if (!res.ok && res.status !== 204) throw new Error(await res.text());
+    if (!res.ok && res.status !== 204) throw new Error(await parseErrorResponse(res));
     return true;
   },
 
@@ -194,7 +253,7 @@ export const departmentService = {
       headers: getAuthHeader(),
       body: JSON.stringify({ isActive }),
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) throw new Error(await parseErrorResponse(res));
     return res.json();
   },
 };

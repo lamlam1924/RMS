@@ -106,7 +106,7 @@ export default function UserList() {
     <PageShell
       title="User Management"
       right={
-        <button style={btnPrimary} onClick={() => navigate("/admin/users/new")}>
+        <button style={btnPrimary} onClick={() => navigate("/staff/admin/users/new")}>
           + Add New User
         </button>
       }
@@ -181,7 +181,7 @@ export default function UserList() {
                     <div style={actionButtons}>
                       <button
                         style={{ ...btnIcon, color: "#3b82f6" }}
-                        onClick={() => navigate(`/admin/users/${user.userId}`)}
+                        onClick={() => navigate(`/staff/admin/users/${user.userId}`)}
                         title="View Details"
                       >
                         <ViewIcon />
@@ -189,7 +189,7 @@ export default function UserList() {
                       <button
                         style={{ ...btnIcon, color: "#10b981" }}
                         onClick={() =>
-                          navigate(`/admin/users/${user.userId}/edit`)
+                          navigate(`/staff/admin/users/${user.userId}/edit`)
                         }
                         title="Edit"
                       >
@@ -215,6 +215,13 @@ export default function UserList() {
                         title="Reset Password"
                       >
                         <KeyIcon />
+                      </button>
+                      <button
+                        style={{ ...btnIcon, color: "#ef4444" }}
+                        onClick={() => handleDelete(user.userId)}
+                        title="Delete"
+                      >
+                        <DeleteIcon />
                       </button>
                     </div>
                   </td>
