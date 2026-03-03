@@ -41,6 +41,8 @@ public partial class JobRequest
 
     public DateTime? LastViewedByManagerAt { get; set; }
 
+    public int? AssignedStaffId { get; set; }
+
     public virtual ICollection<Application> Applications { get; set; } = new List<Application>();
 
     public virtual ICollection<JobPosting> JobPostings { get; set; } = new List<JobPosting>();
@@ -48,4 +50,6 @@ public partial class JobRequest
     public virtual Position Position { get; set; } = null!;
 
     public virtual User RequestedByNavigation { get; set; } = null!;
+
+    public virtual User? AssignedStaff { get; set; }
 }

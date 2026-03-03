@@ -111,6 +111,29 @@ const hrService = {
       return response.json();
     },
 
+    // Gán HR Staff vào Job Request đã APPROVED (HR Manager only)
+    assignStaff: async (id, staffId) => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/job-requests/${id}/assign`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ staffId })
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Không thể gán HR Staff');
+      }
+      return response.json();
+    },
+
+    // HR Staff lấy các Job Request APPROVED được gán cho mình
+    getApprovedForMe: async () => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/job-requests/approved-for-me`, {
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error('Không thể lấy danh sách yêu cầu tuyển dụng');
+      return response.json();
+    },
+
     // ===== BULK OPERATIONS =====
     /**
      * Bulk forward multiple job requests to director
@@ -221,7 +244,10 @@ const hrService = {
         headers: getAuthHeaders(),
         body: JSON.stringify(data)
       });
-      if (!response.ok) throw new Error('Failed to create job posting');
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || `Lỗi ${response.status}`);
+      }
       return response.json();
     },
 
@@ -253,6 +279,35 @@ const hrService = {
         body: JSON.stringify({ reason })
       });
       if (!response.ok) throw new Error('Failed to close job posting');
+      return response.json();
+    },
+
+    // HR Manager: get list of HR Staff to assign
+    getStaffList: async () => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/job-postings/staff-list`, {
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error('Failed to fetch staff list');
+      return response.json();
+    },
+
+    // HR Manager: assign HR Staff to a posting
+    assignStaff: async (id, staffId) => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/job-postings/${id}/assign`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ staffId })
+      });
+      if (!response.ok) throw new Error('Failed to assign staff');
+      return response.json();
+    },
+
+    // HR Staff: get only postings assigned to me
+    getMy: async () => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/job-postings/my`, {
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error('Failed to fetch my job postings');
       return response.json();
     }
   },

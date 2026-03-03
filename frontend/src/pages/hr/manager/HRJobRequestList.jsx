@@ -11,6 +11,8 @@ import {
   Clock,
   Inbox,
   XCircle,
+  UserPlus,
+  X,
 } from "lucide-react";
 import ActionBanners from "../../../components/common/ActionBanners";
 import BulkActionBar, { BulkSelectAll } from "../../../components/common/BulkActionBar";
@@ -53,6 +55,12 @@ export default function HRJobRequestList() {
   const [showQuickReview, setShowQuickReview] = useState(false);
   const [quickReviewId, setQuickReviewId] = useState(null);
 
+  // Assign staff state
+  const [assignModal, setAssignModal] = useState({ open: false, requestId: null });
+  const [staffList, setStaffList] = useState([]);
+  const [assigningStaffId, setAssigningStaffId] = useState('');
+  const [assigning, setAssigning] = useState(false);
+
   useEffect(() => {
     loadJobRequests();
   }, []);
@@ -72,14 +80,14 @@ export default function HRJobRequestList() {
   // Client-side filter by tab
   const filterByTab = (list, key) => {
     switch (key) {
-      case 'needs_action':   return list.filter(r => r.status?.code === 'SUBMITTED');
-      case 'in_review':      return list.filter(r => r.status?.code === 'IN_REVIEW');
-      case 'returned':       return list.filter(r => r.status?.code === 'RETURNED');
-      case 'approved':       return list.filter(r => r.status?.code === 'APPROVED');
-      case 'rejected':       return list.filter(r => r.status?.code === 'REJECTED');
-      case 'cancel_pending': return list.filter(r => r.status?.code === 'CANCEL_PENDING');
-      case 'cancelled':      return list.filter(r => r.status?.code === 'CANCELLED');
-      default:               return list.filter(r => r.status?.code !== 'DRAFT');
+      case 'needs_action':   return list.filter(r => r.currentStatus === 'SUBMITTED');
+      case 'in_review':      return list.filter(r => r.currentStatus === 'IN_REVIEW');
+      case 'returned':       return list.filter(r => r.currentStatus === 'RETURNED');
+      case 'approved':       return list.filter(r => r.currentStatus === 'APPROVED');
+      case 'rejected':       return list.filter(r => r.currentStatus === 'REJECTED');
+      case 'cancel_pending': return list.filter(r => r.currentStatus === 'CANCEL_PENDING');
+      case 'cancelled':      return list.filter(r => r.currentStatus === 'CANCELLED');
+      default:               return list.filter(r => r.currentStatus !== 'DRAFT');
     }
   };
 
@@ -225,13 +233,13 @@ export default function HRJobRequestList() {
 
   // Stat counts — always from full unfiltered list
   const statCounts = useMemo(() => {
-    const submitted     = allJobRequests.filter(r => r.status?.code === 'SUBMITTED').length;
-    const cancelPending = allJobRequests.filter(r => r.status?.code === 'CANCEL_PENDING').length;
-    const inReview      = allJobRequests.filter(r => r.status?.code === 'IN_REVIEW').length;
-    const approved      = allJobRequests.filter(r => r.status?.code === 'APPROVED').length;
-    const returned      = allJobRequests.filter(r => r.status?.code === 'RETURNED').length;
-    const rejected      = allJobRequests.filter(r => r.status?.code === 'REJECTED').length;
-    const cancelled     = allJobRequests.filter(r => r.status?.code === 'CANCELLED').length;
+    const submitted     = allJobRequests.filter(r => r.currentStatus === 'SUBMITTED').length;
+    const cancelPending = allJobRequests.filter(r => r.currentStatus === 'CANCEL_PENDING').length;
+    const inReview      = allJobRequests.filter(r => r.currentStatus === 'IN_REVIEW').length;
+    const approved      = allJobRequests.filter(r => r.currentStatus === 'APPROVED').length;
+    const returned      = allJobRequests.filter(r => r.currentStatus === 'RETURNED').length;
+    const rejected      = allJobRequests.filter(r => r.currentStatus === 'REJECTED').length;
+    const cancelled     = allJobRequests.filter(r => r.currentStatus === 'CANCELLED').length;
     return {
       submitted,
       cancel_pending: cancelPending,
@@ -244,7 +252,7 @@ export default function HRJobRequestList() {
       cancelled,
       needs_action: submitted,
       needsAction: submitted,
-      all: allJobRequests.filter(r => r.status?.code !== 'DRAFT').length,
+      all: allJobRequests.filter(r => r.currentStatus !== 'DRAFT').length,
     };
   }, [allJobRequests]);
 
@@ -305,6 +313,34 @@ export default function HRJobRequestList() {
     e.stopPropagation();
     setQuickReviewId(id);
     setShowQuickReview(true);
+  };
+
+  // Assign staff handlers
+  const handleOpenAssign = async (e, id) => {
+    e.stopPropagation();
+    setAssignModal({ open: true, requestId: id });
+    setAssigningStaffId('');
+    try {
+      const list = await hrService.jobPostings.getStaffList();
+      setStaffList(list || []);
+    } catch {
+      setStaffList([]);
+    }
+  };
+
+  const handleAssignSubmit = async () => {
+    if (!assigningStaffId) return;
+    try {
+      setAssigning(true);
+      await hrService.jobRequests.assignStaff(assignModal.requestId, parseInt(assigningStaffId));
+      toast.success('Đã gán HR Staff thành công');
+      setAssignModal({ open: false, requestId: null });
+      await loadJobRequests();
+    } catch (error) {
+      toast.error(error.message || 'Gán thất bại');
+    } finally {
+      setAssigning(false);
+    }
   };
 
   const handleQuickReviewAction = async (id, actionType, note) => {
@@ -455,6 +491,7 @@ export default function HRJobRequestList() {
                   isSelected={selectedIds.has(request.id)}
                   onSelect={handleSelectOne}
                   onQuickReview={handleOpenQuickReview}
+                  onAssignStaff={handleOpenAssign}
                 />
               ))}
             </div>
@@ -524,6 +561,49 @@ export default function HRJobRequestList() {
         onAction={handleQuickReviewAction}
         fetchDetails={hrService.jobRequests.getById}
       />
+
+      {/* Assign Staff Modal */}
+      {assignModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setAssignModal({ open: false, requestId: null })}>
+          <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-green-600" />
+                Gán HR Staff
+              </h2>
+              <button onClick={() => setAssignModal({ open: false, requestId: null })} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-all">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-500 mb-4">Chọn HR Staff để xử lý yêu cầu tuyển dụng này.</p>
+            <select
+              value={assigningStaffId}
+              onChange={e => setAssigningStaffId(e.target.value)}
+              className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-green-500 focus:border-green-500 mb-6"
+            >
+              <option value="">-- Chọn HR Staff --</option>
+              {staffList.map(s => (
+                <option key={s.id} value={s.id}>{s.fullName}</option>
+              ))}
+            </select>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setAssignModal({ open: false, requestId: null })}
+                className="flex-1 py-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleAssignSubmit}
+                disabled={!assigningStaffId || assigning}
+                className="flex-1 py-3 rounded-xl bg-green-600 text-white text-sm font-bold hover:bg-green-700 disabled:opacity-50 transition-all"
+              >
+                {assigning ? 'Đang gán...' : 'Xác nhận gán'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

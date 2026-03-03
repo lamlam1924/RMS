@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RMS.Common;
 using RMS.Data;
 using RMS.Entity;
 using RMS.Repository.Interface;
@@ -225,5 +226,70 @@ public class HRJobRequestsRepository : IHRJobRequestsRepository
     {
         _context.StatusHistories.Add(statusHistory);
         await _context.SaveChangesAsync();
+    }
+
+    public async Task<(bool success, string errorMessage)> AssignStaffToJobRequestAsync(int jobRequestId, int staffId, int managerId)
+    {
+        var jobRequest = await _context.JobRequests
+            .Include(jr => jr.AssignedStaff)
+            .FirstOrDefaultAsync(jr => jr.Id == jobRequestId);
+        
+        if (jobRequest == null)
+            return (false, "Job request not found");
+
+        // Check if job posting already exists - cannot reassign if posting created
+        var hasPosting = await _context.JobPostings
+            .AnyAsync(jp => jp.JobRequestId == jobRequestId && jp.IsDeleted == false);
+        
+        if (hasPosting)
+            return (false, "Cannot reassign: HR Staff has already created a job posting for this request");
+
+        var oldStaffId = jobRequest.AssignedStaffId;
+        var isReassignment = oldStaffId.HasValue && oldStaffId.Value != staffId;
+
+        // Update assignment
+        jobRequest.AssignedStaffId = staffId;
+        await _context.SaveChangesAsync();
+
+        // Log history for reassignment
+        if (isReassignment)
+        {
+            var oldStaffName = jobRequest.AssignedStaff?.FullName ?? "Unknown";
+            var newStaff = await _context.Users.FindAsync(staffId);
+            var newStaffName = newStaff?.FullName ?? "Unknown";
+
+            var historyNote = $"Reassigned from {oldStaffName} to {newStaffName}";
+            var statusHistory = new StatusHistory
+            {
+                EntityTypeId = 1, // JobRequest
+                EntityId = jobRequestId,
+                ToStatusId = jobRequest.StatusId,
+                ChangedBy = managerId,
+                ChangedAt = DateTimeHelper.Now,
+                Note = historyNote
+            };
+            _context.StatusHistories.Add(statusHistory);
+            await _context.SaveChangesAsync();
+        }
+
+        return (true, "");
+    }
+
+    public async Task<List<JobRequest>> GetApprovedJobRequestsForStaffAsync(int staffId)
+    {
+        var approvedStatusIds = await _context.Statuses
+            .Where(s => s.Code == "APPROVED" && s.StatusTypeId == 1)
+            .Select(s => s.Id)
+            .ToListAsync();
+
+        return await _context.JobRequests
+            .Include(jr => jr.Position)
+                .ThenInclude(p => p.Department)
+            .Include(jr => jr.RequestedByNavigation)
+            .Where(jr => jr.AssignedStaffId == staffId
+                      && approvedStatusIds.Contains(jr.StatusId)
+                      && jr.IsDeleted == false)
+            .OrderByDescending(jr => jr.CreatedAt)
+            .ToListAsync();
     }
 }

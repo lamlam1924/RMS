@@ -47,6 +47,7 @@ import DeptManagerInterviewDetail from "./pages/department-manager/DeptManagerIn
 import HRManagerDashboard from "./pages/hr/dashboard/HRManagerDashboard";
 import HRJobRequestList from "./pages/hr/manager/HRJobRequestList";
 import HRJobRequestDetail from "./pages/hr/manager/HRJobRequestDetail";
+import HRManagerJobPostingList from "./pages/hr/manager/HRManagerJobPostingList";
 import HRApplicationList from "./pages/hr/manager/HRApplicationList";
 import HRApplicationDetail from "./pages/hr/manager/HRApplicationDetail";
 import HRInterviewList from "./pages/hr/manager/HRInterviewList";
@@ -117,7 +118,34 @@ export default function App() {
   return (
     <DarkModeProvider>
       <BrowserRouter>
-        <Toaster position="top-right" richColors closeButton expand={false} duration={3000} />
+        <Toaster 
+          position="top-center" 
+          richColors 
+          closeButton 
+          expand={true} 
+          duration={3000}
+          toastOptions={{
+            style: {
+              fontSize: '16px',
+              minWidth: '400px',
+              padding: '16px 20px',
+            },
+            actionButtonStyle: {
+              backgroundColor: '#10b981',
+              color: 'white',
+              fontWeight: '600',
+              padding: '8px 16px',
+              borderRadius: '8px',
+            },
+            cancelButtonStyle: {
+              backgroundColor: '#ef4444',
+              color: 'white',
+              fontWeight: '600',
+              padding: '8px 16px',
+              borderRadius: '8px',
+            },
+          }}
+        />
         <Routes>
         {/* Landing Page */}
         <Route path="/" element={<LandingPage />} />
@@ -410,6 +438,14 @@ export default function App() {
             element={
               <PrivateRoute roles={[ROLES.HR_MANAGER]}>
                 <HRJobRequestDetail />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="hr-manager/job-postings"
+            element={
+              <PrivateRoute roles={[ROLES.HR_MANAGER]}>
+                <HRManagerJobPostingList />
               </PrivateRoute>
             }
           />

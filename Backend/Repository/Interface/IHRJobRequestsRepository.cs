@@ -47,4 +47,11 @@ public interface IHRJobRequestsRepository
     Task<bool> RejectCancelAsync(int id, int hrManagerId, string? note);
     Task UpdateJobRequestAsync(JobRequest jobRequest);
     Task AddStatusHistoryAsync(StatusHistory statusHistory);
+
+    /// <summary>Gán HR Staff vào Job Request đã APPROVED</summary>
+    /// <returns>Tuple: (success, errorMessage). errorMessage empty if success</returns>
+    Task<(bool success, string errorMessage)> AssignStaffToJobRequestAsync(int jobRequestId, int staffId, int managerId);
+
+    /// <summary>Lấy các Job Request APPROVED được gán cho HR Staff</summary>
+    Task<List<JobRequest>> GetApprovedJobRequestsForStaffAsync(int staffId);
 }

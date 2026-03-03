@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import PageShell from "../../layouts/PageShell";
 import { departmentService, userService } from "../../services/adminService";
+import notify from "../../utils/notification";
 
 export default function DepartmentDetail() {
   const { id } = useParams();
@@ -83,11 +84,11 @@ export default function DepartmentDetail() {
       setSaving(true);
       if (isNew) {
         await departmentService.create(department);
-        alert("Tạo phòng ban thành công!");
+        notify.success("Tạo phòng ban thành công!");
         navigate("/staff/admin/departments");
       } else {
         await departmentService.update(id, department);
-        alert("Cập nhật phòng ban thành công!");
+        notify.success("Cập nhật phòng ban thành công!");
         navigate("/staff/admin/departments");
       }
     } catch (err) {

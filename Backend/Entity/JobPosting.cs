@@ -41,6 +41,10 @@ public partial class JobPosting
 
     public int? DeletedBy { get; set; }
 
+    public int? AssignedStaffId { get; set; }
+
+    public virtual User? AssignedStaff { get; set; }
+
     public virtual User? CreatedByNavigation { get; set; }
 
     public virtual JobRequest JobRequest { get; set; } = null!;

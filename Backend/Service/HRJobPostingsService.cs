@@ -26,10 +26,21 @@ public class HRJobPostingsService : IHRJobPostingsService
         return await _repository.GetDraftJobPostingsAsync();
     }
 
+    public async Task<List<JobPostingListDto>> GetMyJobPostingsAsync(int staffId)
+    {
+        return await _repository.GetJobPostingsByStaffAsync(staffId);
+    }
+
     public async Task<JobPostingDetailDto?> GetJobPostingByIdAsync(int id)
     {
         var jp = await _repository.GetJobPostingByIdAsync(id);
         if (jp == null) return null;
+
+        // Get JD file URL from FileUploadeds
+        var jdFileUrl = await _repository.GetJdFileUrlAsync(jp.JobRequestId);
+
+        // Get application count
+        var applicationCount = await _repository.GetApplicationCountAsync(jp.JobRequestId);
 
         return new JobPostingDetailDto
         {
@@ -39,7 +50,7 @@ public class HRJobPostingsService : IHRJobPostingsService
             DepartmentName = jp.JobRequest.Position.Department.Name,
             Quantity = jp.JobRequest.Quantity,
             StatusId = jp.StatusId,
-            CurrentStatus = jp.Status.Name,
+            CurrentStatus = jp.Status.Code,
             CreatedAt = jp.CreatedAt ?? DateTimeHelper.Now,
             PublishedAt = jp.UpdatedAt,
             JobRequestId = jp.JobRequestId,
@@ -49,7 +60,11 @@ public class HRJobPostingsService : IHRJobPostingsService
             SalaryMin = jp.SalaryMin,
             SalaryMax = jp.SalaryMax,
             Location = jp.Location,
-            Deadline = jp.DeadlineDate.HasValue ? jp.DeadlineDate.Value.ToDateTime(TimeOnly.MinValue) : null
+            Deadline = jp.DeadlineDate.HasValue ? jp.DeadlineDate.Value.ToDateTime(TimeOnly.MinValue) : null,
+            AssignedStaffId = jp.AssignedStaffId,
+            AssignedStaffName = jp.AssignedStaff?.FullName,
+            ApplicationCount = applicationCount,
+            JdFileUrl = jdFileUrl
         };
     }
 
@@ -58,6 +73,7 @@ public class HRJobPostingsService : IHRJobPostingsService
         var jobPosting = new JobPosting
         {
             JobRequestId = dto.JobRequestId,
+            AssignedStaffId = userId, // Auto-assign to creator (current HR Staff)
             Title = dto.Title,
             Description = dto.Description,
             Requirements = dto.Requirements,
@@ -126,9 +142,24 @@ public class HRJobPostingsService : IHRJobPostingsService
         var success = await _repository.CloseJobPostingAsync(dto.JobPostingId, dto.Reason, userId);
 
         return ResponseHelper.CreateActionResponse(
-            success, 
-            "Job posting closed successfully", 
+            success,
+            "Job posting closed successfully",
             "Failed to close job posting"
         );
+    }
+
+    public async Task<ActionResponseDto> AssignStaffAsync(int jobPostingId, AssignStaffDto dto, int managerId)
+    {
+        var success = await _repository.AssignStaffAsync(jobPostingId, dto.StaffId, managerId);
+        return ResponseHelper.CreateActionResponse(
+            success,
+            "Staff assigned successfully",
+            "Failed to assign staff"
+        );
+    }
+
+    public async Task<List<HRStaffDto>> GetHRStaffListAsync()
+    {
+        return await _repository.GetHRStaffListAsync();
     }
 }

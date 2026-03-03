@@ -297,27 +297,38 @@ export default function DeptManagerJobRequestDetail() {
                       <span className="w-1 h-4 bg-emerald-600 dark:bg-emerald-400 rounded-full"></span>
                       Job Description
                     </h3>
-                    <a
-                      href={jobRequest.jdFileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group flex items-center justify-between p-5 bg-white dark:bg-slate-700 rounded-3xl border border-emerald-200 dark:border-emerald-800 hover:border-emerald-300 dark:hover:border-emerald-600 hover:bg-emerald-50/30 dark:hover:bg-emerald-900/20 transition-all shadow-sm"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
-                          <FileText className="w-6 h-6" />
+                    <div className="space-y-4">
+                      {jobRequest.jdFileUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                        <div className="relative border-2 border-emerald-200 dark:border-emerald-800 rounded-3xl overflow-hidden bg-white dark:bg-slate-700 shadow-sm">
+                          <img
+                            src={jobRequest.jdFileUrl}
+                            alt="Job Description"
+                            className="w-full h-auto max-h-[800px] object-contain"
+                          />
                         </div>
-                        <div>
-                          <p className="font-bold text-slate-800 dark:text-slate-100 text-sm">Mô tả công việc</p>
-                          <p className="text-[10px] text-slate-500 dark:text-slate-300 font-bold uppercase tracking-tight">
-                            ĐÃ ĐÍNH KÈM
-                          </p>
+                      ) : null}
+                      <a
+                        href={jobRequest.jdFileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group flex items-center justify-between p-5 bg-white dark:bg-slate-700 rounded-3xl border border-emerald-200 dark:border-emerald-800 hover:border-emerald-300 dark:hover:border-emerald-600 hover:bg-emerald-50/30 dark:hover:bg-emerald-900/20 transition-all shadow-sm"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+                            <FileText className="w-6 h-6" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-800 dark:text-slate-100 text-sm">Mô tả công việc</p>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-300 font-bold uppercase tracking-tight">
+                              ĐÃ ĐÍNH KÈM
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs group-hover:translate-x-1 transition-transform">
-                        Xem tệp →
-                      </span>
-                    </a>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs group-hover:translate-x-1 transition-transform">
+                          Xem tệp →
+                        </span>
+                      </a>
+                    </div>
                   </section>
                 )}
 

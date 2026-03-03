@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import directorService from "../../services/directorService";
 import { ViewIcon } from "../../components/admin/ActionIcons";
+import notify from "../../utils/notification";
 
 const OfferApprovals = () => {
   const [offers, setOffers] = useState([]);
@@ -35,7 +36,7 @@ const OfferApprovals = () => {
       setSelectedOffer(detail);
       setShowDetailModal(true);
     } catch (err) {
-      alert("Failed to load detail: " + err.message);
+      notify.error("Không thể tải thông tin chi tiết: " + err.message);
     }
   };
 
@@ -52,17 +53,17 @@ const OfferApprovals = () => {
     try {
       if (approvalAction === "approve") {
         await directorService.offers.approve(selectedOffer.id, comment);
-        alert("Offer approved successfully");
+        notify.success("Đã phê duyệt offer thành công");
       } else {
         await directorService.offers.reject(selectedOffer.id, comment);
-        alert("Offer rejected successfully");
+        notify.success("Đã từ chối offer thành công");
       }
       setShowApprovalModal(false);
       setSelectedOffer(null);
       setComment("");
       loadOffers();
     } catch (err) {
-      alert("Action failed: " + err.message);
+      notify.error("Thao tác thất bại: " + err.message);
     }
   };
 

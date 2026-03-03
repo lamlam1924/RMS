@@ -32,4 +32,10 @@ public interface IHRJobRequestsService
     /// <summary>HR từ chối yêu cầu hủy (CANCEL_PENDING → trạng thái trước)</summary>
     Task<bool> RejectCancelAsync(int id, string? note, int hrManagerId);
     Task<ActionResponseDto> UpdateStatusAsync(int id, int statusId, string note, int userId);
+
+    /// <summary>HR Manager gán HR Staff vào Job Request đã APPROVED</summary>
+    Task<ActionResponseDto> AssignStaffToJobRequestAsync(int jobRequestId, int staffId, int managerId);
+
+    /// <summary>HR Staff lấy các Job Request APPROVED được gán cho mình</summary>
+    Task<List<JobRequestListDto>> GetApprovedJobRequestsForStaffAsync(int staffId);
 }

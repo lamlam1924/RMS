@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { workflowService } from '../../services/adminService';
 import { EditIcon, DeleteIcon } from '../../components/admin/ActionIcons';
+import notify from '../../utils/notification';
 
 export default function WorkflowManagement() {
   const [statusTypes, setStatusTypes] = useState([]);
@@ -45,12 +46,12 @@ export default function WorkflowManagement() {
       
       // Check if it's 401 Unauthorized
       if (error.message.includes('401')) {
-        alert('Session expired. Please login again.');
+        notify.error('Phiên làm việc hết hạn. Vui lòng đăng nhập lại.');
         window.location.href = '/login';
         return;
       }
       
-      alert('Failed to load data: ' + error.message);
+      notify.error('Không thể tải dữ liệu: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -66,7 +67,7 @@ export default function WorkflowManagement() {
       setStatuses(statusesData);
       setTransitions(transitionsData);
     } catch (error) {
-      alert('Failed to load statuses: ' + error.message);
+      notify.error('Không thể tải trạng thái: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -98,18 +99,23 @@ export default function WorkflowManagement() {
       setEditingTransition(null);
       loadStatusesAndTransitions(selectedType.id);
     } catch (error) {
-      alert('Failed to save transition: ' + error.message);
+      notify.error('Lưu chuyển đổi thất bại: ' + error.message);
     }
   };
 
   const handleDeleteTransition = async (id) => {
-    if (!confirm('Are you sure you want to delete this transition?')) return;
-    try {
-      await workflowService.deleteTransition(id);
-      loadStatusesAndTransitions(selectedType.id);
-    } catch (error) {
-      alert('Failed to delete transition: ' + error.message);
-    }
+    notify.confirm(
+      'Are you sure you want to delete this transition?',
+      async () => {
+        try {
+          await workflowService.deleteTransition(id);
+          notify.success('Xóa chuyển đổi thành công');
+          loadStatusesAndTransitions(selectedType.id);
+        } catch (error) {
+          notify.error('Xóa chuyển đổi thất bại: ' + error.message);
+        }
+      }
+    );
   };
 
   if (loading && statusTypes.length === 0) {

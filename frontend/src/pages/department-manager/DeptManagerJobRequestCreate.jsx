@@ -7,6 +7,7 @@ import { useAutoSave } from "../../hooks/useAutoSave";
 import DraftIndicator from "../../components/common/DraftIndicator";
 import DraftRecoveryModal from "../../components/common/DraftRecoveryModal";
 import JobRequestWizard from "../../components/department-manager/wizard/JobRequestWizard";
+import notify from "../../utils/notification";
 
 /**
  * DeptManagerJobRequestCreate Component
@@ -70,7 +71,7 @@ export default function DeptManagerJobRequestCreate() {
       setShowSuccessModal(true);
     } catch (error) {
       console.error("Lỗi khi lưu nháp:", error);
-      alert(error.message || "Có lỗi xảy ra khi lưu nháp.");
+      notify.error(error.message || "Có lỗi xảy ra khi lưu nháp.");
     } finally {
       setLoading(false);
     }

@@ -4,6 +4,7 @@ import hrService from "../../../services/hrService";
 import { formatVND } from "../../../utils/formatters/currency";
 import { formatDateDisplay } from "../../../utils/formatters/date";
 import { toast } from "../../../utils";
+import notify from "../../../utils/notification";
 import { getPriorityBadge } from "../../../utils/helpers/badge";
 import StatusHistoryTimeline from "../../../components/common/StatusHistoryTimeline";
 import { useHRJobRequestActions } from "../../../hooks/hr/manager/useHRJobRequestActions";
@@ -27,6 +28,12 @@ export default function HRJobRequestDetail() {
   const [showRejectCancelModal, setShowRejectCancelModal] = useState(false);
   const [note, setNote] = useState("");
   const [cancelDecisionNote, setCancelDecisionNote] = useState("");
+  
+  // Assign staff states
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [staffList, setStaffList] = useState([]);
+  const [selectedStaffId, setSelectedStaffId] = useState("");
+  const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
     loadJobRequest();
@@ -100,38 +107,33 @@ export default function HRJobRequestDetail() {
     }
   };
 
-  const handleAction = async (action) => {
-    const isApprove = action === 'APPROVE';
-    const confirmMessage = isApprove 
-      ? 'Are you sure you want to verify this request and forward it to the Director?' 
-      : 'Are you sure you want to REJECT this request?';
-    
-    if (!window.confirm(confirmMessage)) return;
-
-    let note = '';
-    if (!isApprove) {
-      note = window.prompt('Please provide a reason for rejection:', '');
-      if (note === null) return; // User cancelled
-    } else {
-        note = window.prompt('Add an optional note for the Director (or leave blank):', '');
-    }
-
+  const handleOpenAssignModal = async () => {
     try {
-      setLoading(true);
-      // Logic Update:
-      // HR Manager APPROVE -> Moves status to IN_REVIEW (3), NOT APPROVED (4).
-      // Director will do the final approval (3 -> 4).
-      // REJECT -> 5
-      const newStatusId = isApprove ? 3 : 5;
-      
-      await hrService.jobRequests.updateStatus(id, newStatusId, note || '');
-      
-      alert(isApprove ? 'Request forwarded to Director successfully!' : 'Request rejected.');
-      loadJobRequest(); // Reload details
+      const staff = await hrService.jobPostings.getStaffList();
+      setStaffList(staff || []);
+      setShowAssignModal(true);
     } catch (error) {
-      console.error('Action failed:', error);
-      alert('Failed to update status.');
-      setLoading(false);
+      notify.error('Không thể tải danh sách nhân viên');
+    }
+  };
+
+  const handleAssignStaff = async () => {
+    if (!selectedStaffId) {
+      notify.warning('Vui lòng chọn HR Staff');
+      return;
+    }
+    
+    try {
+      setAssigning(true);
+      await hrService.jobRequests.assignStaff(id, parseInt(selectedStaffId));
+      notify.success('Gán HR Staff thành công!');
+      setShowAssignModal(false);
+      setSelectedStaffId('');
+      await loadJobRequest();
+    } catch (error) {
+      notify.error(error.message || 'Gán HR Staff thất bại');
+    } finally {
+      setAssigning(false);
     }
   };
 
@@ -267,10 +269,10 @@ export default function HRJobRequestDetail() {
           {jobRequest.status?.code === "APPROVED" && (
             <div className="flex gap-2 w-full md:w-auto">
               <button
-                onClick={() => navigate(`/staff/hr-manager/job-postings/create?jobRequestId=${jobRequest.id}`)}
+                onClick={handleOpenAssignModal}
                 className="flex-1 md:flex-none px-8 py-2.5 rounded-xl bg-emerald-600 dark:bg-emerald-700 text-white font-bold hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-all text-xs shadow-xl shadow-emerald-200 dark:shadow-emerald-900/50 active:scale-95"
               >
-                ✓ Tạo Job Posting
+                {jobRequest.assignedStaffName ? `✓ Đã gán: ${jobRequest.assignedStaffName}` : '👤 Gán cho HR Staff'}
               </button>
             </div>
           )}
@@ -376,29 +378,40 @@ export default function HRJobRequestDetail() {
                   Mô tả công việc (JD)
                 </h3>
                 {jobRequest.jdFileUrl ? (
-                  <a
-                    href={jobRequest.jdFileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group flex items-center justify-between p-5 bg-white dark:bg-slate-750 rounded-3xl border border-slate-200 dark:border-slate-600 hover:border-emerald-300 dark:hover:border-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all shadow-sm"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xl group-hover:scale-105 transition-transform">
-                        📄
+                  <div className="space-y-4">
+                    {jobRequest.jdFileUrl.match(/\\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                      <div className="relative border-2 border-slate-200 dark:border-slate-600 rounded-3xl overflow-hidden bg-white dark:bg-slate-750 shadow-sm">
+                        <img
+                          src={jobRequest.jdFileUrl}
+                          alt="Job Description"
+                          className="w-full h-auto max-h-[800px] object-contain"
+                        />
                       </div>
-                      <div>
-                        <p className="font-bold text-slate-900 dark:text-slate-100 text-[13px]">
-                          Bản Job Description đầy đủ
-                        </p>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-tight">
-                          ĐÃ ĐÍNH KÈM TỪ BỘ PHẬN
-                        </p>
+                    ) : null}
+                    <a
+                      href={jobRequest.jdFileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group flex items-center justify-between p-5 bg-white dark:bg-slate-750 rounded-3xl border border-slate-200 dark:border-slate-600 hover:border-emerald-300 dark:hover:border-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all shadow-sm"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xl group-hover:scale-105 transition-transform">
+                          📄
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-900 dark:text-slate-100 text-[13px]">
+                            Bản Job Description đầy đủ
+                          </p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-tight">
+                            ĐÃ ĐÍNH KÈM TỪ BỘ PHẬN
+                          </p>
+                        </div>
                       </div>
-                    </div>
                     <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs group-hover:translate-x-1 transition-transform tracking-tight">
                       Mở tệp →
                     </span>
                   </a>
+                  </div>
                 ) : (
                   <div className="p-6 text-center border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-3xl text-slate-400 dark:text-slate-500 font-bold text-xs italic">
                     Chưa có bản mô tả công việc cụ thể.
@@ -557,6 +570,58 @@ export default function HRJobRequestDetail() {
               className="elegant-textarea"
             />
           </div>
+        </div>
+      </Modal>
+
+      {/* Assign Staff Modal */}
+      <Modal
+        isOpen={showAssignModal}
+        onClose={() => {
+          setShowAssignModal(false);
+          setSelectedStaffId('');
+        }}
+        title="Gán HR Staff"
+        onConfirm={handleAssignStaff}
+        loading={assigning}
+        confirmLabel="Xác nhận gán"
+        variant="emerald"
+      >
+        <div className="space-y-6">
+          <p className="text-sm text-slate-500 font-medium leading-relaxed">
+            Chọn HR Staff để gán yêu cầu tuyển dụng này. 
+            Staff được gán sẽ có trách nhiệm tạo và quản lý tin tuyển dụng từ yêu cầu này.
+          </p>
+          
+          {jobRequest.assignedStaffName && (
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
+              <p className="text-xs font-bold text-blue-900 mb-1">Staff hiện tại</p>
+              <p className="text-sm font-semibold text-blue-700">{jobRequest.assignedStaffName}</p>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">
+              Chọn HR Staff <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={selectedStaffId}
+              onChange={(e) => setSelectedStaffId(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:border-emerald-500 focus:bg-white transition-all"
+            >
+              <option value="">-- Chọn HR Staff --</option>
+              {staffList.map((staff) => (
+                <option key={staff.id} value={staff.id}>
+                  {staff.fullName} ({staff.email})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {staffList.length === 0 && (
+            <div className="text-center py-4 text-sm text-slate-400">
+              Không có HR Staff khả dụng
+            </div>
+          )}
         </div>
       </Modal>
 

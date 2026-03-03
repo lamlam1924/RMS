@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import PageShell from "../../layouts/PageShell";
 import { userService } from "../../services/adminService";
+import notify from "../../utils/notification";
 import {
   ViewIcon,
   EditIcon,
@@ -39,35 +40,42 @@ export default function UserList() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this user?")) return;
-
-    try {
-      await userService.delete(id);
-      loadUsers();
-    } catch (err) {
-      alert("Error deleting user: " + err.message);
-    }
+    notify.confirm(
+      "Are you sure you want to delete this user?",
+      async () => {
+        try {
+          await userService.delete(id);
+          notify.success('Xóa người dùng thành công');
+          loadUsers();
+        } catch (err) {
+          notify.error("Lỗi khi xóa người dùng: " + err.message);
+        }
+      }
+    );
   };
 
   const handleToggleStatus = async (id, currentStatus) => {
     try {
       await userService.updateStatus(id, !currentStatus);
+      notify.success('Cập nhật trạng thái thành công');
       loadUsers();
     } catch (err) {
-      alert("Error updating status: " + err.message);
+      notify.error("Lỗi khi cập nhật trạng thái: " + err.message);
     }
   };
 
   const handleResetPassword = async (id) => {
-    if (!window.confirm("Are you sure you want to reset this user's password?"))
-      return;
-
-    try {
-      const result = await userService.resetPassword(id);
-      alert(`Password reset successfully. New password: ${result.newPassword}`);
-    } catch (err) {
-      alert("Error resetting password: " + err.message);
-    }
+    notify.confirm(
+      "Are you sure you want to reset this user's password?",
+      async () => {
+        try {
+          const result = await userService.resetPassword(id);
+          notify.success(`Reset mật khẩu thành công. Mật khẩu mới: ${result.newPassword}`, { duration: 8000 });
+        } catch (err) {
+          notify.error("Lỗi khi reset mật khẩu: " + err.message);
+        }
+      }
+    );
   };
 
   const filteredUsers = users.filter((user) => {

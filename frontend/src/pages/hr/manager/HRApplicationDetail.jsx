@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import hrService from '../../../services/hrService';
 import { formatDate, formatCurrency, formatDateTime } from '../../../utils/formatters/display';
 import { PriorityBadge, StatusBadge } from '../../../components/shared/Badge';
+import notify from '../../../utils/notification';
 
 export default function HRApplicationDetail() {
   const { id } = useParams();
@@ -52,7 +53,7 @@ export default function HRApplicationDetail() {
       await loadApplication();
     } catch (error) {
       console.error('Failed to update status:', error);
-      alert('Failed to update status');
+      notify.error('Cập nhật trạng thái thất bại');
     } finally {
       setUpdating(false);
     }

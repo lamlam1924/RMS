@@ -139,6 +139,9 @@ public class HRJobRequestsService : IHRJobRequestsService
             3 => "IN_REVIEW",
             4 => "APPROVED",
             5 => "REJECTED",
+            21 => "RETURNED",
+            22 => "CANCEL_PENDING",
+            23 => "CANCELLED",
             _ => "Unknown"
         };
     }
@@ -169,5 +172,27 @@ public class HRJobRequestsService : IHRJobRequestsService
         await _repository.AddStatusHistoryAsync(history);
 
         return new ActionResponseDto { Success = true, Message = "Status updated successfully" };
+    }
+
+    public async Task<ActionResponseDto> AssignStaffToJobRequestAsync(int jobRequestId, int staffId, int managerId)
+    {
+        var (success, errorMessage) = await _repository.AssignStaffToJobRequestAsync(jobRequestId, staffId, managerId);
+        if (!success)
+            return new ActionResponseDto { Success = false, Message = errorMessage };
+
+        return new ActionResponseDto { Success = true, Message = "Staff assigned successfully" };
+    }
+
+    public async Task<List<JobRequestListDto>> GetApprovedJobRequestsForStaffAsync(int staffId)
+    {
+        var entities = await _repository.GetApprovedJobRequestsForStaffAsync(staffId);
+        var dtos = _mapper.Map<List<JobRequestListDto>>(entities);
+
+        for (int i = 0; i < dtos.Count; i++)
+        {
+            dtos[i].CurrentStatus = "APPROVED";
+        }
+
+        return dtos;
     }
 }

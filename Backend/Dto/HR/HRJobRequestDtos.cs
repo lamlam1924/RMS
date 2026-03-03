@@ -18,6 +18,13 @@ public class JobRequestListDto
     public int StatusId { get; set; }
     public StatusDto? Status { get; set; }
     public DateTime CreatedAt { get; set; }
+    public int? AssignedStaffId { get; set; }
+    public string? AssignedStaffName { get; set; }
+}
+
+public class AssignStaffToRequestDto
+{
+    public int StaffId { get; set; }
 }
 
 public class JobRequestDetailDto : JobRequestListDto

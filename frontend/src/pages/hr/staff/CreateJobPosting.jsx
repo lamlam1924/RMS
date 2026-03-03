@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import hrService from '../../../services/hrService';
 import { formatCurrency } from '../../../utils/formatters/display';
+import notify from '../../../utils/notification';
 
 export default function CreateJobPosting() {
   const navigate = useNavigate();
@@ -48,7 +49,7 @@ export default function CreateJobPosting() {
       });
     } catch (error) {
       console.error('Failed to load job request:', error);
-      alert('Failed to load job request details');
+      notify.error('Không thể tải thông tin yêu cầu tuyển dụng');
     } finally {
       setLoading(false);
     }
@@ -80,11 +81,11 @@ export default function CreateJobPosting() {
       };
 
       await hrService.jobPostings.create(payload);
-      alert('Job posting created successfully!');
+      notify.success('Tạo tin tuyển dụng thành công! Tin đang ở trạng thái Nháp');
       navigate('/staff/hr-staff/job-postings');
     } catch (error) {
       console.error('Failed to create job posting:', error);
-      alert('Failed to create job posting');
+      notify.error('Không thể tạo tin: ' + error.message);
     } finally {
       setSaving(false);
     }

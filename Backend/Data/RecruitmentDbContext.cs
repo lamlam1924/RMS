@@ -459,6 +459,10 @@ public partial class RecruitmentDbContext : DbContext
                 .HasForeignKey(d => d.StatusId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__JobPostin__Statu__65370702");
+
+            entity.HasOne(d => d.AssignedStaff).WithMany()
+                .HasForeignKey(d => d.AssignedStaffId)
+                .HasConstraintName("FK_JobPostings_AssignedStaff");
         });
 
         modelBuilder.Entity<JobRequest>(entity =>
@@ -485,6 +489,10 @@ public partial class RecruitmentDbContext : DbContext
                 .HasForeignKey(d => d.RequestedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__JobReques__Reque__571DF1D5");
+
+            entity.HasOne(d => d.AssignedStaff).WithMany()
+                .HasForeignKey(d => d.AssignedStaffId)
+                .HasConstraintName("FK_JobRequests_AssignedStaff");
         });
 
         modelBuilder.Entity<Offer>(entity =>

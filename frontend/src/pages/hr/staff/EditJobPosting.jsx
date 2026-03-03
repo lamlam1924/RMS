@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import hrService from '../../../services/hrService';
 import { formatCurrency } from '../../../utils/formatters/display';
+import notify from '../../../utils/notification';
 
 export default function EditJobPosting() {
   const navigate = useNavigate();
@@ -44,7 +45,7 @@ export default function EditJobPosting() {
       });
     } catch (error) {
       console.error('Failed to load job posting:', error);
-      alert('Failed to load job posting details');
+      notify.error('Không thể tải thông tin tin tuyển dụng');
     } finally {
       setLoading(false);
     }
@@ -75,11 +76,11 @@ export default function EditJobPosting() {
       };
 
       await hrService.jobPostings.update(id, payload);
-      alert('Job posting updated successfully!');
+      notify.success('Cập nhật tin tuyển dụng thành công!');
       navigate('/staff/hr-staff/job-postings');
     } catch (error) {
       console.error('Failed to update job posting:', error);
-      alert('Failed to update job posting');
+      notify.error('Cập nhật tin tuyển dụng thất bại');
     } finally {
       setSaving(false);
     }

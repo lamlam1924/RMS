@@ -1,6 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { Briefcase, Clock, ChevronRight, Eye } from "lucide-react";
+import { Briefcase, Clock, ChevronRight, Eye, UserPlus } from "lucide-react";
 import { formatVND } from "../../../utils/formatters/currency";
 import { formatDateDisplay } from "../../../utils/formatters/date";
 import { getPriorityBadge, getStatusBadgeByName } from "../../../utils/helpers/badge";
@@ -11,16 +11,20 @@ import { BulkSelectCheckbox } from "../../common/BulkActionBar";
  * HRJobRequestCard — card for HR Manager job-request list.
  * Shows checkbox + quick-review button for SUBMITTED items.
  * Orange border highlight for CANCEL_PENDING items.
+ * UserPlus button for APPROVED items (assign HR Staff).
  *
  * Props:
  *   request       — job request data object
  *   isSelected    — bool, whether this card is bulk-selected
  *   onSelect      — fn(id) — toggle bulk selection
  *   onQuickReview — fn(e, id) — open quick-review modal
+ *   onAssignStaff — fn(e, id) — open assign staff modal (APPROVED only)
  */
-export default function HRJobRequestCard({ request, isSelected, onSelect, onQuickReview }) {
+export default function HRJobRequestCard({ request, isSelected, onSelect, onQuickReview, onAssignStaff }) {
   const navigate = useNavigate();
-  const canSelect = request.status?.code === "SUBMITTED";
+  const canSelect = request.currentStatus === "SUBMITTED";
+  const isApproved = request.currentStatus === "APPROVED";
+  const isCancelPending = request.currentStatus === "CANCEL_PENDING";
 
   const handleCardClick = () => {
     if (!canSelect) navigate(`/staff/hr-manager/job-requests/${request.id}`);
@@ -39,8 +43,10 @@ export default function HRJobRequestCard({ request, isSelected, onSelect, onQuic
       className={`group relative bg-white rounded-[2.5rem] p-10 border shadow-sm hover:shadow-[0_40px_80px_rgba(0,0,0,0.06)] hover:-translate-y-2 transition-all cursor-pointer overflow-hidden ${
         isSelected
           ? "border-blue-500 ring-2 ring-blue-200"
-          : request.status?.code === "CANCEL_PENDING"
+          : isCancelPending
           ? "border-orange-300 bg-orange-50/40"
+          : isApproved && !request.assignedStaffId
+          ? "border-green-300 bg-green-50/20"
           : "border-slate-100"
       }`}
     >
@@ -147,6 +153,16 @@ export default function HRJobRequestCard({ request, isSelected, onSelect, onQuic
                 title="Đánh giá nhanh"
               >
                 <Eye className="w-4 h-4" />
+              </button>
+            )}
+            {/* Assign Staff Button (APPROVED only) */}
+            {isApproved && onAssignStaff && (
+              <button
+                onClick={(e) => onAssignStaff(e, request.id)}
+                className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600 hover:bg-green-100 transition-all"
+                title={request.assignedStaffId ? `Đã gán: ${request.assignedStaffName || 'HR Staff'}` : 'Gán HR Staff'}
+              >
+                <UserPlus className="w-4 h-4" />
               </button>
             )}
             {/* Navigate arrow */}

@@ -247,29 +247,40 @@ export default function JobRequestDetailPanel({
         {/* JD attachment */}
         <Section title="Hồ sơ kèm theo">
           {detail.jdFileUrl ? (
-            <a
-              href={detail.jdFileUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group flex items-center justify-between p-5 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all shadow-sm"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center shrink-0">
-                  <FileText className="w-6 h-6" />
+            <div className="space-y-4">
+              {detail.jdFileUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                <div className="relative border-2 border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden bg-white dark:bg-slate-800 shadow-sm">
+                  <img
+                    src={detail.jdFileUrl}
+                    alt="Job Description"
+                    className="w-full h-auto max-h-[800px] object-contain"
+                  />
                 </div>
-                <div>
-                  <p className="font-bold text-slate-900 dark:text-slate-100 text-sm">
-                    Job Description (JD)
-                  </p>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 font-semibold uppercase">
-                    Tài liệu chính thức
-                  </p>
+              ) : null}
+              <a
+                href={detail.jdFileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center justify-between p-5 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all shadow-sm"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center shrink-0">
+                    <FileText className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                      Job Description (JD)
+                    </p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 font-semibold uppercase">
+                      Tài liệu chính thức
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <span className="px-4 py-1.5 bg-slate-100 dark:bg-slate-700 rounded-lg text-blue-600 dark:text-blue-400 text-xs font-bold uppercase group-hover:bg-blue-600 group-hover:text-white transition-all">
-                Xem
+                <span className="px-4 py-1.5 bg-slate-100 dark:bg-slate-700 rounded-lg text-blue-600 dark:text-blue-400 text-xs font-bold uppercase group-hover:bg-blue-600 group-hover:text-white transition-all">
+                  Xem
               </span>
             </a>
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-10 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl text-slate-400 dark:text-slate-500">
               <AlertCircle className="w-7 h-7 mb-2 opacity-40" />

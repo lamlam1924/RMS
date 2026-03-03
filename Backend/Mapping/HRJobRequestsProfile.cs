@@ -17,6 +17,7 @@ public class HRJobRequestsProfile : Profile
                 src.ExpectedStartDate.HasValue 
                     ? src.ExpectedStartDate.Value.ToDateTime(TimeOnly.MinValue) 
                     : (DateTime?)null))
+            .ForMember(dest => dest.AssignedStaffName, opt => opt.MapFrom(src => src.AssignedStaff != null ? src.AssignedStaff.FullName : null))
             .ForMember(dest => dest.CurrentStatus, opt => opt.Ignore()) // Set separately
             .ForMember(dest => dest.Status, opt => opt.Ignore()); // Set separately
 

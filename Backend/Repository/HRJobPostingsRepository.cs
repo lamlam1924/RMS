@@ -24,6 +24,7 @@ public class HRJobPostingsRepository : IHRJobPostingsRepository
             .ThenInclude(jr => jr.Position)
             .ThenInclude(p => p.Department)
             .Include(jp => jp.Status)
+            .Include(jp => jp.AssignedStaff)
             .Where(jp => !jp.IsDeleted!.Value);
 
         if (statusId.HasValue)
@@ -41,10 +42,14 @@ public class HRJobPostingsRepository : IHRJobPostingsRepository
                 DepartmentName = jp.JobRequest.Position.Department.Name,
                 Quantity = jp.JobRequest.Quantity, 
                 StatusId = jp.StatusId,
-                CurrentStatus = jp.Status.Name,
+                CurrentStatus = jp.Status.Code,
                 CreatedAt = jp.CreatedAt ?? DateTimeHelper.Now,
-                PublishedAt = jp.UpdatedAt, 
-                JobRequestId = jp.JobRequestId
+                PublishedAt = jp.UpdatedAt,
+                Deadline = jp.DeadlineDate.HasValue ? jp.DeadlineDate.Value.ToDateTime(TimeOnly.MinValue) : null,
+                JobRequestId = jp.JobRequestId,
+                AssignedStaffId = jp.AssignedStaffId,
+                AssignedStaffName = jp.AssignedStaff != null ? jp.AssignedStaff.FullName : null,
+                ApplicationCount = _context.Applications.Count(a => a.JobRequestId == jp.JobRequestId && !a.IsDeleted!.Value)
             })
             .ToListAsync();
 
@@ -53,18 +58,63 @@ public class HRJobPostingsRepository : IHRJobPostingsRepository
 
     public async Task<List<JobPostingListDto>> GetDraftJobPostingsAsync()
     {
-        // Status 6 = Draft for Job Posting
         return await GetJobPostingsAsync(6);
+    }
+
+    public async Task<List<JobPostingListDto>> GetJobPostingsByStaffAsync(int staffId)
+    {
+        return await _context.JobPostings
+            .Include(jp => jp.JobRequest)
+                .ThenInclude(jr => jr.Position)
+                .ThenInclude(p => p.Department)
+            .Include(jp => jp.Status)
+            .Include(jp => jp.AssignedStaff)
+            .Where(jp => !jp.IsDeleted!.Value && jp.AssignedStaffId == staffId)
+            .OrderByDescending(jp => jp.CreatedAt)
+            .Select(jp => new JobPostingListDto
+            {
+                Id = jp.Id,
+                Title = jp.Title,
+                PositionTitle = jp.JobRequest.Position.Title,
+                DepartmentName = jp.JobRequest.Position.Department.Name,
+                Quantity = jp.JobRequest.Quantity,
+                StatusId = jp.StatusId,
+                CurrentStatus = jp.Status.Code,
+                CreatedAt = jp.CreatedAt ?? DateTimeHelper.Now,
+                PublishedAt = jp.UpdatedAt,
+                Deadline = jp.DeadlineDate.HasValue ? jp.DeadlineDate.Value.ToDateTime(TimeOnly.MinValue) : null,
+                JobRequestId = jp.JobRequestId,
+                AssignedStaffId = jp.AssignedStaffId,
+                AssignedStaffName = jp.AssignedStaff != null ? jp.AssignedStaff.FullName : null,
+                ApplicationCount = _context.Applications.Count(a => a.JobRequestId == jp.JobRequestId && !a.IsDeleted!.Value)
+            })
+            .ToListAsync();
     }
     
     public async Task<JobPosting> GetJobPostingByIdAsync(int id)
     {
         return await _context.JobPostings
             .Include(jp => jp.Status)
+            .Include(jp => jp.AssignedStaff)
             .Include(jp => jp.JobRequest)
             .ThenInclude(jr => jr.Position)
             .ThenInclude(p => p.Department)
             .FirstOrDefaultAsync(jp => jp.Id == id && !jp.IsDeleted!.Value);
+    }
+
+    public async Task<string?> GetJdFileUrlAsync(int jobRequestId)
+    {
+        return await _context.FileUploadeds
+            .Where(f => f.EntityTypeId == 1 && f.EntityId == jobRequestId && f.FileTypeId == 4)
+            .OrderByDescending(f => f.UploadedAt)
+            .Select(f => f.FileUrl)
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task<int> GetApplicationCountAsync(int jobRequestId)
+    {
+        return await _context.Applications
+            .CountAsync(a => a.JobRequestId == jobRequestId && !a.IsDeleted!.Value);
     }
 
     public async Task<int> CreateJobPostingAsync(JobPosting jobPosting)
@@ -145,5 +195,30 @@ public class HRJobPostingsRepository : IHRJobPostingsRepository
 
         _context.StatusHistories.Add(statusHistory);
         return await _context.SaveChangesAsync() > 0;
+    }
+
+    public async Task<bool> AssignStaffAsync(int jobPostingId, int staffId, int managerId)
+    {
+        var jobPosting = await _context.JobPostings.FindAsync(jobPostingId);
+        if (jobPosting == null) return false;
+
+        jobPosting.AssignedStaffId = staffId;
+        jobPosting.UpdatedAt = DateTimeHelper.Now;
+        jobPosting.UpdatedBy = managerId;
+
+        return await _context.SaveChangesAsync() > 0;
+    }
+
+    public async Task<List<HRStaffDto>> GetHRStaffListAsync()
+    {
+        return await _context.Users
+            .Where(u => u.Roles.Any(r => r.Code == "HR_STAFF") && u.IsDeleted != true)
+            .Select(u => new HRStaffDto
+            {
+                Id = u.Id,
+                FullName = u.FullName,
+                Email = u.Email
+            })
+            .ToListAsync();
     }
 }

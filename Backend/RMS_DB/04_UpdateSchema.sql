@@ -386,3 +386,47 @@ BEGIN
     PRINT 'Added transition: CANCEL_PENDING -> IN_REVIEW (HR Manager rejects cancel)';
 END
 GO
+
+/* =========================================================
+   2026-03-03 | Sơn
+   Change: Thêm cột AssignedStaffId vào JobPostings
+   Purpose: HR Manager gán HR Staff phụ trách từng Job Posting.
+            HR Staff chỉ thấy job posting được gán cho mình.
+   ========================================================= */
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('JobPostings') AND name = 'AssignedStaffId')
+BEGIN
+    ALTER TABLE JobPostings ADD AssignedStaffId INT NULL;
+    ALTER TABLE JobPostings ADD CONSTRAINT FK_JobPostings_AssignedStaff
+        FOREIGN KEY (AssignedStaffId) REFERENCES Users(Id);
+    PRINT 'Added column AssignedStaffId to JobPostings';
+END
+GO
+
+-- Seed: gán HR Staff (UserId = 4) cho các JobPosting hiện có
+UPDATE JobPostings
+SET AssignedStaffId = 4
+WHERE AssignedStaffId IS NULL AND IsDeleted = 0;
+PRINT 'Assigned HR Staff (Id=4) to existing JobPostings';
+GO
+
+/* =========================================================
+   2026-03-03 | Fix workflow
+   Change: Thêm cột AssignedStaffId vào JobRequests
+   Purpose: HR Manager gán HR Staff vào Job Request đã được Director APPROVE.
+            HR Staff thấy job request được gán → tự tạo Job Posting.
+   ========================================================= */
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('JobRequests') AND name = 'AssignedStaffId')
+BEGIN
+    ALTER TABLE JobRequests ADD AssignedStaffId INT NULL;
+    ALTER TABLE JobRequests ADD CONSTRAINT FK_JobRequests_AssignedStaff
+        FOREIGN KEY (AssignedStaffId) REFERENCES Users(Id);
+    PRINT 'Added column AssignedStaffId to JobRequests';
+END
+GO
+
+-- Seed: gán HR Staff (UserId = 4) cho các JobRequest đã APPROVED hiện có (StatusId = 4)
+UPDATE JobRequests
+SET AssignedStaffId = 4
+WHERE StatusId = 4 AND AssignedStaffId IS NULL AND IsDeleted = 0;
+PRINT 'Assigned HR Staff (Id=4) to existing APPROVED JobRequests';
+GO

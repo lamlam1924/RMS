@@ -180,4 +180,47 @@ public class HRJobRequestsController : ControllerBase
             return StatusCode(500, new { message = "Error rejecting cancel request", error = ex.Message });
         }
     }
+
+    /// <summary>
+    /// HR Manager assigns an HR Staff to an APPROVED job request
+    /// PUT api/hr/job-requests/{id}/assign
+    /// </summary>
+    [HttpPut("{id}/assign")]
+    [Authorize(Roles = "HR_MANAGER")]
+    public async Task<IActionResult> AssignStaff(int id, [FromBody] AssignStaffToRequestDto dto)
+    {
+        try
+        {
+            var managerId = CurrentUserHelper.GetCurrentUserId(this);
+            var result = await _hrJobRequestsService.AssignStaffToJobRequestAsync(id, dto.StaffId, managerId);
+
+            if (!result.Success) return BadRequest(new { message = result.Message });
+
+            return Ok(new { message = result.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Error assigning staff", error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// HR Staff gets APPROVED job requests assigned to themselves
+    /// GET api/hr/job-requests/approved-for-me
+    /// </summary>
+    [HttpGet("approved-for-me")]
+    [Authorize(Roles = "HR_STAFF")]
+    public async Task<IActionResult> GetApprovedForMe()
+    {
+        try
+        {
+            var staffId = CurrentUserHelper.GetCurrentUserId(this);
+            var result = await _hrJobRequestsService.GetApprovedJobRequestsForStaffAsync(staffId);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Error fetching assigned job requests", error = ex.Message });
+        }
+    }
 }

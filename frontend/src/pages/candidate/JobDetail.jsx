@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { candidateService } from '../../services/candidateService';
+import notify from '../../utils/notification';
 
 export default function JobDetail() {
   const { id } = useParams();
@@ -48,7 +49,7 @@ export default function JobDetail() {
   };
 
   const handleApply = () => {
-    alert('Chức năng ứng tuyển đang được phát triển');
+    notify.info('Chức năng ứng tuyển đang được phát triển');
   };
 
   if (loading) {

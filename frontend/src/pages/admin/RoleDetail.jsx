@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import PageShell from "../../layouts/PageShell";
 import { roleService } from "../../services/adminService";
+import notify from "../../utils/notification";
 
 export default function RoleDetail() {
   const { id } = useParams();
@@ -68,11 +69,11 @@ export default function RoleDetail() {
       setSaving(true);
       if (isNew) {
         await roleService.create(role);
-        alert("Tạo vai trò thành công!");
+        notify.success("Tạo vai trò thành công!");
         navigate("/staff/admin/roles");
       } else {
         await roleService.update(id, role);
-        alert("Cập nhật vai trò thành công!");
+        notify.success("Cập nhật vai trò thành công!");
         navigate("/staff/admin/roles");
       }
     } catch (err) {

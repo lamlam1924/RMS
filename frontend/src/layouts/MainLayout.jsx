@@ -92,6 +92,11 @@ const MENU_CONFIG = [
         label: "Yêu cầu Tuyển dụng",
         to: "/staff/hr-manager/job-requests",
       },
+      {
+        key: "hrManagerJobPostings",
+        label: "Tin tuyển dụng",
+        to: "/staff/hr-manager/job-postings",
+      },
     ],
   },
 

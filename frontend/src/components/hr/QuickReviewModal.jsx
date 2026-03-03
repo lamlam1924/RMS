@@ -188,24 +188,35 @@ export default function QuickReviewModal({
 
               {/* JD File */}
               {request.jdFileUrl && (
-                <div className="flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
-                  <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                  <div className="flex-1">
-                    <div className="text-sm font-semibold text-blue-900 dark:text-blue-300">
-                      Bản mô tả công việc (JD)
+                <div className="space-y-3">
+                  {request.jdFileUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                    <div className="relative border-2 border-blue-200 dark:border-blue-800 rounded-xl overflow-hidden bg-white dark:bg-slate-800 shadow-sm">
+                      <img
+                        src={request.jdFileUrl}
+                        alt="Job Description"
+                        className="w-full h-auto max-h-[600px] object-contain"
+                      />
                     </div>
-                    <div className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
-                      {request.jdFileName || 'job-description.pdf'}
+                  ) : null}
+                  <div className="flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+                    <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    <div className="flex-1">
+                      <div className="text-sm font-semibold text-blue-900 dark:text-blue-300">
+                        Bản mô tả công việc (JD)
+                      </div>
+                      <div className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+                        {request.jdFileName || 'job-description.pdf'}
+                      </div>
                     </div>
+                    <a
+                      href={request.jdFileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600 text-white text-xs font-bold rounded-lg transition-all"
+                    >
+                      Xem
+                    </a>
                   </div>
-                  <a
-                    href={request.jdFileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-4 py-2 bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600 text-white text-xs font-bold rounded-lg transition-all"
-                  >
-                    Xem
-                  </a>
                 </div>
               )}
 
