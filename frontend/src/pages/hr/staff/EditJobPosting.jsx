@@ -34,8 +34,8 @@ export default function EditJobPosting() {
       setJobPosting(data);
       
       setFormData({
-        title: data.title,
-        description: data.description || '',
+        title: data.positionTitle,
+        description: data.description && data.description !== data.title ? data.description : '',
         requirements: data.requirements || '',
         benefits: data.benefits || '',
         salaryMin: data.salaryMin || '',
@@ -123,21 +123,35 @@ export default function EditJobPosting() {
             <p><strong>Status:</strong> {jobPosting.currentStatus}</p>
             <p><strong>Position:</strong> {jobPosting.positionTitle}</p>
             <p><strong>Department:</strong> {jobPosting.departmentName}</p>
+            {jobPosting.jdFileUrl && (
+              <div style={{ marginTop: 12 }}>
+                <p style={{ fontWeight: 500, marginBottom: 8 }}>Ảnh JD từ phòng ban:</p>
+                {jobPosting.jdFileUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                  <img
+                    src={jobPosting.jdFileUrl}
+                    alt="JD"
+                    style={{ maxWidth: '100%', borderRadius: 6, border: '1px solid #d1d5db' }}
+                  />
+                ) : (
+                  <a href={jobPosting.jdFileUrl} target="_blank" rel="noopener noreferrer"
+                    style={{ color: '#3b82f6', textDecoration: 'underline' }}>
+                    Xem file JD đính kèm
+                  </a>
+                )}
+                <p style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>
+                  Ảnh này tự động hiển thị cho ứng viên xem trong tin tuyển dụng.
+                </p>
+              </div>
+            )}
           </div>
 
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
-                Job Title <span style={{ color: 'red' }}>*</span>
-              </label>
-              <input
-                type="text"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                required
-                style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6 }}
-              />
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Job Title</label>
+              <div style={{ width: '100%', padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: 6, backgroundColor: '#f9fafb', color: '#374151', fontWeight: 600 }}>
+                {formData.title}
+              </div>
+              <p style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Tự động lấy từ vị trí tuyển dụng</p>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
@@ -187,12 +201,14 @@ export default function EditJobPosting() {
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Description</label>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Mô tả công việc</label>
+              <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>Ảnh JD từ phòng ban hiển thị cho ứng viên xem. Bổ sung thêm mô tả text nếu cần.</p>
               <textarea
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
                 rows={4}
+                placeholder="Ví dụ: Chúng tôi tìm kiếm ứng viên có kinh nghiệm..."
                 style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6 }}
               />
             </div>

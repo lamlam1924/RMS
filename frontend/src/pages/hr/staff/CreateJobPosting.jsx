@@ -38,13 +38,13 @@ export default function CreateJobPosting() {
       
       // Pre-fill form
       setFormData({
-        title: data.reason || `Hiring: ${data.positionTitle}`,
-        description: data.reason || '',
-        requirements: '', // Needs to be filled
-        benefits: '', // Needs to be filled
-        salaryMin: data.budget ? data.budget * 0.8 : '', // Suggestion
+        title: data.positionTitle,
+        description: '',
+        requirements: '',
+        benefits: '',
+        salaryMin: data.budget ? data.budget * 0.8 : '',
         salaryMax: data.budget || '',
-        location: 'Head Office', // Default
+        location: 'Head Office',
         deadline: data.deadlineDate || ''
       });
     } catch (error) {
@@ -106,21 +106,37 @@ export default function CreateJobPosting() {
             <p><strong>Department:</strong> {jobRequest.departmentName}</p>
             <p><strong>Quantity:</strong> {jobRequest.quantity}</p>
             <p><strong>Budget:</strong> {formatCurrency(jobRequest.budget)}</p>
+            {jobRequest.jdFileUrl && (
+              <div style={{ marginTop: 12 }}>
+                <p style={{ fontWeight: 500, marginBottom: 8 }}>Ảnh JD từ phòng ban:</p>
+                {jobRequest.jdFileUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                  <img
+                    src={jobRequest.jdFileUrl}
+                    alt="JD"
+                    style={{ maxWidth: '100%', borderRadius: 6, border: '1px solid #d1d5db' }}
+                  />
+                ) : (
+                  <a href={jobRequest.jdFileUrl} target="_blank" rel="noopener noreferrer"
+                    style={{ color: '#3b82f6', textDecoration: 'underline' }}>
+                    Xem file JD đính kèm
+                  </a>
+                )}
+                <p style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>
+                  Ảnh này sẽ tự động được đính kèm vào tin tuyển dụng để ứng viên xem.
+                </p>
+              </div>
+            )}
           </div>
 
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
-                Job Title <span style={{ color: 'red' }}>*</span>
+                Job Title
               </label>
-              <input
-                type="text"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                required
-                style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6 }}
-              />
+              <div style={{ width: '100%', padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: 6, backgroundColor: '#f9fafb', color: '#374151', fontWeight: 600 }}>
+                {formData.title}
+              </div>
+              <p style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Tự động lấy từ vị trí tuyển dụng</p>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
@@ -170,12 +186,16 @@ export default function CreateJobPosting() {
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Description</label>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Mô tả công việc</label>
+              <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>
+                Ảnh JD từ phòng ban sẽ hiển thị phía trên. Bạn có thể bổ sung thêm mô tả text ở đây (không bắt buộc).
+              </p>
               <textarea
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
                 rows={4}
+                placeholder="Ví dụ: Chúng tôi tìm kiếm ứng viên có kinh nghiệm..."
                 style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6 }}
               />
             </div>
