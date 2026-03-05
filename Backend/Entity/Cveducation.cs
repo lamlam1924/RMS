@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace RMS.Entity;
@@ -10,6 +10,8 @@ public partial class Cveducation
     public int CvprofileId { get; set; }
 
     public string SchoolName { get; set; } = null!;
+
+    public string? Location { get; set; }
 
     public string? Degree { get; set; }
 

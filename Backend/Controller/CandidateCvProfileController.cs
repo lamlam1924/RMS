@@ -63,12 +63,17 @@ public class CandidateCvProfileController : ControllerBase
             Summary = profile.Summary,
             YearsOfExperience = profile.YearsOfExperience,
             Source = profile.Source,
+            Address = profile.Address,
+            ProfessionalTitle = profile.ProfessionalTitle,
+            SkillsText = profile.SkillsText,
+            ReferencesText = profile.ReferencesText,
             CreatedAt = profile.CreatedAt,
             Experiences = profile.Cvexperiences.Select(e => new CvExperienceDto
             {
                 Id = e.Id,
                 CompanyName = e.CompanyName,
                 JobTitle = e.JobTitle,
+                Location = e.Location,
                 StartDate = e.StartDate,
                 EndDate = e.EndDate,
                 Description = e.Description
@@ -77,6 +82,7 @@ public class CandidateCvProfileController : ControllerBase
             {
                 Id = e.Id,
                 SchoolName = e.SchoolName,
+                Location = e.Location,
                 Degree = e.Degree,
                 Major = e.Major,
                 StartYear = e.StartYear,
@@ -128,7 +134,11 @@ public class CandidateCvProfileController : ControllerBase
             Phone = request.Phone?.Trim() ?? candidate.Phone,
             Summary = request.Summary?.Trim(),
             YearsOfExperience = request.YearsOfExperience,
-            Source = request.Source?.Trim()
+            Source = request.Source?.Trim(),
+            Address = request.Address?.Trim(),
+            ProfessionalTitle = request.ProfessionalTitle?.Trim(),
+            SkillsText = request.SkillsText?.Trim(),
+            ReferencesText = request.ReferencesText?.Trim()
         };
 
         _context.Cvprofiles.Add(profile);
@@ -144,6 +154,7 @@ public class CandidateCvProfileController : ControllerBase
                 CvprofileId = profile.Id,
                 CompanyName = exp.CompanyName.Trim(),
                 JobTitle = exp.JobTitle.Trim(),
+                Location = exp.Location?.Trim(),
                 StartDate = exp.StartDate,
                 EndDate = exp.EndDate,
                 Description = exp.Description?.Trim()
@@ -159,6 +170,7 @@ public class CandidateCvProfileController : ControllerBase
             {
                 CvprofileId = profile.Id,
                 SchoolName = edu.SchoolName.Trim(),
+                Location = edu.Location?.Trim(),
                 Degree = edu.Degree?.Trim(),
                 Major = edu.Major?.Trim(),
                 StartYear = edu.StartYear,
@@ -216,6 +228,10 @@ public class CandidateCvProfileController : ControllerBase
         profile.Summary = request.Summary?.Trim();
         profile.YearsOfExperience = request.YearsOfExperience;
         profile.Source = request.Source?.Trim();
+        profile.Address = request.Address?.Trim();
+        profile.ProfessionalTitle = request.ProfessionalTitle?.Trim();
+        profile.SkillsText = request.SkillsText?.Trim();
+        profile.ReferencesText = request.ReferencesText?.Trim();
 
         var existingExpIds = (request.Experiences ?? [])
             .Where(e => e.Id.HasValue)
@@ -244,6 +260,7 @@ public class CandidateCvProfileController : ControllerBase
                 {
                     existing.CompanyName = exp.CompanyName.Trim();
                     existing.JobTitle = exp.JobTitle.Trim();
+                    existing.Location = exp.Location?.Trim();
                     existing.StartDate = exp.StartDate;
                     existing.EndDate = exp.EndDate;
                     existing.Description = exp.Description?.Trim();
@@ -255,6 +272,7 @@ public class CandidateCvProfileController : ControllerBase
                 CvprofileId = profile.Id,
                 CompanyName = exp.CompanyName.Trim(),
                 JobTitle = exp.JobTitle.Trim(),
+                Location = exp.Location?.Trim(),
                 StartDate = exp.StartDate,
                 EndDate = exp.EndDate,
                 Description = exp.Description?.Trim()
@@ -280,6 +298,7 @@ public class CandidateCvProfileController : ControllerBase
                 if (existing != null)
                 {
                     existing.SchoolName = edu.SchoolName.Trim();
+                    existing.Location = edu.Location?.Trim();
                     existing.Degree = edu.Degree?.Trim();
                     existing.Major = edu.Major?.Trim();
                     existing.StartYear = edu.StartYear;
@@ -292,6 +311,7 @@ public class CandidateCvProfileController : ControllerBase
             {
                 CvprofileId = profile.Id,
                 SchoolName = edu.SchoolName.Trim(),
+                Location = edu.Location?.Trim(),
                 Degree = edu.Degree?.Trim(),
                 Major = edu.Major?.Trim(),
                 StartYear = edu.StartYear,
@@ -362,12 +382,17 @@ public class CandidateCvProfileController : ControllerBase
             Summary = profile.Summary,
             YearsOfExperience = profile.YearsOfExperience,
             Source = profile.Source,
+            Address = profile.Address,
+            ProfessionalTitle = profile.ProfessionalTitle,
+            SkillsText = profile.SkillsText,
+            ReferencesText = profile.ReferencesText,
             CreatedAt = profile.CreatedAt,
             Experiences = profile.Cvexperiences.Select(e => new CvExperienceDto
             {
                 Id = e.Id,
                 CompanyName = e.CompanyName,
                 JobTitle = e.JobTitle,
+                Location = e.Location,
                 StartDate = e.StartDate,
                 EndDate = e.EndDate,
                 Description = e.Description
@@ -376,6 +401,7 @@ public class CandidateCvProfileController : ControllerBase
             {
                 Id = e.Id,
                 SchoolName = e.SchoolName,
+                Location = e.Location,
                 Degree = e.Degree,
                 Major = e.Major,
                 StartYear = e.StartYear,

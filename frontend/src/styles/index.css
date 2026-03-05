@@ -183,3 +183,12 @@ input, select {
   .grid { grid-template-columns: 1fr; }
   .search input { width: 180px; }
 }
+
+/* Resume Builder - Print styles */
+@media print {
+  body { background: white !important; }
+  .resume-print,
+  .resume-print * { box-shadow: none !important; }
+  .resume-print { border-radius: 0 !important; }
+  @page { size: A4; margin: 0; }
+}

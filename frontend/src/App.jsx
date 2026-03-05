@@ -66,6 +66,9 @@ import JobDetail from "./pages/candidate/JobDetail";
 import MyApplications from "./pages/candidate/MyApplications";
 import MyProfile from "./pages/candidate/MyProfile";
 
+// Resume Builder (standalone)
+import ResumePage from "./pages/resume-builder/ResumePage";
+
 const STAFF_ROLES = [
   ROLES.ADMIN,
   ROLES.DIRECTOR,
@@ -118,6 +121,9 @@ export default function App() {
       <Routes>
         {/* Landing Page */}
         <Route path="/" element={<LandingPage />} />
+
+        {/* Resume Builder - Standalone */}
+        <Route path="/resume-builder" element={<ResumePage />} />
 
         {/* Public Routes */}
         <Route path="/login" element={<Login />} />
