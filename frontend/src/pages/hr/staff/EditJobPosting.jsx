@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import hrService from '../../../services/hrService';
 import { formatCurrency } from '../../../utils/formatters/display';
+import notify from '../../../utils/notification';
 
 export default function EditJobPosting() {
   const navigate = useNavigate();
@@ -33,8 +34,8 @@ export default function EditJobPosting() {
       setJobPosting(data);
       
       setFormData({
-        title: data.title,
-        description: data.description || '',
+        title: data.positionTitle,
+        description: data.description && data.description !== data.title ? data.description : '',
         requirements: data.requirements || '',
         benefits: data.benefits || '',
         salaryMin: data.salaryMin || '',
@@ -44,7 +45,7 @@ export default function EditJobPosting() {
       });
     } catch (error) {
       console.error('Failed to load job posting:', error);
-      alert('Failed to load job posting details');
+      notify.error('Không thể tải thông tin tin tuyển dụng');
     } finally {
       setLoading(false);
     }
@@ -75,11 +76,11 @@ export default function EditJobPosting() {
       };
 
       await hrService.jobPostings.update(id, payload);
-      alert('Job posting updated successfully!');
+      notify.success('Cập nhật tin tuyển dụng thành công!');
       navigate('/staff/hr-staff/job-postings');
     } catch (error) {
       console.error('Failed to update job posting:', error);
-      alert('Failed to update job posting');
+      notify.error('Cập nhật tin tuyển dụng thất bại');
     } finally {
       setSaving(false);
     }
@@ -87,6 +88,29 @@ export default function EditJobPosting() {
 
   if (loading) return <div style={{ padding: 24 }}>Loading...</div>;
   if (!jobPosting) return <div style={{ padding: 24 }}>Job Posting not found</div>;
+
+  if (jobPosting.statusId === 8) {
+    return (
+      <div style={{ padding: 24, backgroundColor: '#f9fafb', minHeight: '100vh' }}>
+        <div style={{ maxWidth: 800, margin: '0 auto' }}>
+          <div style={{ backgroundColor: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 8, padding: 24 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: '#92400e', marginBottom: 8 }}>
+              Cannot Edit This Job Posting
+            </h2>
+            <p style={{ color: '#78350f', marginBottom: 16 }}>
+              Job posting đã <strong>Đóng</strong> không thể chỉnh sửa. Trạng thái hiện tại: <strong>{jobPosting.currentStatus}</strong>
+            </p>
+            <button
+              onClick={() => navigate('/staff/hr-staff/job-postings')}
+              style={{ padding: '8px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+            >
+              Quay lại danh sách
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: 24, backgroundColor: '#f9fafb', minHeight: '100vh' }}>
@@ -99,21 +123,35 @@ export default function EditJobPosting() {
             <p><strong>Status:</strong> {jobPosting.currentStatus}</p>
             <p><strong>Position:</strong> {jobPosting.positionTitle}</p>
             <p><strong>Department:</strong> {jobPosting.departmentName}</p>
+            {jobPosting.jdFileUrl && (
+              <div style={{ marginTop: 12 }}>
+                <p style={{ fontWeight: 500, marginBottom: 8 }}>Ảnh JD từ phòng ban:</p>
+                {jobPosting.jdFileUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                  <img
+                    src={jobPosting.jdFileUrl}
+                    alt="JD"
+                    style={{ maxWidth: '100%', borderRadius: 6, border: '1px solid #d1d5db' }}
+                  />
+                ) : (
+                  <a href={jobPosting.jdFileUrl} target="_blank" rel="noopener noreferrer"
+                    style={{ color: '#3b82f6', textDecoration: 'underline' }}>
+                    Xem file JD đính kèm
+                  </a>
+                )}
+                <p style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>
+                  Ảnh này tự động hiển thị cho ứng viên xem trong tin tuyển dụng.
+                </p>
+              </div>
+            )}
           </div>
 
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
-                Job Title <span style={{ color: 'red' }}>*</span>
-              </label>
-              <input
-                type="text"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                required
-                style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6 }}
-              />
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Job Title</label>
+              <div style={{ width: '100%', padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: 6, backgroundColor: '#f9fafb', color: '#374151', fontWeight: 600 }}>
+                {formData.title}
+              </div>
+              <p style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Tự động lấy từ vị trí tuyển dụng</p>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
@@ -163,12 +201,14 @@ export default function EditJobPosting() {
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Description</label>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Mô tả công việc</label>
+              <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>Ảnh JD từ phòng ban hiển thị cho ứng viên xem. Bổ sung thêm mô tả text nếu cần.</p>
               <textarea
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
                 rows={4}
+                placeholder="Ví dụ: Chúng tôi tìm kiếm ứng viên có kinh nghiệm..."
                 style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6 }}
               />
             </div>

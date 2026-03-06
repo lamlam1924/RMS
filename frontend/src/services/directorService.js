@@ -5,7 +5,9 @@
 import { API_BASE_URL } from "./api";
 
 const getAuthHeader = () => {
-  const token = localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken");
+  const token =
+    localStorage.getItem("accessToken") ||
+    sessionStorage.getItem("accessToken");
   return {
     "Content-Type": "application/json",
     Authorization: `Bearer ${token}`,
@@ -22,6 +24,14 @@ export const jobRequestService = {
     return res.json();
   },
 
+  async getProcessed() {
+    const res = await fetch(`${API_BASE_URL}/director/job-requests/processed`, {
+      headers: getAuthHeader(),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
   async getDetail(id) {
     const res = await fetch(`${API_BASE_URL}/director/job-requests/${id}`, {
       headers: getAuthHeader(),
@@ -31,21 +41,40 @@ export const jobRequestService = {
   },
 
   async approve(id, comment = "") {
-    const res = await fetch(`${API_BASE_URL}/director/job-requests/${id}/approve`, {
-      method: "POST",
-      headers: getAuthHeader(),
-      body: JSON.stringify({ comment }),
-    });
+    const res = await fetch(
+      `${API_BASE_URL}/director/job-requests/${id}/approve`,
+      {
+        method: "POST",
+        headers: getAuthHeader(),
+        body: JSON.stringify({ comment }),
+      },
+    );
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },
 
   async reject(id, comment = "") {
-    const res = await fetch(`${API_BASE_URL}/director/job-requests/${id}/reject`, {
-      method: "POST",
-      headers: getAuthHeader(),
-      body: JSON.stringify({ comment }),
-    });
+    const res = await fetch(
+      `${API_BASE_URL}/director/job-requests/${id}/reject`,
+      {
+        method: "POST",
+        headers: getAuthHeader(),
+        body: JSON.stringify({ comment }),
+      },
+    );
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async returnJobRequest(id, comment = "") {
+    const res = await fetch(
+      `${API_BASE_URL}/director/job-requests/${id}/return`,
+      {
+        method: "POST",
+        headers: getAuthHeader(),
+        body: JSON.stringify({ comment }),
+      },
+    );
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },

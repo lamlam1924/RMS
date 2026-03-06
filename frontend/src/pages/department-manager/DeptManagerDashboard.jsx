@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import deptManagerService from "../../services/deptManagerService";
-import { StatCard, LoadingSpinner } from "../../components/shared";
+import { LoadingSpinner } from "../../components/shared";
 import { getPriorityBadge, getStatusBadge } from "../../utils/helpers/badge";
 
 const DeptManagerDashboard = () => {

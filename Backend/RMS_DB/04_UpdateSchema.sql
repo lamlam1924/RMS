@@ -244,3 +244,189 @@ WHERE Id = 3; -- INTERVIEWING
 PRINT
 'Updated Applications with correct StatusIds';
 GO
+
+   /* =========================================================
+   2026-02-07 | Lâm
+   Change: Thêm trạng thái RETURNED và cấu hình Workflow mới cho Job Request
+   Purpose: Hỗ trợ HR Manager trả về yêu cầu cho Dept Manager chỉnh sửa
+   ========================================================= */
+IF NOT EXISTS (SELECT 1 FROM Statuses WHERE Code = 'RETURNED' AND StatusTypeId = 1)
+BEGIN
+    INSERT INTO Statuses (Id, StatusTypeId, Code, Name, OrderNo, IsFinal)
+    VALUES (21, 1, 'RETURNED', N'Yêu cầu chỉnh sửa', 6, 0);
+    PRINT 'Added status RETURNED (ID: 21)';
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM WorkflowTransitions WHERE StatusTypeId = 1 AND FromStatusId = 2 AND ToStatusId = 21 AND RequiredRoleId = 3)
+BEGIN
+    INSERT INTO WorkflowTransitions (StatusTypeId, FromStatusId, ToStatusId, RequiredRoleId)
+    VALUES (1, 2, 21, 3);
+    PRINT 'Added transition: SUBMITTED -> RETURNED (HR Manager)';
+END
+
+-- Thêm luồng: RETURNED -> DRAFT (Dept Manager mở lại để sửa)
+IF NOT EXISTS (SELECT 1 FROM WorkflowTransitions WHERE StatusTypeId = 1 AND FromStatusId = 21 AND ToStatusId = 1 AND RequiredRoleId = 5)
+BEGIN
+    INSERT INTO WorkflowTransitions (StatusTypeId, FromStatusId, ToStatusId, RequiredRoleId)
+    VALUES (1, 21, 1, 5);
+    PRINT 'Added transition: RETURNED -> DRAFT (Dept Manager)';
+END
+
+-- Thêm luồng: IN_REVIEW -> RETURNED (Trường hợp Director xem xong cũng có thể yêu cầu HR bảo Dept Manager sửa lại)
+IF NOT EXISTS (SELECT 1 FROM WorkflowTransitions WHERE StatusTypeId = 1 AND FromStatusId = 3 AND ToStatusId = 21 AND RequiredRoleId = 2)
+BEGIN
+    INSERT INTO WorkflowTransitions (StatusTypeId, FromStatusId, ToStatusId, RequiredRoleId)
+    VALUES (1, 3, 21, 2);
+    PRINT 'Added transition: IN_REVIEW -> RETURNED (Director)';
+END
+
+GO
+/* =========================================================
+   2026-02-07 | Lâm
+   Change: Thêm các trường theo dõi cho luồng Trả về (Return Flow)
+   Purpose: Hỗ trợ HR Manager theo dõi việc Dept Manager đã xem yêu cầu chưa
+   ========================================================= */
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('JobRequests') AND name = 'LastReturnedAt')
+BEGIN
+    ALTER TABLE JobRequests ADD LastReturnedAt DATETIME NULL;
+    PRINT 'Added column LastReturnedAt to JobRequests';
+END
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('JobRequests') AND name = 'LastViewedByManagerAt')
+BEGIN
+    ALTER TABLE JobRequests ADD LastViewedByManagerAt DATETIME NULL;
+    PRINT 'Added column LastViewedByManagerAt to JobRequests';
+END
+GO
+-- Thêm loại tệp JOB_DESCRIPTION cho Job Requests
+IF NOT EXISTS (SELECT 1 FROM FileTypes WHERE Code = 'JOB_DESCRIPTION')
+BEGIN
+    INSERT INTO FileTypes (Id, Code, Description)
+    VALUES (4, 'JOB_DESCRIPTION', N'Bản mô tả công việc (Job Description)');
+END
+GO
+
+/* =========================================================
+   2026-02-24 | Lâm
+   Change: CANCEL_PENDING + CANCELLED cho Job Request
+   Purpose: Hỗ trợ Trưởng phòng yêu cầu hủy sau khi đã gửi;
+            HR Manager phê duyệt hoặc từ chối yêu cầu hủy đó.
+   ========================================================= */
+IF NOT EXISTS (SELECT 1 FROM Statuses WHERE Code = 'CANCEL_PENDING' AND StatusTypeId = 1)
+BEGIN
+    INSERT INTO Statuses (Id, StatusTypeId, Code, Name, OrderNo, IsFinal)
+    VALUES (22, 1, 'CANCEL_PENDING', N'Đang chờ duyệt hủy', 7, 0);
+    PRINT 'Added status CANCEL_PENDING (ID: 22)';
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM Statuses WHERE Code = 'CANCELLED' AND StatusTypeId = 1)
+BEGIN
+    INSERT INTO Statuses (Id, StatusTypeId, Code, Name, OrderNo, IsFinal)
+    VALUES (23, 1, 'CANCELLED', N'Đã hủy', 8, 1);
+    PRINT 'Added status CANCELLED (ID: 23)';
+END
+GO
+
+-- DRAFT → CANCELLED (Trưởng phòng hủy trực tiếp, RoleId 5 = DEPARTMENT_MANAGER)
+IF NOT EXISTS (SELECT 1 FROM WorkflowTransitions WHERE StatusTypeId = 1 AND FromStatusId = 1 AND ToStatusId = 23)
+BEGIN
+    INSERT INTO WorkflowTransitions (StatusTypeId, FromStatusId, ToStatusId, RequiredRoleId)
+    VALUES (1, 1, 23, 5);
+    PRINT 'Added transition: DRAFT -> CANCELLED (Dept Manager)';
+END
+
+-- RETURNED → CANCELLED (Trưởng phòng hủy khi bị trả về)
+IF NOT EXISTS (SELECT 1 FROM WorkflowTransitions WHERE StatusTypeId = 1 AND FromStatusId = 21 AND ToStatusId = 23)
+BEGIN
+    INSERT INTO WorkflowTransitions (StatusTypeId, FromStatusId, ToStatusId, RequiredRoleId)
+    VALUES (1, 21, 23, 5);
+    PRINT 'Added transition: RETURNED -> CANCELLED (Dept Manager)';
+END
+
+-- SUBMITTED → CANCEL_PENDING (Trưởng phòng yêu cầu hủy, cần HR duyệt)
+IF NOT EXISTS (SELECT 1 FROM WorkflowTransitions WHERE StatusTypeId = 1 AND FromStatusId = 2 AND ToStatusId = 22)
+BEGIN
+    INSERT INTO WorkflowTransitions (StatusTypeId, FromStatusId, ToStatusId, RequiredRoleId)
+    VALUES (1, 2, 22, 5);
+    PRINT 'Added transition: SUBMITTED -> CANCEL_PENDING (Dept Manager)';
+END
+
+-- IN_REVIEW → CANCEL_PENDING (Trưởng phòng yêu cầu hủy khi đang xem xét)
+IF NOT EXISTS (SELECT 1 FROM WorkflowTransitions WHERE StatusTypeId = 1 AND FromStatusId = 3 AND ToStatusId = 22)
+BEGIN
+    INSERT INTO WorkflowTransitions (StatusTypeId, FromStatusId, ToStatusId, RequiredRoleId)
+    VALUES (1, 3, 22, 5);
+    PRINT 'Added transition: IN_REVIEW -> CANCEL_PENDING (Dept Manager)';
+END
+
+-- CANCEL_PENDING → CANCELLED (HR Manager phê duyệt hủy)
+IF NOT EXISTS (SELECT 1 FROM WorkflowTransitions WHERE StatusTypeId = 1 AND FromStatusId = 22 AND ToStatusId = 23)
+BEGIN
+    INSERT INTO WorkflowTransitions (StatusTypeId, FromStatusId, ToStatusId, RequiredRoleId)
+    VALUES (1, 22, 23, 3);
+    PRINT 'Added transition: CANCEL_PENDING -> CANCELLED (HR Manager approves)';
+END
+
+-- CANCEL_PENDING → SUBMITTED (HR Manager từ chối hủy, hoàn lại SUBMITTED)
+IF NOT EXISTS (SELECT 1 FROM WorkflowTransitions WHERE StatusTypeId = 1 AND FromStatusId = 22 AND ToStatusId = 2)
+BEGIN
+    INSERT INTO WorkflowTransitions (StatusTypeId, FromStatusId, ToStatusId, RequiredRoleId)
+    VALUES (1, 22, 2, 3);
+    PRINT 'Added transition: CANCEL_PENDING -> SUBMITTED (HR Manager rejects cancel)';
+END
+
+-- CANCEL_PENDING → IN_REVIEW (HR Manager từ chối hủy, hoàn lại IN_REVIEW)
+IF NOT EXISTS (SELECT 1 FROM WorkflowTransitions WHERE StatusTypeId = 1 AND FromStatusId = 22 AND ToStatusId = 3)
+BEGIN
+    INSERT INTO WorkflowTransitions (StatusTypeId, FromStatusId, ToStatusId, RequiredRoleId)
+    VALUES (1, 22, 3, 3);
+    PRINT 'Added transition: CANCEL_PENDING -> IN_REVIEW (HR Manager rejects cancel)';
+END
+GO
+
+/* =========================================================
+   2026-03-03 | Sơn
+   Change: Thêm cột AssignedStaffId vào JobPostings
+   Purpose: HR Manager gán HR Staff phụ trách từng Job Posting.
+            HR Staff chỉ thấy job posting được gán cho mình.
+   ========================================================= */
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('JobPostings') AND name = 'AssignedStaffId')
+BEGIN
+    ALTER TABLE JobPostings ADD AssignedStaffId INT NULL;
+    ALTER TABLE JobPostings ADD CONSTRAINT FK_JobPostings_AssignedStaff
+        FOREIGN KEY (AssignedStaffId) REFERENCES Users(Id);
+    PRINT 'Added column AssignedStaffId to JobPostings';
+END
+GO
+
+-- Seed: gán HR Staff (UserId = 4) cho các JobPosting hiện có
+UPDATE JobPostings
+SET AssignedStaffId = 4
+WHERE AssignedStaffId IS NULL AND IsDeleted = 0;
+PRINT 'Assigned HR Staff (Id=4) to existing JobPostings';
+GO
+
+/* =========================================================
+   2026-03-03 | Fix workflow
+   Change: Thêm cột AssignedStaffId vào JobRequests
+   Purpose: HR Manager gán HR Staff vào Job Request đã được Director APPROVE.
+            HR Staff thấy job request được gán → tự tạo Job Posting.
+   ========================================================= */
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('JobRequests') AND name = 'AssignedStaffId')
+BEGIN
+    ALTER TABLE JobRequests ADD AssignedStaffId INT NULL;
+    ALTER TABLE JobRequests ADD CONSTRAINT FK_JobRequests_AssignedStaff
+        FOREIGN KEY (AssignedStaffId) REFERENCES Users(Id);
+    PRINT 'Added column AssignedStaffId to JobRequests';
+END
+GO
+
+-- Seed: gán HR Staff (UserId = 4) cho các JobRequest đã APPROVED hiện có (StatusId = 4)
+UPDATE JobRequests
+SET AssignedStaffId = 4
+WHERE StatusId = 4 AND AssignedStaffId IS NULL AND IsDeleted = 0;
+PRINT 'Assigned HR Staff (Id=4) to existing APPROVED JobRequests';
+GO

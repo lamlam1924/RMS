@@ -12,8 +12,14 @@ public class JobPostingListDto
     public DateTime? PublishedAt { get; set; }
     public DateTime? ClosedAt { get; set; }
     public DateTime CreatedAt { get; set; }
+    public DateTime? Deadline { get; set; }
     // Link to request
     public int JobRequestId { get; set; }
+    // Assigned staff
+    public int? AssignedStaffId { get; set; }
+    public string? AssignedStaffName { get; set; }
+    // Application count
+    public int ApplicationCount { get; set; }
 }
 
 public class JobPostingDetailDto : JobPostingListDto
@@ -24,7 +30,7 @@ public class JobPostingDetailDto : JobPostingListDto
     public decimal? SalaryMin { get; set; }
     public decimal? SalaryMax { get; set; }
     public string? Location { get; set; }
-    public DateTime? Deadline { get; set; }
+    public string? JdFileUrl { get; set; }
 }
 
 public class CreateJobPostingDto
@@ -38,6 +44,18 @@ public class CreateJobPostingDto
     public decimal? SalaryMax { get; set; }
     public string? Location { get; set; }
     public DateTime? Deadline { get; set; }
+}
+
+public class AssignStaffDto
+{
+    public int StaffId { get; set; }
+}
+
+public class HRStaffDto
+{
+    public int Id { get; set; }
+    public string FullName { get; set; } = "";
+    public string Email { get; set; } = "";
 }
 
 public class UpdateJobPostingDto

@@ -17,7 +17,7 @@ public class DirectorJobRequestsProfile : Profile
                 src.ExpectedStartDate.HasValue
                     ? src.ExpectedStartDate.Value.ToDateTime(TimeOnly.MinValue)
                     : (DateTime?)null))
-            .ForMember(dest => dest.CurrentStatus, opt => opt.Ignore()) // Set separately from Status entity
+            .ForMember(dest => dest.CurrentStatus, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt ?? DateTime.Now));
 
         // JobRequest Entity -> JobRequestDetailDto
@@ -30,7 +30,7 @@ public class DirectorJobRequestsProfile : Profile
                 src.ExpectedStartDate.HasValue
                     ? src.ExpectedStartDate.Value.ToDateTime(TimeOnly.MinValue)
                     : (DateTime?)null))
-            .ForMember(dest => dest.CurrentStatus, opt => opt.Ignore()) // Set separately
+            .ForMember(dest => dest.CurrentStatus, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt ?? DateTime.Now))
             .ForMember(dest => dest.ApprovalHistory, opt => opt.Ignore()); // Set separately from StatusHistory
 

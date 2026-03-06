@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import directorService from "../../services/directorService";
 import { ViewIcon, EditIcon } from "../../components/admin/ActionIcons";
+import notify from "../../utils/notification";
 
 const JobRequestApprovals = () => {
   const [jobRequests, setJobRequests] = useState([]);
@@ -35,7 +36,7 @@ const JobRequestApprovals = () => {
       setSelectedRequest(detail);
       setShowDetailModal(true);
     } catch (err) {
-      alert("Failed to load detail: " + err.message);
+      notify.error("Không thể tải thông tin chi tiết: " + err.message);
     }
   };
 
@@ -52,17 +53,17 @@ const JobRequestApprovals = () => {
     try {
       if (approvalAction === "approve") {
         await directorService.jobRequests.approve(selectedRequest.id, comment);
-        alert("Job request approved successfully");
+        notify.success("Phê duyệt yêu cầu tuyển dụng thành công");
       } else {
         await directorService.jobRequests.reject(selectedRequest.id, comment);
-        alert("Job request rejected successfully");
+        notify.success("Từ chối yêu cầu tuyển dụng thành công");
       }
       setShowApprovalModal(false);
       setSelectedRequest(null);
       setComment("");
       loadJobRequests();
     } catch (err) {
-      alert("Action failed: " + err.message);
+      notify.error("Thao tác thất bại: " + err.message);
     }
   };
 

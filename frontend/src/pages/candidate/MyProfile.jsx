@@ -1,15 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
+import React, { useState, useEffect } from 'react';
 import { candidateService } from '../../services/candidateService';
 import { authService } from '../../services/authService';
-import CvTemplate from '../../components/CvTemplate';
 
 const emptyExperience = () => ({
   id: null,
   companyName: '',
   jobTitle: '',
-  location: '',
   startDate: '',
   endDate: '',
   description: '',
@@ -18,7 +14,6 @@ const emptyExperience = () => ({
 const emptyEducation = () => ({
   id: null,
   schoolName: '',
-  location: '',
   degree: '',
   major: '',
   startYear: '',
@@ -33,21 +28,6 @@ const emptyCertificate = () => ({
   issuedYear: '',
 });
 
-const emptyReference = () => ({ name: '', company: '', email: '', phone: '' });
-
-const parseReferencesText = (text) => {
-  if (!text?.trim()) return [emptyReference()];
-  return text.split('\n').filter(Boolean).map(line => {
-    const [name, company, email, phone] = line.split('|').map(p => p.trim());
-    return { name: name || '', company: company || '', email: email || '', phone: phone || '' };
-  });
-};
-
-const serializeReferences = (refs) => refs
-  .filter(r => r.name?.trim() || r.company?.trim() || r.email?.trim() || r.phone?.trim())
-  .map(r => [r.name, r.company, r.email, r.phone].join('|'))
-  .join('\n');
-
 export default function MyProfile() {
   const user = authService.getUserInfo();
   const [loading, setLoading] = useState(true);
@@ -56,23 +36,17 @@ export default function MyProfile() {
   const [success, setSuccess] = useState('');
   const [cv, setCv] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [exportingPdf, setExportingPdf] = useState(false);
-  const cvRef = useRef(null);
 
   const [form, setForm] = useState({
     fullName: user?.fullName || '',
     email: user?.email || '',
     phone: '',
-    address: '',
-    professionalTitle: '',
-    skillsText: '',
     summary: '',
     yearsOfExperience: '',
     source: '',
     experiences: [emptyExperience()],
     educations: [emptyEducation()],
     certificates: [emptyCertificate()],
-    references: [emptyReference()],
   });
 
   useEffect(() => {
@@ -89,9 +63,6 @@ export default function MyProfile() {
           fullName: data.fullName || '',
           email: data.email || '',
           phone: data.phone || '',
-          address: data.address || '',
-          professionalTitle: data.professionalTitle || '',
-          skillsText: data.skillsText || '',
           summary: data.summary || '',
           yearsOfExperience: data.yearsOfExperience ?? '',
           source: data.source || '',
@@ -101,7 +72,6 @@ export default function MyProfile() {
                   id: e.id,
                   companyName: e.companyName || '',
                   jobTitle: e.jobTitle || '',
-                  location: e.location || '',
                   startDate: e.startDate ? e.startDate.slice(0, 10) : '',
                   endDate: e.endDate ? e.endDate.slice(0, 10) : '',
                   description: e.description || '',
@@ -112,7 +82,6 @@ export default function MyProfile() {
               ? data.educations.map((e) => ({
                   id: e.id,
                   schoolName: e.schoolName || '',
-                  location: e.location || '',
                   degree: e.degree || '',
                   major: e.major || '',
                   startYear: e.startYear ?? '',
@@ -129,7 +98,6 @@ export default function MyProfile() {
                   issuedYear: c.issuedYear ?? '',
                 }))
               : [emptyCertificate()],
-          references: parseReferencesText(data.referencesText),
         });
       } else {
         setForm((f) => ({
@@ -180,20 +148,15 @@ export default function MyProfile() {
       fullName: form.fullName.trim(),
       email: form.email?.trim() || null,
       phone: form.phone?.trim() || null,
-      address: form.address?.trim() || null,
-      professionalTitle: form.professionalTitle?.trim() || null,
-      skillsText: form.skillsText?.trim() || null,
       summary: form.summary?.trim() || null,
       yearsOfExperience: form.yearsOfExperience ? parseInt(form.yearsOfExperience, 10) : null,
       source: form.source?.trim() || null,
-      referencesText: serializeReferences(form.references) || null,
       experiences: form.experiences
         .filter((e) => e.companyName?.trim() && e.jobTitle?.trim())
         .map((e) => ({
           id: e.id || undefined,
           companyName: e.companyName.trim(),
           jobTitle: e.jobTitle.trim(),
-          location: e.location?.trim() || null,
           startDate: e.startDate || '2020-01-01',
           endDate: e.endDate || null,
           description: e.description?.trim() || null,
@@ -203,7 +166,6 @@ export default function MyProfile() {
         .map((e) => ({
           id: e.id || undefined,
           schoolName: e.schoolName.trim(),
-          location: e.location?.trim() || null,
           degree: e.degree?.trim() || null,
           major: e.major?.trim() || null,
           startYear: e.startYear ? parseInt(e.startYear, 10) : null,
@@ -252,31 +214,6 @@ export default function MyProfile() {
     }
   };
 
-  const handleExportPdf = useCallback(async () => {
-    if (!cvRef.current) return;
-    setExportingPdf(true);
-    try {
-      const canvas = await html2canvas(cvRef.current, { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' });
-      const imgData = canvas.toDataURL('image/png', 1.0);
-      const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      const imgHeight = (canvas.height * pageW) / canvas.width;
-      const totalPages = Math.ceil(imgHeight / pageH) || 1;
-      for (let i = 0; i < totalPages; i++) {
-        if (i > 0) pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, -(i * pageH), pageW, imgHeight);
-      }
-      pdf.save(`CV-${cv?.fullName || 'resume'}.pdf`);
-      setSuccess('Đã tải PDF thành công!');
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) {
-      setError('Xuất PDF thất bại. Vui lòng thử lại.');
-    } finally {
-      setExportingPdf(false);
-    }
-  }, []);
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -309,18 +246,79 @@ export default function MyProfile() {
 
       {showViewMode ? (
         <div className="space-y-6">
-          <div ref={cvRef}>
-            <CvTemplate cv={cv} className="rounded-xl overflow-hidden" />
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+              <span className="w-1 h-5 bg-blue-600 rounded-full" />
+              Thông tin cá nhân
+            </h2>
+            <div className="grid gap-3 sm:grid-cols-2 text-slate-700">
+              <div><span className="text-slate-500 text-sm">Họ và tên:</span> <span className="font-medium">{cv.fullName}</span></div>
+              <div><span className="text-slate-500 text-sm">Email:</span> {cv.email || '—'}</div>
+              <div><span className="text-slate-500 text-sm">Số điện thoại:</span> {cv.phone || '—'}</div>
+              <div><span className="text-slate-500 text-sm">Năm kinh nghiệm:</span> {cv.yearsOfExperience ?? '—'}</div>
+              {cv.summary && (
+                <div className="sm:col-span-2"><span className="text-slate-500 text-sm block mb-1">Giới thiệu:</span><p className="text-slate-700 whitespace-pre-line">{cv.summary}</p></div>
+              )}
+            </div>
           </div>
-          <div className="flex justify-end gap-3 pt-4">
-            <button
-              type="button"
-              onClick={handleExportPdf}
-              disabled={exportingPdf}
-              className="px-6 py-3 bg-slate-700 text-white font-semibold rounded-xl hover:bg-slate-800 disabled:opacity-50 transition-colors"
-            >
-              {exportingPdf ? 'Đang xuất...' : 'Xuất PDF'}
-            </button>
+
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+              <span className="w-1 h-5 bg-blue-600 rounded-full" />
+              Kinh nghiệm làm việc
+            </h2>
+            {(cv.experiences?.length ?? 0) > 0 ? (
+              <div className="space-y-4">
+                {cv.experiences.map((exp, i) => (
+                  <div key={i} className="p-4 bg-slate-50 rounded-xl">
+                    <div className="font-medium text-slate-800">{exp.companyName} · {exp.jobTitle}</div>
+                    <div className="text-sm text-slate-500">{formatDate(exp.startDate)} — {exp.endDate ? formatDate(exp.endDate) : 'Hiện tại'}</div>
+                    {exp.description && <p className="text-slate-600 text-sm mt-2">{exp.description}</p>}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-slate-500 text-sm py-2">Chưa có kinh nghiệm. Nhấn <strong>Cập nhật</strong> bên dưới để thêm.</p>
+            )}
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+              <span className="w-1 h-5 bg-blue-600 rounded-full" />
+              Học vấn
+            </h2>
+            {(cv.educations?.length ?? 0) > 0 ? (
+              <div className="space-y-4">
+                {cv.educations.map((edu, i) => (
+                  <div key={i} className="p-4 bg-slate-50 rounded-xl">
+                    <div className="font-medium text-slate-800">{edu.schoolName}</div>
+                    <div className="text-sm text-slate-600">{edu.degree} {edu.major && `· ${edu.major}`}</div>
+                    <div className="text-sm text-slate-500">{edu.startYear} — {edu.endYear || '—'} {edu.gpa != null && `· GPA ${edu.gpa}`}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-slate-500 text-sm py-2">Chưa có học vấn. Nhấn <strong>Cập nhật</strong> bên dưới để thêm.</p>
+            )}
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+              <span className="w-1 h-5 bg-blue-600 rounded-full" />
+              Chứng chỉ
+            </h2>
+            {(cv.certificates?.length ?? 0) > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {cv.certificates.map((c, i) => (
+                  <span key={i} className="px-3 py-1 bg-slate-100 rounded-lg text-sm text-slate-700">{c.certificateName}{c.issuer && ` (${c.issuer})`}{c.issuedYear && ` · ${c.issuedYear}`}</span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-slate-500 text-sm py-2">Chưa có chứng chỉ. Nhấn <strong>Cập nhật</strong> bên dưới để thêm.</p>
+            )}
+          </div>
+
+          <div className="flex justify-end pt-4">
             <button
               type="button"
               onClick={() => {
@@ -329,25 +327,21 @@ export default function MyProfile() {
                     fullName: cv.fullName || '',
                     email: cv.email || '',
                     phone: cv.phone || '',
-                    address: cv.address || '',
-                    professionalTitle: cv.professionalTitle || '',
-                    skillsText: cv.skillsText || '',
                     summary: cv.summary || '',
                     yearsOfExperience: cv.yearsOfExperience ?? '',
                     source: cv.source || '',
                     experiences: cv.experiences?.length ? cv.experiences.map((e) => ({
-                      id: e.id, companyName: e.companyName || '', jobTitle: e.jobTitle || '', location: e.location || '',
+                      id: e.id, companyName: e.companyName || '', jobTitle: e.jobTitle || '',
                       startDate: e.startDate ? e.startDate.slice(0, 10) : '', endDate: e.endDate ? e.endDate.slice(0, 10) : '',
                       description: e.description || '',
                     })) : [emptyExperience()],
                     educations: cv.educations?.length ? cv.educations.map((e) => ({
-                      id: e.id, schoolName: e.schoolName || '', location: e.location || '', degree: e.degree || '', major: e.major || '',
+                      id: e.id, schoolName: e.schoolName || '', degree: e.degree || '', major: e.major || '',
                       startYear: e.startYear ?? '', endYear: e.endYear ?? '', gpa: e.gpa ?? '',
                     })) : [emptyEducation()],
                     certificates: cv.certificates?.length ? cv.certificates.map((c) => ({
                       id: c.id, certificateName: c.certificateName || '', issuer: c.issuer || '', issuedYear: c.issuedYear ?? '',
                     })) : [emptyCertificate()],
-                    references: parseReferencesText(cv.referencesText),
                   });
                 }
                 setIsEditing(true);
@@ -409,36 +403,6 @@ export default function MyProfile() {
                 onChange={(e) => updateField('phone', e.target.value)}
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="0901234567"
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Địa chỉ</label>
-              <input
-                type="text"
-                value={form.address}
-                onChange={(e) => updateField('address', e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Địa chỉ đầy đủ..."
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Chức danh / Vị trí mong muốn</label>
-              <input
-                type="text"
-                value={form.professionalTitle}
-                onChange={(e) => updateField('professionalTitle', e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="CUSTOMER SERVICE REPRESENTATIVE"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Kỹ năng (mỗi dòng một kỹ năng)</label>
-              <textarea
-                value={form.skillsText}
-                onChange={(e) => updateField('skillsText', e.target.value)}
-                rows={4}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder={'Excellent Communication Skills\nTroubleshooting Skills\n...'}
               />
             </div>
             <div>
@@ -524,15 +488,6 @@ export default function MyProfile() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Địa điểm</label>
-                  <input
-                    value={exp.location}
-                    onChange={(e) => updateArrayItem('experiences', idx, 'location', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                    placeholder="Seattle, TP.HCM..."
-                  />
-                </div>
-                <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Từ ngày <span className="text-red-500">*</span></label>
                   <input
                     type="date"
@@ -602,15 +557,6 @@ export default function MyProfile() {
                     onChange={(e) => updateArrayItem('educations', idx, 'schoolName', e.target.value)}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
                     placeholder="Tên trường"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Địa điểm</label>
-                  <input
-                    value={edu.location}
-                    onChange={(e) => updateArrayItem('educations', idx, 'location', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                    placeholder="Seattle, Hà Nội..."
                   />
                 </div>
                 <div>
@@ -728,79 +674,6 @@ export default function MyProfile() {
                     onChange={(e) => updateArrayItem('certificates', idx, 'issuedYear', e.target.value)}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
                     placeholder="2024"
-                  />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Người tham chiếu */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-              <span className="w-1 h-5 bg-blue-600 rounded-full" />
-              Người tham chiếu
-            </h2>
-            <button
-              type="button"
-              onClick={() => addArrayItem('references', emptyReference)}
-              className="text-sm font-medium text-blue-600 hover:text-blue-700"
-            >
-              + Thêm
-            </button>
-          </div>
-          {form.references.map((ref, idx) => (
-            <div key={idx} className="mb-6 p-4 bg-slate-50 rounded-xl border border-slate-100">
-              <div className="flex justify-between items-start mb-3">
-                <span className="text-sm font-medium text-slate-600">#{idx + 1}</span>
-                {form.references.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeArrayItem('references', idx)}
-                    className="text-red-600 hover:text-red-700 text-sm"
-                  >
-                    Xóa
-                  </button>
-                )}
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Họ tên</label>
-                  <input
-                    value={ref.name}
-                    onChange={(e) => updateArrayItem('references', idx, 'name', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                    placeholder="Marissa Leeds"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Công ty</label>
-                  <input
-                    value={ref.company}
-                    onChange={(e) => updateArrayItem('references', idx, 'company', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                    placeholder="Gold Coast Hotel"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Email</label>
-                  <input
-                    type="email"
-                    value={ref.email}
-                    onChange={(e) => updateArrayItem('references', idx, 'email', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                    placeholder="mleeds@goldcoast.com"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Số điện thoại</label>
-                  <input
-                    type="tel"
-                    value={ref.phone}
-                    onChange={(e) => updateArrayItem('references', idx, 'phone', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                    placeholder="732-189-0909"
                   />
                 </div>
               </div>

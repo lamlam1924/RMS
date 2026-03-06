@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from "sonner";
+import { DarkModeProvider } from "./contexts/DarkModeContext";
 import { ROLES } from "./constants/roles";
 import MainLayout from "./layouts/MainLayout";
 import CandidateLayout from "./layouts/CandidateLayout";
@@ -15,7 +17,6 @@ import ForgotPassword from "./pages/auth/ForgotPassword";
 import GoogleCallback from "./pages/auth/GoogleCallback";
 
 // Staff Pages
-import Dashboard from "./pages/dashboard/Dashboard";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -30,7 +31,7 @@ import WorkflowManagement from "./pages/admin/WorkflowManagement";
 
 // Director Pages
 import DirectorDashboard from "./pages/director/DirectorDashboard";
-import JobRequestApprovals from "./pages/director/JobRequestApprovals";
+import DirectorJobRequestList from "./pages/director/DirectorJobRequestList";
 import OfferApprovals from "./pages/director/OfferApprovals";
 
 // Department Manager Pages
@@ -46,6 +47,7 @@ import DeptManagerInterviewDetail from "./pages/department-manager/DeptManagerIn
 import HRManagerDashboard from "./pages/hr/dashboard/HRManagerDashboard";
 import HRJobRequestList from "./pages/hr/manager/HRJobRequestList";
 import HRJobRequestDetail from "./pages/hr/manager/HRJobRequestDetail";
+import HRManagerJobPostingList from "./pages/hr/manager/HRManagerJobPostingList";
 import HRApplicationList from "./pages/hr/manager/HRApplicationList";
 import HRApplicationDetail from "./pages/hr/manager/HRApplicationDetail";
 import HRInterviewList from "./pages/hr/manager/HRInterviewList";
@@ -117,8 +119,37 @@ function RoleBasedRedirect() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
+    <DarkModeProvider>
+      <BrowserRouter>
+        <Toaster 
+          position="top-center" 
+          richColors 
+          closeButton 
+          expand={true} 
+          duration={3000}
+          toastOptions={{
+            style: {
+              fontSize: '16px',
+              minWidth: '400px',
+              padding: '16px 20px',
+            },
+            actionButtonStyle: {
+              backgroundColor: '#10b981',
+              color: 'white',
+              fontWeight: '600',
+              padding: '8px 16px',
+              borderRadius: '8px',
+            },
+            cancelButtonStyle: {
+              backgroundColor: '#ef4444',
+              color: 'white',
+              fontWeight: '600',
+              padding: '8px 16px',
+              borderRadius: '8px',
+            },
+          }}
+        />
+        <Routes>
         {/* Landing Page */}
         <Route path="/" element={<LandingPage />} />
 
@@ -157,7 +188,7 @@ export default function App() {
             </PrivateRoute>
           }
         >
-          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="dashboard" element={<RoleBasedRedirect />} />
 
           {/* Admin Management Routes */}
           <Route
@@ -302,7 +333,7 @@ export default function App() {
             path="director/job-requests"
             element={
               <PrivateRoute roles={[ROLES.DIRECTOR]}>
-                <JobRequestApprovals />
+                <DirectorJobRequestList />
               </PrivateRoute>
             }
           />
@@ -416,6 +447,14 @@ export default function App() {
               </PrivateRoute>
             }
           />
+          <Route
+            path="hr-manager/job-postings"
+            element={
+              <PrivateRoute roles={[ROLES.HR_MANAGER]}>
+                <HRManagerJobPostingList />
+              </PrivateRoute>
+            }
+          />
 
           {/* HR Staff Routes (Staff Only) */}
           <Route
@@ -482,5 +521,6 @@ export default function App() {
         <Route path="*" element={<RoleBasedRedirect />} />
       </Routes>
     </BrowserRouter>
+    </DarkModeProvider>
   );
 }

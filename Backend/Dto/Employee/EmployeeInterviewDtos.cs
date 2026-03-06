@@ -1,3 +1,5 @@
+using RMS.Dto.Common;
+
 namespace RMS.Dto.Employee;
 
 /// <summary>
@@ -85,23 +87,6 @@ public class EducationDto
     public string? Major { get; set; }
     public DateOnly StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
-}
-
-public class InterviewParticipantDto
-{
-    public int UserId { get; set; }
-    public string UserName { get; set; } = string.Empty;
-    public string InterviewRole { get; set; } = string.Empty;
-    public bool HasFeedback { get; set; }
-}
-
-public class EvaluationCriterionDto
-{
-    public int Id { get; set; }
-    public string CriteriaName { get; set; } = string.Empty;
-    public string? Description { get; set; }
-    public int Weight { get; set; }
-    public int MaxScore { get; set; }
 }
 
 /// <summary>

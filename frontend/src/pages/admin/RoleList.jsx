@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import PageShell from "../../layouts/PageShell";
 import { roleService } from "../../services/adminService";
+import notify from "../../utils/notification";
 import {
   ViewIcon,
   EditIcon,
@@ -34,14 +35,18 @@ export default function RoleList() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this role?")) return;
-
-    try {
-      await roleService.delete(id);
-      loadRoles();
-    } catch (err) {
-      alert("Error deleting role: " + err.message);
-    }
+    notify.confirm(
+      "Are you sure you want to delete this role?",
+      async () => {
+        try {
+          await roleService.delete(id);
+          notify.success('Xóa vai trò thành công');
+          loadRoles();
+        } catch (err) {
+          notify.error("Lỗi khi xóa vai trò: " + err.message);
+        }
+      }
+    );
   };
 
   const filteredRoles = roles.filter((role) => {

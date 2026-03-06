@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import PageShell from "../../layouts/PageShell";
+import notify from "../../utils/notification";
 import {
   userService,
   roleService,
@@ -88,11 +89,11 @@ export default function UserDetail() {
       setSaving(true);
       if (isNew) {
         await userService.create(user);
-        alert("Tạo user thành công!");
+        notify.success("Tạo người dùng thành công!");
         navigate("/staff/admin/users");
       } else {
         await userService.update(id, user);
-        alert("Cập nhật user thành công!");
+        notify.success("Cập nhật người dùng thành công!");
         navigate("/staff/admin/users");
       }
     } catch (err) {

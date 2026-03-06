@@ -1,241 +1,280 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import hrService from '../../../services/hrService';
-import { formatCurrency, formatDate } from '../../../utils/formatters/display';
-import { StatusBadge } from '../../../components/shared/Badge';
+import { formatDate } from '../../../utils/formatters/display';
+import notify from '../../../utils/notification';
+
+/**
+ * Luồng:
+ * 1. Director phê duyệt Job Request → HR Manager gán cho HR Staff
+ * 2. HR Staff thấy ở tab "Sẵn sàng đăng" → nhấn "Tạo Posting" → tạo tin từ request đó
+ * 3. Tin tạo xong ở trạng thái DRAFT → tab "Tin Nháp"
+ * 4. HR Staff chỉnh sửa nội dung → nhấn Publish → PUBLISHED
+ * 5. HR Manager đóng tin → CLOSED → tab "Đã đóng" (read-only)
+ */
+
+const TABS = [
+  {
+    id: 'READY',
+    label: 'Sẵn sàng đăng',
+    desc: 'Job Request đã duyệt, chờ bạn tạo tin tuyển dụng',
+    color: '#2563eb',
+    bg: '#eff6ff',
+  },
+  {
+    id: 'DRAFT',
+    label: 'Tin Nháp',
+    desc: 'Được gán, chờ bạn chỉnh sửa và đăng tuyển',
+    color: '#f59e0b',
+    bg: '#fef3c7',
+  },
+  {
+    id: 'PUBLISHED',
+    label: 'Đang đăng',
+    desc: 'Đã publish, đang chạy tuyển dụng',
+    color: '#16a34a',
+    bg: '#f0fdf4',
+  },
+  {
+    id: 'CLOSED',
+    label: 'Đã đóng',
+    desc: 'HR Manager đã đóng, không còn nhận ứng viên',
+    color: '#6b7280',
+    bg: '#f3f4f6',
+  },
+];
 
 export default function HRJobPostingList() {
   const navigate = useNavigate();
-  const [items, setItems] = useState([]);
+  const [allPostings, setAllPostings] = useState([]);
+  const [approvedRequests, setApprovedRequests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('drafts'); // 'drafts', 'published', 'closed', 'ready'
+  const [activeTab, setActiveTab] = useState('READY');
+  const [publishing, setPublishing] = useState(null);
 
   useEffect(() => {
     loadData();
-  }, [activeTab]);
+  }, []);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      setItems([]);
-      
-      if (activeTab === 'ready') {
-        const requests = await hrService.jobRequests.getAll();
-        // Filter for APPROVED requests (StatusId = 4)
-        const approved = requests.filter(r => r.statusId === 4 || r.currentStatus === 'APPROVED'); 
-        setItems(approved);
-      } else if (activeTab === 'drafts') {
-        const postings = await hrService.jobPostings.getDrafts();
-        setItems(postings);
-      } else {
-        const postings = await hrService.jobPostings.getAll();
-        if (activeTab === 'published') {
-          // Assuming 7 is PUBLISHED status ID. 
-          // Adjust logic if status filtering is done by backend or different IDs
-          setItems(postings.filter(p => p.statusId === 7 || p.currentStatus === 'PUBLISHED')); 
-        } else if (activeTab === 'closed') {
-          setItems(postings.filter(p => p.statusId === 8 || p.currentStatus === 'CLOSED')); 
-        }
-      }
+      const [postings, requests] = await Promise.all([
+        hrService.jobPostings.getMy(),
+        hrService.jobRequests.getApprovedForMe(),
+      ]);
+      setAllPostings(postings || []);
+      setApprovedRequests(requests || []);
     } catch (error) {
-      console.error('Failed to load data:', error);
+      console.error('Không thể tải dữ liệu:', error);
     } finally {
       setLoading(false);
     }
   };
 
+  const filteredItems = activeTab === 'READY'
+    ? approvedRequests
+    : allPostings.filter(p => p.currentStatus === activeTab);
+
   const handlePublish = async (id, e) => {
     e.stopPropagation();
-    if (!window.confirm('Are you sure you want to publish this job posting? Candidates will be able to see it immediately.')) return;
-
-    try {
-      await hrService.jobPostings.publish(id);
-      loadData();
-    } catch (error) {
-      console.error('Failed to publish job posting:', error);
-      alert('Failed to publish job posting');
-    }
+    
+    notify.confirm(
+      'Xác nhận publish tin này? Ứng viên sẽ thấy ngay lập tức.',
+      async () => {
+        try {
+          setPublishing(id);
+          await hrService.jobPostings.publish(id);
+          notify.success('Đăng tin tuyển dụng thành công!');
+          await loadData();
+        } catch (error) {
+          console.error('Publish thất bại:', error);
+          notify.error('Publish thất bại: ' + error.message);
+        } finally {
+          setPublishing(null);
+        }
+      }
+    );
   };
 
-  const handleCreatePosting = (jobRequestId) => {
-    navigate(`/staff/hr-staff/job-postings/new?jobRequestId=${jobRequestId}`);
+  const countByTab = (tabId) => {
+    if (tabId === 'READY') return approvedRequests.length;
+    return allPostings.filter(p => p.currentStatus === tabId).length;
   };
-
-  const handleEditPosting = (jobPostingId) => {
-    navigate(`/staff/hr-staff/job-postings/${jobPostingId}/edit`);
-  };
-
-  const formatItemDate = (date) => {
-      if(!date) return '-';
-      return formatDate(date);
-  }
-
-  const tabs = [
-    { id: 'drafts', label: 'My Drafts' },
-    { id: 'published', label: 'Published' },
-    { id: 'ready', label: 'Ready to Post' }, 
-    { id: 'closed', label: 'Closed' }
-  ];
 
   return (
     <div style={{ padding: 24, backgroundColor: '#f9fafb', minHeight: '100vh' }}>
+      {/* Header */}
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: '#111827', marginBottom: 8 }}>
-          Job Postings Management
+        <h1 style={{ fontSize: 26, fontWeight: 700, color: '#111827', margin: 0 }}>
+          Tin tuyển dụng của tôi
         </h1>
-        <p style={{ color: '#6b7280' }}>
-          Manage public job postings and convert approved requests to postings.
+        <p style={{ color: '#6b7280', marginTop: 6, fontSize: 14 }}>
+          Quản lý các tin tuyển dụng được HR Manager gán cho bạn
         </p>
       </div>
 
-      <div style={{ borderBottom: '1px solid #e5e7eb', marginBottom: 24 }}>
+      {/* Stat cards — click để filter */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
+        {TABS.map(tab => (
+          <div
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            style={{
+              backgroundColor: activeTab === tab.id ? tab.bg : 'white',
+              border: `1px solid ${activeTab === tab.id ? tab.color + '66' : '#e5e7eb'}`,
+              borderRadius: 10, padding: '14px 18px', cursor: 'pointer'
+            }}
+          >
+            <p style={{ fontSize: 13, color: '#6b7280', margin: 0 }}>{tab.label}</p>
+            <p style={{ fontSize: 11, color: '#9ca3af', margin: '2px 0 8px' }}>{tab.desc}</p>
+            <p style={{ fontSize: 26, fontWeight: 700, color: tab.color, margin: 0 }}>
+              {countByTab(tab.id)}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* Tab bar */}
+      <div style={{ borderBottom: '1px solid #e5e7eb', marginBottom: 20 }}>
         <div style={{ display: 'flex', gap: 24 }}>
-          {tabs.map(tab => (
+          {TABS.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               style={{
-                padding: '12px 0',
-                borderBottom: activeTab === tab.id ? '2px solid #3b82f6' : '2px solid transparent',
-                color: activeTab === tab.id ? '#3b82f6' : '#6b7280',
-                fontWeight: 500,
-                background: 'none',
-                border: 'none',
-                borderBottomWidth: 2,
-                cursor: 'pointer'
+                padding: '10px 0',
+                borderTop: 'none', borderLeft: 'none', borderRight: 'none',
+                borderBottom: activeTab === tab.id ? `2px solid ${tab.color}` : '2px solid transparent',
+                color: activeTab === tab.id ? tab.color : '#6b7280',
+                fontWeight: activeTab === tab.id ? 600 : 400,
+                background: 'none', cursor: 'pointer', fontSize: 14
               }}
             >
               {tab.label}
+              <span style={{
+                marginLeft: 6, fontSize: 11, fontWeight: 600,
+                padding: '2px 6px', borderRadius: 10,
+                backgroundColor: activeTab === tab.id ? tab.bg : '#f3f4f6',
+                color: activeTab === tab.id ? tab.color : '#9ca3af'
+              }}>
+                {countByTab(tab.id)}
+              </span>
             </button>
           ))}
         </div>
       </div>
 
+      {/* Content */}
       {loading ? (
-        <div>Loading...</div>
+        <div style={{ textAlign: 'center', padding: 48, color: '#9ca3af' }}>Đang tải...</div>
+      ) : filteredItems.length === 0 ? (
+        <div style={{
+          backgroundColor: 'white', borderRadius: 10, padding: 48,
+          textAlign: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+        }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>
+            {activeTab === 'READY' ? '📋' : activeTab === 'DRAFT' ? '✏️' : activeTab === 'PUBLISHED' ? '📢' : '🗂️'}
+          </div>
+          <p style={{ fontSize: 16, fontWeight: 600, color: '#374151', margin: 0 }}>
+            {activeTab === 'READY' && 'Chưa có yêu cầu tuyển dụng nào được gán cho bạn'}
+            {activeTab === 'DRAFT' && 'Chưa có tin nháp nào'}
+            {activeTab === 'PUBLISHED' && 'Chưa có tin nào đang đăng tuyển'}
+            {activeTab === 'CLOSED' && 'Chưa có tin nào đã đóng'}
+          </p>
+          <p style={{ fontSize: 13, color: '#9ca3af', marginTop: 6 }}>
+            {activeTab === 'READY' && 'HR Manager cần gán yêu cầu tuyển dụng đã được duyệt cho bạn'}
+            {activeTab === 'DRAFT' && 'Tạo tin từ tab "Sẵn sàng đăng" để tin xuất hiện ở đây'}
+            {activeTab === 'PUBLISHED' && 'Hãy publish các tin nháp được gán cho bạn'}
+            {activeTab === 'CLOSED' && 'Các tin bị đóng bởi HR Manager sẽ hiển thị ở đây'}
+          </p>
+        </div>
       ) : (
-        <div style={{ backgroundColor: 'white', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+        <div style={{ backgroundColor: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead style={{ backgroundColor: '#f9fafb' }}>
               <tr>
-                <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>
-                  {activeTab === 'ready' ? 'Request Reason' : 'Title'}
-                </th>
-                <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>
-                  Position
-                </th>
-                <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>
-                  Department
-                </th>
-                <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>
-                  Quantity
-                </th>
-                <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>
-                  Date
-                </th>
-                <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>
-                  Status
-                </th>
-                <th style={{ padding: '12px 24px', textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>
-                  Actions
-                </th>
+                {activeTab === 'READY'
+                  ? ['#', 'Vị trí', 'Phòng ban', 'SL', 'Ngày gửi', 'Người yêu cầu', 'Thao tác'].map(h => (
+                      <th key={h} style={{ padding: '11px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
+                    ))
+                  : ['Tiêu đề', 'Vị trí', 'Phòng ban', 'SL', 'Deadline', 'Ngày tạo', 'Thao tác'].map(h => (
+                      <th key={h} style={{ padding: '11px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
+                    ))
+                }
               </tr>
             </thead>
-            <tbody style={{ divideY: '1px solid #e5e7eb' }}>
-              {items.length === 0 ? (
-                <tr>
-                  <td colSpan="7" style={{ padding: 24, textAlign: 'center', color: '#6b7280' }}>
-                    No items found in this category.
-                  </td>
-                </tr>
+            <tbody>
+              {activeTab === 'READY' ? (
+                filteredItems.map(req => (
+                  <tr key={req.id} style={{ borderTop: '1px solid #f3f4f6' }}>
+                    <td style={{ padding: '14px 20px', fontSize: 13, color: '#9ca3af' }}>#{req.id}</td>
+                    <td style={{ padding: '14px 20px' }}>
+                      <div style={{ fontWeight: 600, color: '#111827', fontSize: 14 }}>{req.positionTitle}</div>
+                    </td>
+                    <td style={{ padding: '14px 20px', fontSize: 13, color: '#374151' }}>{req.departmentName}</td>
+                    <td style={{ padding: '14px 20px', fontSize: 13, color: '#374151', textAlign: 'center' }}>{req.quantity}</td>
+                    <td style={{ padding: '14px 20px', fontSize: 13, color: '#6b7280' }}>{formatDate(req.createdAt)}</td>
+                    <td style={{ padding: '14px 20px', fontSize: 13, color: '#374151' }}>{req.requestedByName}</td>
+                    <td style={{ padding: '14px 20px' }}>
+                      <button
+                        onClick={() => navigate(`/staff/hr-staff/job-postings/new?jobRequestId=${req.id}`)}
+                        style={{
+                          padding: '6px 14px', border: 'none', borderRadius: 6,
+                          backgroundColor: '#2563eb', color: 'white',
+                          fontSize: 13, cursor: 'pointer', fontWeight: 500
+                        }}
+                      >
+                        + Tạo Posting
+                      </button>
+                    </td>
+                  </tr>
+                ))
               ) : (
-                items.map((item) => (
-                  <tr key={item.id} style={{ borderTop: '1px solid #e5e7eb' }}>
-                    <td style={{ padding: '16px 24px' }}>
-                      <div style={{ fontWeight: 500, color: '#111827' }}>
-                         {activeTab === 'ready' ? (item.reason || 'No Title') : item.title}
-                      </div>
+                filteredItems.map(item => (
+                  <tr key={item.id} style={{ borderTop: '1px solid #f3f4f6' }}>
+                    <td style={{ padding: '14px 20px' }}>
+                      <div style={{ fontWeight: 600, color: '#111827', fontSize: 14 }}>{item.title}</div>
+                      <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>#{item.id}</div>
                     </td>
-                    <td style={{ padding: '16px 24px', color: '#374151' }}>
-                      {item.positionTitle}
+                    <td style={{ padding: '14px 20px', fontSize: 13, color: '#374151' }}>{item.positionTitle}</td>
+                    <td style={{ padding: '14px 20px', fontSize: 13, color: '#374151' }}>{item.departmentName}</td>
+                    <td style={{ padding: '14px 20px', fontSize: 13, color: '#374151', textAlign: 'center' }}>{item.quantity}</td>
+                    <td style={{ padding: '14px 20px', fontSize: 13, color: '#6b7280' }}>
+                      {item.deadline ? formatDate(item.deadline) : <span style={{ color: '#d1d5db' }}>—</span>}
                     </td>
-                    <td style={{ padding: '16px 24px', color: '#374151' }}>
-                      {item.departmentName}
-                    </td>
-                    <td style={{ padding: '16px 24px', color: '#374151' }}>
-                      {item.quantity}
-                    </td>
-                    <td style={{ padding: '16px 24px', color: '#6b7280' }}>
-                      {formatItemDate(activeTab === 'ready' ? item.createdAt : item.postingDate || item.createdAt)}
-                    </td>
-                    <td style={{ padding: '16px 24px' }}>
-                      <StatusBadge status={item.currentStatus || item.statusCode} />
-                    </td>
-                    <td style={{ padding: '16px 24px', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                        {activeTab === 'ready' && (
-                          <button
-                            onClick={() => handleCreatePosting(item.id)}
-                            style={{
-                              padding: '6px 12px',
-                              backgroundColor: '#3b82f6',
-                              color: 'white',
-                              borderRadius: 4,
-                              fontSize: 14,
-                              border: 'none',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            Create Posting
-                          </button>
-                        )}
-                        {activeTab === 'drafts' && (
+                    <td style={{ padding: '14px 20px', fontSize: 13, color: '#9ca3af' }}>{formatDate(item.createdAt)}</td>
+                    <td style={{ padding: '14px 20px' }}>
+                      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                        {activeTab === 'DRAFT' && (
                           <>
                             <button
-                              onClick={() => handleEditPosting(item.id)}
-                              style={{
-                                padding: '6px 12px',
-                                backgroundColor: 'white',
-                                border: '1px solid #d1d5db',
-                                color: '#374151',
-                                borderRadius: 4,
-                                fontSize: 14,
-                                cursor: 'pointer'
-                              }}
+                              onClick={() => navigate(`/staff/hr-staff/job-postings/${item.id}/edit`)}
+                              style={{ padding: '6px 14px', border: '1px solid #d1d5db', borderRadius: 6, backgroundColor: 'white', color: '#374151', fontSize: 13, cursor: 'pointer' }}
                             >
-                              Edit
+                              Chỉnh sửa
                             </button>
                             <button
                               onClick={(e) => handlePublish(item.id, e)}
-                              style={{
-                                padding: '6px 12px',
-                                backgroundColor: '#10b981',
-                                color: 'white',
-                                borderRadius: 4,
-                                fontSize: 14,
-                                border: 'none',
-                                cursor: 'pointer'
-                              }}
+                              disabled={publishing === item.id}
+                              style={{ padding: '6px 14px', border: 'none', borderRadius: 6, backgroundColor: publishing === item.id ? '#9ca3af' : '#10b981', color: 'white', fontSize: 13, cursor: publishing === item.id ? 'not-allowed' : 'pointer', fontWeight: 500 }}
                             >
-                              Publish
+                              {publishing === item.id ? 'Đang đăng...' : '▶ Publish'}
                             </button>
                           </>
                         )}
-                        {activeTab === 'published' && (
-                             <button
-                             onClick={() => handleEditPosting(item.id)}
-                             style={{
-                               padding: '6px 12px',
-                               backgroundColor: 'white',
-                               border: '1px solid #d1d5db',
-                               color: '#374151',
-                               borderRadius: 4,
-                               fontSize: 14,
-                               cursor: 'pointer'
-                             }}
-                           >
-                             View/Edit
-                           </button>
+                        {activeTab === 'PUBLISHED' && (
+                          <button
+                            onClick={() => navigate(`/staff/hr-staff/job-postings/${item.id}/edit`)}
+                            style={{ padding: '6px 14px', border: '1px solid #3b82f6', borderRadius: 6, backgroundColor: 'white', color: '#3b82f6', fontSize: 13, cursor: 'pointer' }}
+                          >
+                            Xem / Sửa
+                          </button>
+                        )}
+                        {activeTab === 'CLOSED' && (
+                          <span style={{ fontSize: 12, color: '#9ca3af', padding: '6px 14px', backgroundColor: '#f3f4f6', borderRadius: 6 }}>
+                            Đã đóng
+                          </span>
                         )}
                       </div>
                     </td>

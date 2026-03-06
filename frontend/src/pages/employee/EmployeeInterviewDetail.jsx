@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import employeeService from '../../services/employeeService';
 import { LoadingSpinner } from '../../components/shared';
+import notify from '../../utils/notification';
 
 export default function EmployeeInterviewDetail() {
   const { id } = useParams();
@@ -25,7 +26,7 @@ export default function EmployeeInterviewDetail() {
       const data = await employeeService.interviews.getById(id);
       
       if (!data) {
-        alert('Interview not found or you are not assigned to this interview');
+        notify.error('Không tìm thấy phỏng vấn hoặc bạn không được phân công');
         navigate('/staff/employee/interviews');
         return;
       }
@@ -45,7 +46,7 @@ export default function EmployeeInterviewDetail() {
       }
     } catch (error) {
       console.error('Failed to load interview:', error);
-      alert('Failed to load interview details');
+      notify.error('Không thể tải thông tin phỏng vấn');
       navigate('/staff/employee/interviews');
     } finally {
       setLoading(false);
@@ -72,14 +73,14 @@ export default function EmployeeInterviewDetail() {
 
   const handleSubmitFeedback = async () => {
     if (!feedback.decision) {
-      alert('Please select a decision (Pass/Reject)');
+      notify.warning('Vui lòng chọn kết quả (Đạt/Trượt)');
       return;
     }
 
     // Validate scores
     const hasEmptyScores = feedback.scores.some(s => s.score === 0 || s.score === '');
     if (hasEmptyScores) {
-      alert('Please provide scores for all evaluation criteria');
+      notify.warning('Vui lòng điền điểm cho tất cả các tiêu chí');
       return;
     }
 
@@ -88,14 +89,14 @@ export default function EmployeeInterviewDetail() {
       const result = await employeeService.interviews.submitFeedback(id, feedback);
       
       if (result.success) {
-        alert('Feedback submitted successfully!');
+        notify.success('Gửi đánh giá thành công!');
         navigate('/staff/employee/interviews');
       } else {
-        alert(result.message || 'Failed to submit feedback');
+        notify.error(result.message || 'Gửi đánh giá thất bại');
       }
     } catch (error) {
       console.error('Failed to submit feedback:', error);
-      alert('Failed to submit feedback. Please try again.');
+      notify.error('Gửi đánh giá thất bại. Vui lòng thử lại.');
     } finally {
       setSubmitting(false);
     }

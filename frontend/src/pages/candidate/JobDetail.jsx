@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { candidateService } from '../../services/candidateService';
+import notify from '../../utils/notification';
 
 export default function JobDetail() {
   const { id } = useParams();
@@ -48,7 +49,7 @@ export default function JobDetail() {
   };
 
   const handleApply = () => {
-    alert('Chức năng ứng tuyển đang được phát triển');
+    notify.info('Chức năng ứng tuyển đang được phát triển');
   };
 
   if (loading) {
@@ -153,6 +154,15 @@ export default function JobDetail() {
                 <span className="bg-blue-600 w-1.5 h-6 rounded-full mr-3"></span>
                 Mô tả công việc
               </h2>
+              {job.jdFileUrl && job.jdFileUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) && (
+                <div className="mb-6">
+                  <img
+                    src={job.jdFileUrl}
+                    alt="Ảnh mô tả công việc"
+                    className="w-full rounded-xl border border-slate-200 object-contain"
+                  />
+                </div>
+              )}
               <div 
                 className="prose prose-slate max-w-none text-slate-600 whitespace-pre-line break-words [overflow-wrap:anywhere]"
                 dangerouslySetInnerHTML={{ __html: job.description }}

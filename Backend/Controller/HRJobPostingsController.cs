@@ -164,4 +164,64 @@ public class HRJobPostingsController : ControllerBase
             return StatusCode(500, new { message = "Failed to close job posting", error = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Get list of HR Staff (for HR Manager to assign)
+    /// </summary>
+    [HttpGet("staff-list")]
+    [Authorize(Roles = "HR_MANAGER")]
+    public async Task<ActionResult<List<HRStaffDto>>> GetHRStaffList()
+    {
+        try
+        {
+            var result = await _hrJobPostingsService.GetHRStaffListAsync();
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to load HR staff list", error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Assign HR Staff to job posting (HR Manager action)
+    /// </summary>
+    [HttpPut("{id}/assign")]
+    [Authorize(Roles = "HR_MANAGER")]
+    public async Task<ActionResult<ActionResponseDto>> AssignStaff(int id, [FromBody] AssignStaffDto dto)
+    {
+        try
+        {
+            var managerId = CurrentUserHelper.GetCurrentUserId(this);
+            var result = await _hrJobPostingsService.AssignStaffAsync(id, dto, managerId);
+
+            if (result.Success)
+                return Ok(result);
+            else
+                return BadRequest(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to assign staff", error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get job postings assigned to current HR Staff
+    /// </summary>
+    [HttpGet("my")]
+    [Authorize(Roles = "HR_STAFF")]
+    public async Task<ActionResult<List<JobPostingListDto>>> GetMyJobPostings()
+    {
+        try
+        {
+            var staffId = CurrentUserHelper.GetCurrentUserId(this);
+            var result = await _hrJobPostingsService.GetMyJobPostingsAsync(staffId);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to load job postings", error = ex.Message });
+        }
+    }
 }

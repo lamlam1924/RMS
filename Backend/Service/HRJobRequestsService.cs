@@ -45,6 +45,19 @@ public class HRJobRequestsService : IHRJobRequestsService
         return dtos;
     }
 
+    public async Task<List<JobRequestListDto>> GetJobRequestsByStatusAsync(string statusCode)
+    {
+        var entities = await _repository.GetJobRequestsByStatusAsync(statusCode);
+        var dtos = _mapper.Map<List<JobRequestListDto>>(entities);
+
+        for (int i = 0; i < dtos.Count; i++)
+        {
+            dtos[i].CurrentStatus = GetStatusName(entities[i].StatusId);
+        }
+
+        return dtos;
+    }
+
     public async Task<JobRequestDetailDto?> GetJobRequestByIdAsync(int id)
     {
         var entity = await _repository.GetJobRequestByIdAsync(id);
@@ -57,8 +70,63 @@ public class HRJobRequestsService : IHRJobRequestsService
 
         var statusHistory = await _repository.GetStatusHistoryAsync(id, "JobRequest");
         dto.StatusHistory = _mapper.Map<List<StatusHistoryDto>>(statusHistory);
+        
+        // Set current status from entity.StatusId (authoritative source)
+        var currentStatus = await _repository.GetStatusByIdAsync(entity.StatusId);
+        dto.CurrentStatus = currentStatus?.Name ?? "Unknown";
+        if (currentStatus != null)
+            dto.Status = _mapper.Map<StatusDto>(currentStatus);
+
+        // Lấy JD Link
+        dto.JdFileUrl = await _repository.GetJdFileUrlAsync(id);
 
         return dto;
+    }
+
+    public async Task<bool> ForwardToDirectorAsync(int id, string? note, int hrManagerId)
+    {
+        // Guard: only SUBMITTED jobs can be forwarded to Director
+        var jobRequest = await _repository.GetJobRequestByIdAsync(id);
+        if (jobRequest == null) return false;
+
+        var currentStatus = await _repository.GetStatusByIdAsync(jobRequest.StatusId);
+        if (currentStatus?.Code != "SUBMITTED") return false;
+
+        var inReviewStatus = await _repository.GetStatusByCodeAsync("IN_REVIEW", 1);
+        if (inReviewStatus == null) return false;
+
+        return await _repository.UpdateStatusAsync(id, inReviewStatus.Id, hrManagerId, note);
+    }
+
+    public async Task<bool> ReturnToDeptManagerAsync(int id, string? reason, int hrManagerId)
+    {
+        // Guard: only SUBMITTED or IN_REVIEW jobs can be returned
+        var jobRequest = await _repository.GetJobRequestByIdAsync(id);
+        if (jobRequest == null) return false;
+
+        var currentStatus = await _repository.GetStatusByIdAsync(jobRequest.StatusId);
+        if (currentStatus?.Code != "SUBMITTED" && currentStatus?.Code != "IN_REVIEW") return false;
+
+        var returnedStatus = await _repository.GetStatusByCodeAsync("RETURNED", 1);
+        if (returnedStatus == null) return false;
+
+        var success = await _repository.UpdateStatusAsync(id, returnedStatus.Id, hrManagerId, reason);
+
+        if (success)
+        {
+            await _repository.UpdateLastReturnedAtAsync(id, DateTime.Now);
+        }
+        return success;
+    }
+
+    public async Task<bool> ApproveCancelAsync(int id, string? note, int hrManagerId)
+    {
+        return await _repository.ApproveCancelAsync(id, hrManagerId, note);
+    }
+
+    public async Task<bool> RejectCancelAsync(int id, string? note, int hrManagerId)
+    {
+        return await _repository.RejectCancelAsync(id, hrManagerId, note);
     }
 
     private string GetStatusName(int statusId)
@@ -70,6 +138,9 @@ public class HRJobRequestsService : IHRJobRequestsService
             3 => "IN_REVIEW",
             4 => "APPROVED",
             5 => "REJECTED",
+            21 => "RETURNED",
+            22 => "CANCEL_PENDING",
+            23 => "CANCELLED",
             _ => "Unknown"
         };
     }
@@ -100,5 +171,27 @@ public class HRJobRequestsService : IHRJobRequestsService
         await _repository.AddStatusHistoryAsync(history);
 
         return new ActionResponseDto { Success = true, Message = "Status updated successfully" };
+    }
+
+    public async Task<ActionResponseDto> AssignStaffToJobRequestAsync(int jobRequestId, int staffId, int managerId)
+    {
+        var (success, errorMessage) = await _repository.AssignStaffToJobRequestAsync(jobRequestId, staffId, managerId);
+        if (!success)
+            return new ActionResponseDto { Success = false, Message = errorMessage };
+
+        return new ActionResponseDto { Success = true, Message = "Staff assigned successfully" };
+    }
+
+    public async Task<List<JobRequestListDto>> GetApprovedJobRequestsForStaffAsync(int staffId)
+    {
+        var entities = await _repository.GetApprovedJobRequestsForStaffAsync(staffId);
+        var dtos = _mapper.Map<List<JobRequestListDto>>(entities);
+
+        for (int i = 0; i < dtos.Count; i++)
+        {
+            dtos[i].CurrentStatus = "APPROVED";
+        }
+
+        return dtos;
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace RMS.Entity;
 
@@ -40,9 +41,13 @@ public partial class JobPosting
 
     public int? DeletedBy { get; set; }
 
+    public int? AssignedStaffId { get; set; }
+
+    public virtual User? AssignedStaff { get; set; }
+
+    public virtual User? CreatedByNavigation { get; set; }
+
     public virtual JobRequest JobRequest { get; set; } = null!;
 
     public virtual Status Status { get; set; } = null!;
-
-    public virtual User? CreatedByNavigation { get; set; }
 }

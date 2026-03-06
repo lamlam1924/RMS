@@ -28,6 +28,35 @@ public class DirectorRepository : IDirectorRepository
             .ToListAsync();
     }
 
+    public async Task<List<JobRequest>> GetProcessedJobRequestsAsync(int directorId)
+    {
+        // Chỉ lấy request mà chính Director này đã xử lý (có record trong StatusHistory do Director tạo)
+        // Trạng thái Director có thể xử lý: APPROVED (4), REJECTED (5), RETURNED (21)
+        var directorActionStatuses = new[] { 4, 5, 21 };
+
+        // Lấy các EntityId mà director này đã tạo action trong StatusHistory
+        var processedIds = await _context.StatusHistories
+            .Where(sh => sh.EntityTypeId == 1  // JOB_REQUEST
+                      && sh.ChangedBy == directorId
+                      && directorActionStatuses.Contains(sh.ToStatusId))
+            .Select(sh => sh.EntityId)
+            .Distinct()
+            .ToListAsync();
+
+        if (!processedIds.Any()) return new List<JobRequest>();
+
+        // Lấy request với status hiện tại thuộc nhóm đã xử lý bởi Director này
+        return await _context.JobRequests
+            .Include(jr => jr.Position)
+                .ThenInclude(p => p.Department)
+            .Include(jr => jr.RequestedByNavigation)
+            .Where(jr => processedIds.Contains(jr.Id)
+                      && directorActionStatuses.Contains(jr.StatusId)
+                      && jr.IsDeleted == false)
+            .OrderByDescending(jr => jr.UpdatedAt)
+            .ToListAsync();
+    }
+
     public async Task<JobRequest?> GetJobRequestDetailAsync(int id)
     {
         return await _context.JobRequests
@@ -46,7 +75,7 @@ public class DirectorRepository : IDirectorRepository
                 .ThenInclude(u => u.Roles)
             .Include(sh => sh.ToStatus)
             .Where(sh => sh.EntityTypeId == 1 && sh.EntityId == jobRequestId) // EntityType 1 = JOB_REQUEST
-            .OrderBy(sh => sh.ChangedAt)
+            .OrderByDescending(sh => sh.ChangedAt)
             .ToListAsync();
     }
 
@@ -112,6 +141,46 @@ public class DirectorRepository : IDirectorRepository
         return true;
     }
 
+    public async Task<bool> ReturnJobRequestAsync(int jobRequestId, int directorId, string comment)
+    {
+        var jobRequest = await _context.JobRequests.FindAsync(jobRequestId);
+        if (jobRequest == null || jobRequest.StatusId != 3) return false; // Must be IN_REVIEW
+
+        var returnedStatusId = 21; // RETURNED status
+
+        // Update job request status
+        var oldStatusId = jobRequest.StatusId;
+        jobRequest.StatusId = returnedStatusId;
+        jobRequest.UpdatedAt = DateTimeHelper.Now;
+        jobRequest.UpdatedBy = directorId;
+
+        // Log status history
+        var statusHistory = new StatusHistory
+        {
+            EntityTypeId = 1, // JOB_REQUEST
+            EntityId = jobRequestId,
+            FromStatusId = oldStatusId,
+            ToStatusId = returnedStatusId,
+            ChangedBy = directorId,
+            ChangedAt = DateTimeHelper.Now,
+            Note = comment
+        };
+
+        _context.StatusHistories.Add(statusHistory);
+        await _context.SaveChangesAsync();
+
+        return true;
+    }
+
+    public async Task<string?> GetJdFileUrlAsync(int jobRequestId)
+    {
+        return await _context.FileUploadeds
+            .Where(f => f.EntityTypeId == 1 && f.EntityId == jobRequestId && f.FileTypeId == 4)
+            .OrderByDescending(f => f.UploadedAt)
+            .Select(f => f.FileUrl)
+            .FirstOrDefaultAsync();
+    }
+
     // ===== OFFERS =====
 
     public async Task<List<Offer>> GetPendingOffersAsync()
@@ -124,6 +193,7 @@ public class DirectorRepository : IDirectorRepository
                 .ThenInclude(a => a.JobRequest)
                     .ThenInclude(jr => jr.Position)
                         .ThenInclude(p => p.Department)
+            .Include(o => o.Status)
             .Where(o => o.StatusId == 15 && o.IsDeleted == false) // IN_REVIEW
             .OrderBy(o => o.CreatedAt)
             .ToListAsync();
@@ -139,6 +209,7 @@ public class DirectorRepository : IDirectorRepository
                 .ThenInclude(a => a.JobRequest)
                     .ThenInclude(jr => jr.Position)
                         .ThenInclude(p => p.Department)
+            .Include(o => o.Status)
             .Where(o => o.Id == id && o.IsDeleted == false)
             .FirstOrDefaultAsync();
     }
@@ -203,5 +274,19 @@ public class DirectorRepository : IDirectorRepository
         await _context.SaveChangesAsync();
 
         return true;
+    }
+
+    public async Task<Dictionary<int, string>> GetStatusNamesAsync(IEnumerable<int> statusIds)
+    {
+        return await _context.Statuses
+            .Where(s => statusIds.Contains(s.Id))
+            .ToDictionaryAsync(s => s.Id, s => s.Name);
+    }
+
+    public async Task<Dictionary<int, string>> GetStatusCodesAsync(IEnumerable<int> statusIds)
+    {
+        return await _context.Statuses
+            .Where(s => statusIds.Contains(s.Id))
+            .ToDictionaryAsync(s => s.Id, s => s.Code);
     }
 }

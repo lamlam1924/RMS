@@ -9,7 +9,9 @@ public class HRDashboardStatsDto
     public int ScreeningApplications { get; set; }
     public int InterviewingApplications { get; set; }
     public int ActiveJobPostings { get; set; }
+    public int ReturnedJobRequestsCount { get; set; }
 }
+
 
 public class RecruitmentFunnelDto
 {

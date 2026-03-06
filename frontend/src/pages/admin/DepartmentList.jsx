@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import PageShell from "../../layouts/PageShell";
 import { departmentService, userService } from "../../services/adminService";
+import notify from "../../utils/notification";
 import {
   ViewIcon,
   EditIcon,
@@ -35,23 +36,27 @@ export default function DepartmentList() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this department?"))
-      return;
-
-    try {
-      await departmentService.delete(id);
-      loadDepartments();
-    } catch (err) {
-      alert("Error deleting department: " + err.message);
-    }
+    notify.confirm(
+      "Are you sure you want to delete this department?",
+      async () => {
+        try {
+          await departmentService.delete(id);
+          notify.success('Xóa phòng ban thành công');
+          loadDepartments();
+        } catch (err) {
+          notify.error("Lỗi khi xóa phòng ban: " + err.message);
+        }
+      }
+    );
   };
 
   const handleToggleStatus = async (id, currentStatus) => {
     try {
       await departmentService.updateStatus(id, !currentStatus);
+      notify.success('Cập nhật trạng thái thành công');
       loadDepartments();
     } catch (err) {
-      alert("Error updating status: " + err.message);
+      notify.error("Lỗi khi cập nhật trạng thái: " + err.message);
     }
   };
 

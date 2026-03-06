@@ -35,4 +35,5 @@ public class PublicJobPostingDetailDto
     public decimal? SalaryMax { get; set; }
     public DateTime? DeadlineDate { get; set; }
     public DateTime CreatedAt { get; set; }
+    public string? JdFileUrl { get; set; }
 }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import deptManagerService from '../../services/deptManagerService';
+import notify from '../../utils/notification';
 
 export default function DeptManagerInterviewDetail() {
   const { id } = useParams();
@@ -52,18 +53,18 @@ export default function DeptManagerInterviewDetail() {
 
   const handleSubmitFeedback = async () => {
     if (!feedback.decision) {
-      alert('Please select a decision (Pass/Reject)');
+      notify.warning('Vui lòng chọn kết quả (Đạt/Trượt)');
       return;
     }
 
     try {
       setSubmitting(true);
       await deptManagerService.interviews.submitFeedback(id, feedback);
-      alert('Feedback submitted successfully!');
+      notify.success('Gửi đánh giá thành công!');
       navigate('/staff/dept-manager/interviews');
     } catch (error) {
       console.error('Failed to submit feedback:', error);
-      alert('Failed to submit feedback. Please try again.');
+      notify.error('Gửi đánh giá thất bại. Vui lòng thử lại.');
     } finally {
       setSubmitting(false);
     }

@@ -11,13 +11,11 @@ public class DirectorService : IDirectorService
 {
     private readonly IDirectorRepository _repository;
     private readonly IMapper _mapper;
-    private readonly RecruitmentDbContext _context;
 
-    public DirectorService(IDirectorRepository repository, IMapper mapper, RecruitmentDbContext context)
+    public DirectorService(IDirectorRepository repository, IMapper mapper)
     {
         _repository = repository;
         _mapper = mapper;
-        _context = context;
     }
 
     public async Task<List<JobRequestListDto>> GetPendingJobRequestsAsync()
@@ -25,17 +23,34 @@ public class DirectorService : IDirectorService
         var entities = await _repository.GetPendingJobRequestsAsync();
         var dtos = _mapper.Map<List<JobRequestListDto>>(entities);
 
-        // Get statuses from database
-        var statusIds = entities.Select(e => e.StatusId).Distinct().ToList();
-        var statuses = await _context.Statuses
-            .Where(s => statusIds.Contains(s.Id))
-            .ToDictionaryAsync(s => s.Id, s => s.Name);
+        var statusIds = entities.Select(e => e.StatusId).Distinct();
+        var statusNames = await _repository.GetStatusNamesAsync(statusIds);
+        var statusCodes = await _repository.GetStatusCodesAsync(statusIds);
 
-        // Set CurrentStatus from Status
         foreach (var dto in dtos)
         {
             var entity = entities.First(e => e.Id == dto.Id);
-            dto.CurrentStatus = statuses.GetValueOrDefault(entity.StatusId) ?? "Unknown";
+            dto.CurrentStatus = statusNames.GetValueOrDefault(entity.StatusId) ?? "Unknown";
+            dto.CurrentStatusCode = statusCodes.GetValueOrDefault(entity.StatusId) ?? "UNKNOWN";
+        }
+
+        return dtos;
+    }
+
+    public async Task<List<JobRequestListDto>> GetProcessedJobRequestsAsync(int directorId)
+    {
+        var entities = await _repository.GetProcessedJobRequestsAsync(directorId);
+        var dtos = _mapper.Map<List<JobRequestListDto>>(entities);
+
+        var statusIds = entities.Select(e => e.StatusId).Distinct();
+        var statusNames = await _repository.GetStatusNamesAsync(statusIds);
+        var statusCodes = await _repository.GetStatusCodesAsync(statusIds);
+
+        foreach (var dto in dtos)
+        {
+            var entity = entities.First(e => e.Id == dto.Id);
+            dto.CurrentStatus = statusNames.GetValueOrDefault(entity.StatusId) ?? "Unknown";
+            dto.CurrentStatusCode = statusCodes.GetValueOrDefault(entity.StatusId) ?? "UNKNOWN";
         }
 
         return dtos;
@@ -48,13 +63,27 @@ public class DirectorService : IDirectorService
 
         var dto = _mapper.Map<JobRequestDetailDto>(entity);
         
-        // Get status from database
-        var status = await _context.Statuses.FindAsync(entity.StatusId);
-        dto.CurrentStatus = status?.Name ?? "Unknown";
-        
+        // Get status names and codes
+        var statusNames = await _repository.GetStatusNamesAsync(new[] { entity.StatusId });
+        var statusCodes = await _repository.GetStatusCodesAsync(new[] { entity.StatusId });
+        dto.CurrentStatus = statusNames.GetValueOrDefault(entity.StatusId) ?? "Unknown";
+        dto.CurrentStatusCode = statusCodes.GetValueOrDefault(entity.StatusId) ?? "UNKNOWN";
+
         // Get and map approval history
         var history = await _repository.GetJobRequestStatusHistoryAsync(id);
         dto.ApprovalHistory = _mapper.Map<List<ApprovalHistoryDto>>(history);
+
+        // Lấy JD Link từ repository
+        dto.JdFileUrl = await _repository.GetJdFileUrlAsync(id);
+
+        // Lấy ghi chú gần nhất từ HR (khi chuyển cho Director)
+        // Trạng thái IN_REVIEW (ID 3)
+        var hrForwardingHistory = history
+            .Where(h => h.ToStatusId == 3 && !string.IsNullOrEmpty(h.Note))
+            .OrderByDescending(h => h.ChangedAt)
+            .FirstOrDefault();
+        
+        dto.HrNote = hrForwardingHistory?.Note;
 
         return dto;
     }
@@ -87,25 +116,24 @@ public class DirectorService : IDirectorService
         };
     }
 
+    public async Task<ApprovalActionResponseDto> ReturnJobRequestAsync(
+        JobRequestApprovalActionDto request, int directorId)
+    {
+        var success = await _repository.ReturnJobRequestAsync(
+            request.JobRequestId, directorId, request.Comment ?? "");
+
+        return new ApprovalActionResponseDto
+        {
+            Success = success,
+            Message = success ? "Job request returned for revision successfully" : "Failed to return job request",
+            NewStatus = success ? "RETURNED" : null
+        };
+    }
+
     public async Task<List<OfferListDto>> GetPendingOffersAsync()
     {
         var entities = await _repository.GetPendingOffersAsync();
-        var dtos = _mapper.Map<List<OfferListDto>>(entities);
-
-        // Get statuses from database
-        var statusIds = entities.Select(e => e.StatusId).Distinct().ToList();
-        var statuses = await _context.Statuses
-            .Where(s => statusIds.Contains(s.Id))
-            .ToDictionaryAsync(s => s.Id, s => s.Name);
-
-        // Set CurrentStatus from Status
-        foreach (var dto in dtos)
-        {
-            var entity = entities.First(e => e.Id == dto.Id);
-            dto.CurrentStatus = statuses.GetValueOrDefault(entity.StatusId) ?? "Unknown";
-        }
-
-        return dtos;
+        return _mapper.Map<List<OfferListDto>>(entities);
     }
 
     public async Task<OfferDetailDto?> GetOfferDetailAsync(int id)
@@ -114,10 +142,6 @@ public class DirectorService : IDirectorService
         if (entity == null) return null;
 
         var dto = _mapper.Map<OfferDetailDto>(entity);
-        
-        // Get status from database
-        var status = await _context.Statuses.FindAsync(entity.StatusId);
-        dto.CurrentStatus = status?.Name ?? "Unknown";
         
         // Get and map approval history
         var history = await _repository.GetOfferApprovalHistoryAsync(id);

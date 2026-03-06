@@ -3,10 +3,39 @@ using RMS.Dto.HR;
 
 namespace RMS.Service.Interface;
 
+/// <summary>
+/// Service quản lý Yêu cầu tuyển dụng cho HR Manager
+/// </summary>
 public interface IHRJobRequestsService
 {
+    /// <summary>Lấy tất cả yêu cầu tuyển dụng</summary>
     Task<List<JobRequestListDto>> GetJobRequestsAsync();
+    
+    /// <summary>Lấy yêu cầu đang chờ thẩm định</summary>
     Task<List<JobRequestListDto>> GetPendingJobRequestsAsync();
+    
+    /// <summary>Lấy yêu cầu theo trạng thái</summary>
+    Task<List<JobRequestListDto>> GetJobRequestsByStatusAsync(string statusCode);
+    
+    /// <summary>Lấy chi tiết yêu cầu tuyển dụng</summary>
     Task<JobRequestDetailDto?> GetJobRequestByIdAsync(int id);
+    
+    /// <summary>Chuyển yêu cầu lên Giám đốc</summary>
+    Task<bool> ForwardToDirectorAsync(int id, string? note, int hrManagerId);
+    
+    /// <summary>Trả yêu cầu về cho Trưởng phòng chỉnh sửa</summary>
+    Task<bool> ReturnToDeptManagerAsync(int id, string? reason, int hrManagerId);
+
+    /// <summary>HR phê duyệt yêu cầu hủy (CANCEL_PENDING → CANCELLED)</summary>
+    Task<bool> ApproveCancelAsync(int id, string? note, int hrManagerId);
+
+    /// <summary>HR từ chối yêu cầu hủy (CANCEL_PENDING → trạng thái trước)</summary>
+    Task<bool> RejectCancelAsync(int id, string? note, int hrManagerId);
     Task<ActionResponseDto> UpdateStatusAsync(int id, int statusId, string note, int userId);
+
+    /// <summary>HR Manager gán HR Staff vào Job Request đã APPROVED</summary>
+    Task<ActionResponseDto> AssignStaffToJobRequestAsync(int jobRequestId, int staffId, int managerId);
+
+    /// <summary>HR Staff lấy các Job Request APPROVED được gán cho mình</summary>
+    Task<List<JobRequestListDto>> GetApprovedJobRequestsForStaffAsync(int staffId);
 }

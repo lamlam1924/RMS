@@ -21,6 +21,8 @@ public partial class Status
 
     public virtual ICollection<Interview> Interviews { get; set; } = new List<Interview>();
 
+    public virtual ICollection<JobPosting> JobPostings { get; set; } = new List<JobPosting>();
+
     public virtual ICollection<Offer> Offers { get; set; } = new List<Offer>();
 
     public virtual ICollection<StatusHistory> StatusHistoryFromStatuses { get; set; } = new List<StatusHistory>();

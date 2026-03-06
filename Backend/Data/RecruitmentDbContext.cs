@@ -46,6 +46,8 @@ public partial class RecruitmentDbContext : DbContext
 
     public virtual DbSet<InterviewScore> InterviewScores { get; set; }
 
+    public virtual DbSet<JobPosting> JobPostings { get; set; }
+
     public virtual DbSet<JobRequest> JobRequests { get; set; }
 
     public virtual DbSet<JobPosting> JobPostings { get; set; }
@@ -55,6 +57,8 @@ public partial class RecruitmentDbContext : DbContext
     public virtual DbSet<OfferApproval> OfferApprovals { get; set; }
 
     public virtual DbSet<Position> Positions { get; set; }
+
+    public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
 
     public virtual DbSet<Role> Roles { get; set; }
 
@@ -431,6 +435,40 @@ public partial class RecruitmentDbContext : DbContext
                 .HasConstraintName("FK__Interview__Feedb__1DB06A4F");
         });
 
+        modelBuilder.Entity<JobPosting>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__JobPosti__3214EC07A0D3921C");
+
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.DeletedAt).HasColumnType("datetime");
+            entity.Property(e => e.IsDeleted).HasDefaultValue(false);
+            entity.Property(e => e.Location).HasMaxLength(200);
+            entity.Property(e => e.SalaryMax).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.SalaryMin).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Title).HasMaxLength(300);
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
+
+            entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.JobPostings)
+                .HasForeignKey(d => d.CreatedBy)
+                .HasConstraintName("FK__JobPostin__Creat__662B2B3B");
+
+            entity.HasOne(d => d.JobRequest).WithMany(p => p.JobPostings)
+                .HasForeignKey(d => d.JobRequestId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__JobPostin__JobRe__6442E2C9");
+
+            entity.HasOne(d => d.Status).WithMany(p => p.JobPostings)
+                .HasForeignKey(d => d.StatusId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__JobPostin__Statu__65370702");
+
+            entity.HasOne(d => d.AssignedStaff).WithMany()
+                .HasForeignKey(d => d.AssignedStaffId)
+                .HasConstraintName("FK_JobPostings_AssignedStaff");
+        });
+
         modelBuilder.Entity<JobRequest>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__JobReque__3214EC079BFEA3C8");
@@ -441,6 +479,8 @@ public partial class RecruitmentDbContext : DbContext
                 .HasColumnType("datetime");
             entity.Property(e => e.DeletedAt).HasColumnType("datetime");
             entity.Property(e => e.IsDeleted).HasDefaultValue(false);
+            entity.Property(e => e.LastReturnedAt).HasColumnType("datetime");
+            entity.Property(e => e.LastViewedByManagerAt).HasColumnType("datetime");
             entity.Property(e => e.Reason).HasMaxLength(500);
             entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
 
@@ -453,6 +493,10 @@ public partial class RecruitmentDbContext : DbContext
                 .HasForeignKey(d => d.RequestedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__JobReques__Reque__571DF1D5");
+
+            entity.HasOne(d => d.AssignedStaff).WithMany()
+                .HasForeignKey(d => d.AssignedStaffId)
+                .HasConstraintName("FK_JobRequests_AssignedStaff");
         });
 
         modelBuilder.Entity<JobPosting>(entity =>
@@ -543,6 +587,25 @@ public partial class RecruitmentDbContext : DbContext
                 .HasForeignKey(d => d.DepartmentId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__Positions__Depar__5165187F");
+        });
+
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__RefreshT__3214EC074AAA3AB7");
+
+            entity.HasIndex(e => e.Token, "IX_RefreshTokens_Token");
+
+            entity.HasIndex(e => e.UserId, "IX_RefreshTokens_UserId");
+
+            entity.HasIndex(e => e.Token, "UQ__RefreshT__1EB4F8174F403807").IsUnique();
+
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.Token).HasMaxLength(500);
+
+            entity.HasOne(d => d.User).WithMany(p => p.RefreshTokens)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_RefreshTokens_Users");
         });
 
         modelBuilder.Entity<Role>(entity =>

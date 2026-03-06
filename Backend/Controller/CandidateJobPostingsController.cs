@@ -71,21 +71,6 @@ public class CandidateJobPostingsController : ControllerBase
                     .ThenInclude(jr => jr.Position)
                         .ThenInclude(p => p.Department)
                 .Where(jp => jp.Id == id && jp.StatusId == 7 && jp.IsDeleted == false)
-                .Select(jp => new PublicJobPostingDetailDto
-                {
-                    Id = jp.Id,
-                    Title = jp.Title,
-                    Description = jp.Description ?? "",
-                    Requirements = jp.Requirements ?? "",
-                    Benefits = jp.Benefits ?? "",
-                    PositionTitle = jp.JobRequest.Position.Title,
-                    DepartmentName = jp.JobRequest.Position.Department.Name,
-                    Location = jp.Location ?? "",
-                    SalaryMin = jp.SalaryMin,
-                    SalaryMax = jp.SalaryMax,
-                    DeadlineDate = jp.DeadlineDate.HasValue ? jp.DeadlineDate.Value.ToDateTime(TimeOnly.MinValue) : null,
-                    CreatedAt = jp.CreatedAt ?? DateTime.Now
-                })
                 .FirstOrDefaultAsync();
 
             if (jobPosting == null)
@@ -93,7 +78,31 @@ public class CandidateJobPostingsController : ControllerBase
                 return NotFound(new { message = "Job posting not found" });
             }
 
-            return Ok(jobPosting);
+            // Lấy ảnh JD từ job request (do department upload lên Cloudinary)
+            var jdFileUrl = await _context.FileUploadeds
+                .Where(f => f.EntityTypeId == 1 && f.EntityId == jobPosting.JobRequestId && f.FileTypeId == 4)
+                .OrderByDescending(f => f.UploadedAt)
+                .Select(f => f.FileUrl)
+                .FirstOrDefaultAsync();
+
+            var dto = new PublicJobPostingDetailDto
+            {
+                Id = jobPosting.Id,
+                Title = jobPosting.Title,
+                Description = jobPosting.Description ?? "",
+                Requirements = jobPosting.Requirements ?? "",
+                Benefits = jobPosting.Benefits ?? "",
+                PositionTitle = jobPosting.JobRequest.Position.Title,
+                DepartmentName = jobPosting.JobRequest.Position.Department.Name,
+                Location = jobPosting.Location ?? "",
+                SalaryMin = jobPosting.SalaryMin,
+                SalaryMax = jobPosting.SalaryMax,
+                DeadlineDate = jobPosting.DeadlineDate.HasValue ? jobPosting.DeadlineDate.Value.ToDateTime(TimeOnly.MinValue) : null,
+                CreatedAt = jobPosting.CreatedAt ?? DateTime.Now,
+                JdFileUrl = jdFileUrl
+            };
+
+            return Ok(dto);
         }
         catch (Exception ex)
         {

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import hrService from '../../../services/hrService';
 import { formatDate, formatCurrency, formatDateTime } from '../../../utils/formatters/display';
 import { PriorityBadge, StatusBadge } from '../../../components/shared/Badge';
+import notify from '../../../utils/notification';
 
 export default function HRApplicationDetail() {
   const { id } = useParams();
@@ -52,7 +53,7 @@ export default function HRApplicationDetail() {
       await loadApplication();
     } catch (error) {
       console.error('Failed to update status:', error);
-      alert('Failed to update status');
+      notify.error('Cập nhật trạng thái thất bại');
     } finally {
       setUpdating(false);
     }
@@ -60,9 +61,9 @@ export default function HRApplicationDetail() {
 
   const getPriorityBadge = (priority) => {
     const styles = {
-      1: { bg: '#fee2e2', color: '#991b1b', label: 'Urgent' },
-      2: { bg: '#fef3c7', color: '#92400e', label: 'High' },
-      3: { bg: '#e0e7ff', color: '#3730a3', label: 'Normal' }
+      1: { bg: '#fee2e2', color: '#991b1b', label: 'Khẩn cấp' },
+      2: { bg: '#ffedd5', color: '#9a3412', label: 'Cao' },
+      3: { bg: '#dbeafe', color: '#1d4ed8', label: 'Bình thường' }
     };
     const style = styles[priority] || styles[3];
 

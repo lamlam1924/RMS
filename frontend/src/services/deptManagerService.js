@@ -12,8 +12,16 @@ const deptManagerService = {
     getById: (id) => api.get(`/dept-manager/job-requests/${id}`),
     create: (data) => api.post('/dept-manager/job-requests', data),
     update: (id, data) => api.put(`/dept-manager/job-requests/${id}`, data),
-    submit: (id) => api.post(`/dept-manager/job-requests/${id}/submit`),
+    uploadJd: (id, file) => {
+      const formData = new FormData();
+      formData.append('jdFile', file);
+      return api.post(`/dept-manager/job-requests/${id}/upload-jd`, formData);
+    },
+    submit: (id, note) => api.post(`/dept-manager/job-requests/${id}/submit`, { note: note || null }),
+    reopen: (id) => api.post(`/dept-manager/job-requests/${id}/reopen`),
+    cancel: (id, note) => api.post(`/dept-manager/job-requests/${id}/cancel`, { note: note || null }),
     delete: (id) => api.delete(`/dept-manager/job-requests/${id}`),
+
     getPositions: () => api.get('/dept-manager/job-requests/positions'),
   },
 

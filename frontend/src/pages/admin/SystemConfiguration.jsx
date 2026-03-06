@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import PageShell from "../../layouts/PageShell";
 import { systemConfigService } from "../../services/adminService";
+import notify from "../../utils/notification";
 
 export default function SystemConfiguration() {
   const [configs, setConfigs] = useState({
@@ -78,7 +79,7 @@ export default function SystemConfiguration() {
       setSuccessMessage("Configuration saved successfully!");
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (err) {
-      alert("Error saving configuration: " + err.message);
+      notify.error("Lỗi khi lưu cấu hình: " + err.message);
     } finally {
       setSaving(false);
     }

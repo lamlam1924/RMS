@@ -178,11 +178,7 @@ public class AuthController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during login");
-#if DEBUG
-            return StatusCode(500, new { message = ex.Message ?? "Đã có lỗi xảy ra" });
-#else
             return StatusCode(500, new { message = "Đã có lỗi xảy ra" });
-#endif
         }
     }
 

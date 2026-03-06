@@ -13,10 +13,6 @@ public class CandidateCvProfileDto
     public string? Summary { get; set; }
     public int? YearsOfExperience { get; set; }
     public string? Source { get; set; }
-    public string? Address { get; set; }
-    public string? ProfessionalTitle { get; set; }
-    public string? SkillsText { get; set; }
-    public string? ReferencesText { get; set; }
     public DateTime? CreatedAt { get; set; }
 
     public List<CvExperienceDto> Experiences { get; set; } = new();
@@ -29,7 +25,6 @@ public class CvExperienceDto
     public int Id { get; set; }
     public string CompanyName { get; set; } = string.Empty;
     public string JobTitle { get; set; } = string.Empty;
-    public string? Location { get; set; }
     public DateOnly StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
     public string? Description { get; set; }
@@ -39,7 +34,6 @@ public class CvEducationDto
 {
     public int Id { get; set; }
     public string SchoolName { get; set; } = string.Empty;
-    public string? Location { get; set; }
     public string? Degree { get; set; }
     public string? Major { get; set; }
     public int? StartYear { get; set; }
@@ -66,10 +60,6 @@ public class SaveCvProfileRequestDto
     public string? Summary { get; set; }
     public int? YearsOfExperience { get; set; }
     public string? Source { get; set; }
-    public string? Address { get; set; }
-    public string? ProfessionalTitle { get; set; }
-    public string? SkillsText { get; set; }
-    public string? ReferencesText { get; set; }
 
     public List<SaveCvExperienceDto> Experiences { get; set; } = new();
     public List<SaveCvEducationDto> Educations { get; set; } = new();
@@ -81,7 +71,6 @@ public class SaveCvExperienceDto
     public int? Id { get; set; }
     public string CompanyName { get; set; } = null!;
     public string JobTitle { get; set; } = null!;
-    public string? Location { get; set; }
     public DateOnly StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
     public string? Description { get; set; }
@@ -91,7 +80,6 @@ public class SaveCvEducationDto
 {
     public int? Id { get; set; }
     public string SchoolName { get; set; } = null!;
-    public string? Location { get; set; }
     public string? Degree { get; set; }
     public string? Major { get; set; }
     public int? StartYear { get; set; }
