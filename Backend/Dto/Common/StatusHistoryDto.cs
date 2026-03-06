@@ -10,10 +10,7 @@ public class StatusHistoryDto
     public string? FromStatus { get; set; }
     public int ToStatusId { get; set; }
     public string ToStatus { get; set; } = "";
-<<<<<<< HEAD
-=======
     public int ChangedById { get; set; }
->>>>>>> origin/ngocson
     public string ChangedByName { get; set; } = "";
     public DateTime ChangedAt { get; set; }
     public string? Note { get; set; }

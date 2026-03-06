@@ -12,10 +12,7 @@ public class JobRequestListDto
     public string? Reason { get; set; }
     public DateTime? ExpectedStartDate { get; set; }
     public required string CurrentStatus { get; set; }
-<<<<<<< HEAD
-=======
     public string? CurrentStatusCode { get; set; }
->>>>>>> origin/ngocson
     public DateTime CreatedAt { get; set; }
 }
 
@@ -32,12 +29,9 @@ public class JobRequestDetailDto
     public string? Reason { get; set; }
     public DateTime? ExpectedStartDate { get; set; }
     public required string CurrentStatus { get; set; }
-<<<<<<< HEAD
-=======
     public string? CurrentStatusCode { get; set; }
     public string? JdFileUrl { get; set; }
     public string? HrNote { get; set; }
->>>>>>> origin/ngocson
     public DateTime CreatedAt { get; set; }
     public List<ApprovalHistoryDto> ApprovalHistory { get; set; } = new();
 }
