@@ -49,6 +49,16 @@ const MENU_CONFIG = [
         label: "Duyệt Đề nghị Tuyển dụng",
         to: "/staff/director/offers",
       },
+      {
+        key: "directorMyInterviews",
+        label: "Phỏng vấn của tôi",
+        to: "/staff/director/my-interviews",
+      },
+      {
+        key: "directorNominations",
+        label: "Yêu cầu đề cử",
+        to: "/staff/director/nominations",
+      },
     ],
   },
 
@@ -72,6 +82,11 @@ const MENU_CONFIG = [
         key: "deptManagerInterviews",
         label: "Phỏng vấn của tôi",
         to: "/staff/dept-manager/interviews",
+      },
+      {
+        key: "deptManagerNominations",
+        label: "Yêu cầu đề cử",
+        to: "/staff/dept-manager/nominations",
       },
     ],
   },

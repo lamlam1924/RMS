@@ -389,6 +389,105 @@ const hrService = {
       });
       if (!response.ok) throw new Error('Failed to update interview');
       return response.json();
+    },
+
+    getById: async (id) => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/${id}`, {
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error('Failed to fetch interview');
+      return response.json();
+    },
+
+    finalize: async (id, data) => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/${id}/finalize`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw new Error('Failed to finalize interview');
+      return response.json();
+    },
+
+    cancel: async (id) => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/${id}/cancel`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error('Failed to cancel interview');
+      return response.json();
+    },
+
+    submitFeedback: async (id, data) => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/${id}/feedback`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw new Error('Failed to submit feedback');
+      return response.json();
+    },
+
+    getParticipantRequests: async (interviewId) => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/${interviewId}/participant-requests`, {
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error('Failed to fetch participant requests');
+      return response.json();
+    },
+
+    createParticipantRequest: async (interviewId, data) => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/${interviewId}/participant-requests`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw new Error('Failed to create participant request');
+      return response.json();
+    },
+
+    getAssignedParticipantRequests: async () => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/participant-requests/assigned`, {
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error('Failed to fetch assigned participant requests');
+      return response.json();
+    },
+
+    forwardParticipantRequest: async (reqId, data) => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/participant-requests/${reqId}/forward`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw new Error('Failed to forward participant request');
+      return response.json();
+    },
+
+    nominateParticipants: async (reqId, data) => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/participant-requests/${reqId}/nominate`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw new Error('Failed to nominate participants');
+      return response.json();
+    },
+
+    getDeptManagers: async () => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/utilities/dept-managers`, {
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error('Failed to fetch dept managers');
+      return response.json();
+    },
+
+    getDirectors: async () => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/utilities/directors`, {
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error('Failed to fetch directors');
+      return response.json();
     }
   },
 

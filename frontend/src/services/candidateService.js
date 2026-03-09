@@ -103,4 +103,23 @@ export const candidateService = {
     }
     return res.json();
   },
+
+  async getMyInterviews() {
+    const res = await authFetch(`${API_BASE_URL}/candidate/interviews`);
+    if (!res.ok) throw new Error("Không thể tải danh sách phỏng vấn");
+    return res.json();
+  },
+
+  async respondInterview(id, response) {
+    const res = await authFetch(`${API_BASE_URL}/candidate/interviews/${id}/respond`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ response }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || "Không thể phản hồi lịch phỏng vấn");
+    }
+    return res.json();
+  },
 };

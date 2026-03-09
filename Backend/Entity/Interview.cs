@@ -39,5 +39,7 @@ public partial class Interview
 
     public virtual ICollection<InterviewParticipant> InterviewParticipants { get; set; } = new List<InterviewParticipant>();
 
+    public virtual ICollection<ParticipantRequest> ParticipantRequests { get; set; } = new List<ParticipantRequest>();
+
     public virtual Status Status { get; set; } = null!;
 }

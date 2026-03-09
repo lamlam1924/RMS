@@ -54,6 +54,8 @@ public partial class RecruitmentDbContext : DbContext
 
     public virtual DbSet<OfferApproval> OfferApprovals { get; set; }
 
+    public virtual DbSet<ParticipantRequest> ParticipantRequests { get; set; }
+
     public virtual DbSet<Position> Positions { get; set; }
 
     public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
@@ -286,6 +288,10 @@ public partial class RecruitmentDbContext : DbContext
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
             entity.Property(e => e.Name).HasMaxLength(200);
+
+            entity.HasOne(d => d.Position).WithMany(p => p.EvaluationTemplates)
+                .HasForeignKey(d => d.PositionId)
+                .HasConstraintName("FK_EvalTemplate_Position");
         });
 
         modelBuilder.Entity<FileType>(entity =>
@@ -370,6 +376,7 @@ public partial class RecruitmentDbContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
+            entity.Property(e => e.Note).HasMaxLength(1000);
 
             entity.HasOne(d => d.Interview).WithMany(p => p.InterviewFeedbacks)
                 .HasForeignKey(d => d.InterviewId)
@@ -446,7 +453,11 @@ public partial class RecruitmentDbContext : DbContext
             entity.Property(e => e.Title).HasMaxLength(300);
             entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
 
-            entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.JobPostings)
+            entity.HasOne(d => d.AssignedStaff).WithMany(p => p.JobPostingAssignedStaffs)
+                .HasForeignKey(d => d.AssignedStaffId)
+                .HasConstraintName("FK_JobPostings_AssignedStaff");
+
+            entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.JobPostingCreatedByNavigations)
                 .HasForeignKey(d => d.CreatedBy)
                 .HasConstraintName("FK__JobPostin__Creat__662B2B3B");
 
@@ -459,10 +470,6 @@ public partial class RecruitmentDbContext : DbContext
                 .HasForeignKey(d => d.StatusId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__JobPostin__Statu__65370702");
-
-            entity.HasOne(d => d.AssignedStaff).WithMany()
-                .HasForeignKey(d => d.AssignedStaffId)
-                .HasConstraintName("FK_JobPostings_AssignedStaff");
         });
 
         modelBuilder.Entity<JobRequest>(entity =>
@@ -480,19 +487,19 @@ public partial class RecruitmentDbContext : DbContext
             entity.Property(e => e.Reason).HasMaxLength(500);
             entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
 
+            entity.HasOne(d => d.AssignedStaff).WithMany(p => p.JobRequestAssignedStaffs)
+                .HasForeignKey(d => d.AssignedStaffId)
+                .HasConstraintName("FK_JobRequests_AssignedStaff");
+
             entity.HasOne(d => d.Position).WithMany(p => p.JobRequests)
                 .HasForeignKey(d => d.PositionId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__JobReques__Posit__5629CD9C");
 
-            entity.HasOne(d => d.RequestedByNavigation).WithMany(p => p.JobRequests)
+            entity.HasOne(d => d.RequestedByNavigation).WithMany(p => p.JobRequestRequestedByNavigations)
                 .HasForeignKey(d => d.RequestedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__JobReques__Reque__571DF1D5");
-
-            entity.HasOne(d => d.AssignedStaff).WithMany()
-                .HasForeignKey(d => d.AssignedStaffId)
-                .HasConstraintName("FK_JobRequests_AssignedStaff");
         });
 
         modelBuilder.Entity<Offer>(entity =>
@@ -536,6 +543,40 @@ public partial class RecruitmentDbContext : DbContext
                 .HasForeignKey(d => d.OfferId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__OfferAppr__Offer__2739D489");
+        });
+
+        modelBuilder.Entity<ParticipantRequest>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Particip__3214EC0701BCBF89");
+
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.Message).HasMaxLength(500);
+            entity.Property(e => e.RequiredCount).HasDefaultValue(1);
+            entity.Property(e => e.RespondedAt).HasColumnType("datetime");
+            entity.Property(e => e.Status)
+                .HasMaxLength(50)
+                .HasDefaultValue("PENDING");
+
+            entity.HasOne(d => d.AssignedToUser).WithMany(p => p.ParticipantRequestAssignedToUsers)
+                .HasForeignKey(d => d.AssignedToUserId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_PR_AssignedTo");
+
+            entity.HasOne(d => d.ForwardedToUser).WithMany(p => p.ParticipantRequestForwardedToUsers)
+                .HasForeignKey(d => d.ForwardedToUserId)
+                .HasConstraintName("FK_PR_ForwardedTo");
+
+            entity.HasOne(d => d.Interview).WithMany(p => p.ParticipantRequests)
+                .HasForeignKey(d => d.InterviewId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_PR_Interview");
+
+            entity.HasOne(d => d.RequestedByUser).WithMany(p => p.ParticipantRequestRequestedByUsers)
+                .HasForeignKey(d => d.RequestedByUserId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_PR_RequestedBy");
         });
 
         modelBuilder.Entity<Position>(entity =>

@@ -167,6 +167,8 @@ builder.Services.AddScoped<IHRInterviewsRepository, HRInterviewsRepository>();
 builder.Services.AddScoped<IHROffersRepository, HROffersRepository>();
 builder.Services.AddScoped<IHRJobPostingsRepository, HRJobPostingsRepository>();
 builder.Services.AddScoped<IEmployeeInterviewsRepository, EmployeeInterviewsRepository>();
+builder.Services.AddScoped<ICandidateInterviewsRepository, CandidateInterviewsRepository>();
+builder.Services.AddScoped<IParticipantRequestRepository, ParticipantRequestRepository>();
 builder.Services.AddScoped<IMediaRepository, MediaRepository>();
 builder.Services.AddScoped<ICandidateApplicationRepository, CandidateApplicationRepository>();
 
@@ -192,6 +194,8 @@ builder.Services.AddScoped<IHRInterviewsService, HRInterviewsService>();
 builder.Services.AddScoped<IHROffersService, HROffersService>();
 builder.Services.AddScoped<IHRJobPostingsService, HRJobPostingsService>();
 builder.Services.AddScoped<IEmployeeInterviewsService, EmployeeInterviewsService>();
+builder.Services.AddScoped<ICandidateInterviewsService, CandidateInterviewsService>();
+builder.Services.AddScoped<IParticipantRequestService, ParticipantRequestService>();
 builder.Services.AddScoped<ICandidateApplicationService, CandidateApplicationService>();
 
 // ======================= BUILD APP =======================

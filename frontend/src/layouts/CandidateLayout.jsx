@@ -79,6 +79,18 @@ export default function CandidateLayout() {
             >
               CV của tôi
             </NavLink>
+            <NavLink
+              to="/app/interviews"
+              className={({ isActive }) =>
+                `px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                  isActive 
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-200" 
+                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                }`
+              }
+            >
+              Phỏng vấn
+            </NavLink>
           </nav>
 
           <div className="flex items-center gap-4 text-sm relative" ref={dropdownRef}>

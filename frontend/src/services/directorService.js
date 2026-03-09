@@ -122,6 +122,65 @@ export const offerService = {
 const directorService = {
   jobRequests: jobRequestService,
   offers: offerService,
+
+  interviews: {
+    async getAll() {
+      const res = await fetch(`${API_BASE_URL}/director/interviews`, {
+        headers: getAuthHeader(),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    async getUpcoming() {
+      const res = await fetch(`${API_BASE_URL}/director/interviews/upcoming`, {
+        headers: getAuthHeader(),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    async getById(id) {
+      const res = await fetch(`${API_BASE_URL}/director/interviews/${id}`, {
+        headers: getAuthHeader(),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    async submitFeedback(id, data) {
+      const res = await fetch(`${API_BASE_URL}/director/interviews/${id}/feedback`, {
+        method: 'POST',
+        headers: getAuthHeader(),
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+  },
+
+  participantRequests: {
+    async getForwarded() {
+      const res = await fetch(`${API_BASE_URL}/director/interviews/participant-requests`, {
+        headers: getAuthHeader(),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    async getById(reqId) {
+      const res = await fetch(`${API_BASE_URL}/director/interviews/participant-requests/${reqId}`, {
+        headers: getAuthHeader(),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    async nominate(reqId, userIds) {
+      const res = await fetch(`${API_BASE_URL}/director/interviews/participant-requests/${reqId}/nominate`, {
+        method: 'POST',
+        headers: getAuthHeader(),
+        body: JSON.stringify({ userIds }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+  },
 };
 
 export default directorService;

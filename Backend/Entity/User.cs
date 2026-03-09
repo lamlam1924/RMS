@@ -43,11 +43,21 @@ public partial class User
 
     public virtual ICollection<Interview> Interviews { get; set; } = new List<Interview>();
 
-    public virtual ICollection<JobPosting> JobPostings { get; set; } = new List<JobPosting>();
+    public virtual ICollection<JobPosting> JobPostingAssignedStaffs { get; set; } = new List<JobPosting>();
 
-    public virtual ICollection<JobRequest> JobRequests { get; set; } = new List<JobRequest>();
+    public virtual ICollection<JobPosting> JobPostingCreatedByNavigations { get; set; } = new List<JobPosting>();
+
+    public virtual ICollection<JobRequest> JobRequestAssignedStaffs { get; set; } = new List<JobRequest>();
+
+    public virtual ICollection<JobRequest> JobRequestRequestedByNavigations { get; set; } = new List<JobRequest>();
 
     public virtual ICollection<OfferApproval> OfferApprovals { get; set; } = new List<OfferApproval>();
+
+    public virtual ICollection<ParticipantRequest> ParticipantRequestAssignedToUsers { get; set; } = new List<ParticipantRequest>();
+
+    public virtual ICollection<ParticipantRequest> ParticipantRequestForwardedToUsers { get; set; } = new List<ParticipantRequest>();
+
+    public virtual ICollection<ParticipantRequest> ParticipantRequestRequestedByUsers { get; set; } = new List<ParticipantRequest>();
 
     public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 
