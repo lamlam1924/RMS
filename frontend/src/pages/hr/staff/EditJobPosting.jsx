@@ -128,12 +128,12 @@ export default function EditJobPosting() {
                 <p style={{ fontWeight: 500, marginBottom: 8 }}>Ảnh JD từ phòng ban:</p>
                 {jobPosting.jdFileUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
                   <img
-                    src={jobPosting.jdFileUrl}
+                    src={`/api/files/jd/${jobPosting.jobRequestId}`}
                     alt="JD"
                     style={{ maxWidth: '100%', borderRadius: 6, border: '1px solid #d1d5db' }}
                   />
                 ) : (
-                  <a href={jobPosting.jdFileUrl} target="_blank" rel="noopener noreferrer"
+                  <a href={`/api/files/jd/${jobPosting.jobRequestId}`} target="_blank" rel="noopener noreferrer"
                     style={{ color: '#3b82f6', textDecoration: 'underline' }}>
                     Xem file JD đính kèm
                   </a>

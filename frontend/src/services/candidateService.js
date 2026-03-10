@@ -5,7 +5,7 @@ export const candidateService = {
   async getJobPostings() {
     const res = await fetch(`${API_BASE_URL}/candidate/job-postings`);
     if (!res.ok) {
-        throw new Error("Failed to fetch job postings");
+      throw new Error("Failed to fetch job postings");
     }
     return res.json();
   },
@@ -13,7 +13,7 @@ export const candidateService = {
   async getJobDetail(id) {
     const res = await fetch(`${API_BASE_URL}/candidate/job-postings/${id}`);
     if (!res.ok) {
-        throw new Error("Job posting not found");
+      throw new Error("Job posting not found");
     }
     return res.json();
   },
@@ -21,8 +21,9 @@ export const candidateService = {
   async getMyCv() {
     const res = await authFetch(`${API_BASE_URL}/candidate/cv`);
     if (!res.ok) throw new Error("Không thể tải CV");
-    const data = await res.json();
-    return data; // null if no CV yet
+    const text = await res.text();
+    if (!text || text.trim() === 'null' || text.trim() === '') return null;
+    return JSON.parse(text);
   },
 
   async createCv(data) {
@@ -50,6 +51,44 @@ export const candidateService = {
       throw new Error(message);
     }
     return res.json();
+  },
+
+  async applyToJob(jobPostingId, cvFile) {
+    const formData = new FormData();
+    if (cvFile) formData.append('cvFile', cvFile);
+    const res = await authFetch(`${API_BASE_URL}/candidate/applications/apply/${jobPostingId}`, {
+      method: 'POST',
+      body: formData,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || 'Nộp đơn thất bại');
+    return data;
+  },
+
+  async getMyApplications() {
+    const res = await authFetch(`${API_BASE_URL}/candidate/applications`);
+    if (!res.ok) throw new Error('Không thể tải danh sách đơn ứng tuyển');
+    return res.json();
+  },
+
+  async getMyApplicationById(id) {
+    const res = await authFetch(`${API_BASE_URL}/candidate/applications/${id}`);
+    if (!res.ok) throw new Error('Không tìm thấy đơn ứng tuyển');
+    return res.json();
+  },
+
+  async uploadCvFile(cvFile) {
+    const formData = new FormData();
+    formData.append('file', cvFile);
+
+    const res = await authFetch(`${API_BASE_URL}/candidate/cv/upload-file`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || 'Tải file CV lên thất bại');
+    return data;
   },
 
   async updateCv(id, data) {

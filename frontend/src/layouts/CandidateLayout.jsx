@@ -1,15 +1,40 @@
-import React from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import React, { useState, useRef, useEffect } from "react";
+import { NavLink, Outlet, useNavigate, Link } from "react-router-dom";
 import { authService } from "../services/authService";
 
 export default function CandidateLayout() {
   const navigate = useNavigate();
-  const user = authService.getUserInfo();
+  const [user, setUser] = useState(authService.getUserInfo());
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    // Sync user info if it changes in other tabs or components
+    const handleStorageChange = () => {
+      setUser(authService.getUserInfo());
+    };
+    window.addEventListener("storage", handleStorageChange);
+
+    // Close dropdown on outside click
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const handleLogout = () => {
     authService.logout();
     navigate("/login");
   };
+
+  const closeDropdown = () => setIsDropdownOpen(false);
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 font-sans text-slate-800">
@@ -24,10 +49,9 @@ export default function CandidateLayout() {
             <NavLink
               to="/app/jobs"
               className={({ isActive }) =>
-                `px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                  isActive 
-                    ? "bg-blue-600 text-white shadow-md shadow-blue-200" 
-                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                `px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${isActive
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-200"
+                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                 }`
               }
             >
@@ -36,10 +60,9 @@ export default function CandidateLayout() {
             <NavLink
               to="/app/applications"
               className={({ isActive }) =>
-                `px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                  isActive 
-                    ? "bg-blue-600 text-white shadow-md shadow-blue-200" 
-                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                `px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${isActive
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-200"
+                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                 }`
               }
             >
@@ -48,10 +71,9 @@ export default function CandidateLayout() {
             <NavLink
               to="/app/profile"
               className={({ isActive }) =>
-                `px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                  isActive 
-                    ? "bg-blue-600 text-white shadow-md shadow-blue-200" 
-                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                `px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${isActive
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-200"
+                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                 }`
               }
             >
@@ -59,16 +81,53 @@ export default function CandidateLayout() {
             </NavLink>
           </nav>
 
-          <div className="flex items-center gap-4 text-sm">
-            <span className="hidden sm:inline text-gray-700 font-medium">
-              Chào, {user?.fullName || "Ứng viên"}
-            </span>
-            <button 
-              onClick={handleLogout} 
-              className="px-3 py-1.5 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 hover:border-red-300 transition-all font-medium text-xs"
+          <div className="flex items-center gap-4 text-sm relative" ref={dropdownRef}>
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="flex items-center gap-2 hover:bg-gray-100 p-1.5 pr-3 rounded-full transition-colors focus:outline-none"
             >
-              Đăng xuất
+              {user?.avatarUrl ? (
+                <img src={user.avatarUrl} alt="Avatar" className="w-8 h-8 rounded-full object-cover border border-gray-200" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold border border-blue-200">
+                  {user?.fullName?.charAt(0) || "U"}
+                </div>
+              )}
+              <span className="hidden sm:inline font-medium text-gray-700">
+                {user?.fullName || "Ứng viên"}
+              </span>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
             </button>
+
+            {isDropdownOpen && (
+              <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="px-4 py-2 border-b border-gray-50 mb-1">
+                  <p className="text-sm font-medium text-gray-900 truncate">{user?.fullName}</p>
+                  <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                </div>
+
+                <Link to="/app/profile#info" onClick={closeDropdown} className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                  Hồ sơ cá nhân
+                </Link>
+                <Link to="/app/profile#cv-upload" onClick={closeDropdown} className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                  Tài liệu CV
+                </Link>
+                <Link to="/app/profile#change-password" onClick={closeDropdown} className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                  Đổi mật khẩu
+                </Link>
+
+                <div className="border-t border-gray-100 mt-1 pt-1">
+                  <button
+                    onClick={() => { closeDropdown(); handleLogout(); }}
+                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    Đăng xuất
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </header>

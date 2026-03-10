@@ -1,6 +1,7 @@
 using RMS.Entity;
 using RMS.Repository.Interface;
 using RMS.Service.Interface;
+using System.IO;
 
 namespace RMS.Service;
 
@@ -32,7 +33,36 @@ public class MediaService : IMediaService
             throw new Exception("FileType or EntityType code is invalid.");
         }
 
-        // 2. Upload to Cloudinary
+        // JD files are stored locally to avoid Cloudinary free-plan PDF CDN restrictions.
+        if (fileTypeCode == "JOB_DESCRIPTION")
+        {
+            var ext = Path.GetExtension(fileName);
+            var newFileName = Guid.NewGuid().ToString("N") + ext;
+            var relDir = Path.Combine("uploads", "jd", entityId.ToString());
+            var absDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", relDir);
+            Directory.CreateDirectory(absDir);
+
+            var absPath = Path.Combine(absDir, newFileName);
+            using (var writer = new FileStream(absPath, FileMode.Create, FileAccess.Write))
+                await fileStream.CopyToAsync(writer);
+
+            var localUrl = $"/uploads/jd/{entityId}/{newFileName}";
+            var localFile = new FileUploaded
+            {
+                FileTypeId  = fileType.Id,
+                EntityTypeId = entityType.Id,
+                EntityId    = entityId,
+                StorageProvider = "Local",
+                PublicId    = $"uploads/jd/{entityId}/{newFileName}",
+                FileUrl     = localUrl,
+                UploadedAt  = DateTime.Now,
+                IsDeleted   = false
+            };
+            var saved = await _repository.AddFileUploadedAsync(localFile);
+            return saved.FileUrl;
+        }
+
+        // 2. All other file types: upload to Cloudinary
         var folder = $"RMS/{entityTypeCode.ToLower()}/{entityId}";
         var uploadResult = await _cloudinaryService.UploadAsync(fileStream, fileName, folder);
 
@@ -45,7 +75,8 @@ public class MediaService : IMediaService
             StorageProvider = "Cloudinary",
             PublicId = uploadResult.PublicId,
             FileUrl = uploadResult.SecureUrl,
-            UploadedAt = DateTime.Now
+            UploadedAt = DateTime.Now,
+            IsDeleted = false
         };
 
         var savedFile = await _repository.AddFileUploadedAsync(fileUploaded);

@@ -158,7 +158,7 @@ export default function HRApplicationList() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  {app.priority && getPriorityBadge(app.priority)}
+                  {getPriorityBadge(app.priority ?? 3)}
                   <span style={{
                     padding: '4px 12px',
                     backgroundColor: `${getStatusColor(app.statusId)}20`,

@@ -13,6 +13,7 @@ public class CandidateCvProfileDto
     public string? Summary { get; set; }
     public int? YearsOfExperience { get; set; }
     public string? Source { get; set; }
+    public string? CvFileUrl { get; set; }
     public DateTime? CreatedAt { get; set; }
 
     public List<CvExperienceDto> Experiences { get; set; } = new();

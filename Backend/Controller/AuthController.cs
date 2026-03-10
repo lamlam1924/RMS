@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RMS.Data;
 using RMS.Dto.Auth;
 using RMS.Service;
 
@@ -11,11 +12,13 @@ public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
     private readonly ILogger<AuthController> _logger;
+    private readonly RecruitmentDbContext _context;
 
-    public AuthController(IAuthService authService, ILogger<AuthController> logger)
+    public AuthController(IAuthService authService, ILogger<AuthController> logger, RecruitmentDbContext context)
     {
         _authService = authService;
         _logger = logger;
+        _context = context;
     }
 
     /// <summary>
@@ -265,23 +268,126 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Change password for logged-in user (requires current password)
+    /// </summary>
+    [HttpPost("change-password")]
+    [Authorize]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequestDto request)
+    {
+        try
+        {
+            if (request.NewPassword != request.ConfirmNewPassword)
+                return BadRequest(new { message = "Mật khẩu xác nhận không khớp" });
+
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { message = "Không xác định được người dùng" });
+
+            var roles = User.FindAll(System.Security.Claims.ClaimTypes.Role).Select(c => c.Value).ToList();
+            bool isCandidate = roles.Contains("CANDIDATE");
+
+            await _authService.ChangePasswordAsync(userId, isCandidate, request.CurrentPassword, request.NewPassword);
+            return Ok(new { message = "Đổi mật khẩu thành công" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error changing password");
+            return StatusCode(500, new { message = "Đã có lỗi xảy ra" });
+        }
+    }
+
+    /// <summary>
+    /// Upload avatar cho người dùng đang đăng nhập
+    /// </summary>
+    [HttpPost("upload-avatar")]
+    [Authorize]
+    public async Task<IActionResult> UploadAvatar([FromForm] IFormFile file)
+    {
+        try
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(new { message = "Vui lòng chọn file ảnh" });
+
+            // Validate extension
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            string[] allowedExtensions = { ".jpg", ".jpeg", ".png", ".webp" };
+            if (!allowedExtensions.Contains(extension))
+                return BadRequest(new { message = "Chỉ chấp nhận file ảnh định dạng JPG, JPEG, PNG, WEBP" });
+
+            // Validate size (5MB)
+            if (file.Length > 5 * 1024 * 1024)
+                return BadRequest(new { message = "Kích thước ảnh quá lớn (tối đa 5MB)" });
+
+            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { message = "Không xác định được người dùng" });
+
+            var roles = User.FindAll(System.Security.Claims.ClaimTypes.Role).Select(c => c.Value).ToList();
+            bool isCandidate = roles.Contains("CANDIDATE");
+
+            using var stream = file.OpenReadStream();
+            var fileName = $"avatar_{userId}_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
+            
+            var avatarUrl = await _authService.UploadAvatarAsync(userId, isCandidate, stream, fileName);
+
+            return Ok(new
+            {
+                AvatarUrl = avatarUrl,
+                Message = "Tải ảnh đại diện thành công"
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error uploading avatar");
+            return StatusCode(500, new { message = "Đã có lỗi xảy ra khi tải ảnh lên" });
+        }
+    }
+
+    /// <summary>
     /// Get current user info
     /// </summary>
     [HttpGet("me")]
     [Authorize]
-    public IActionResult GetCurrentUser()
+    public async Task<IActionResult> GetCurrentUser()
     {
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         var email = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
         var name = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
         var roles = User.FindAll(System.Security.Claims.ClaimTypes.Role).Select(c => c.Value).ToList();
 
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized(new { message = "Không xác định được người dùng" });
+
+        // Get avatar URL from database
+        string? avatarUrl = null;
+        bool isCandidate = roles.Contains("CANDIDATE");
+        
+        if (isCandidate)
+        {
+            var candidate = await _context.Candidates.FindAsync(int.Parse(userId));
+            avatarUrl = candidate?.AvatarUrl;
+        }
+        else
+        {
+            var user = await _context.Users.FindAsync(int.Parse(userId));
+            avatarUrl = user?.AvatarUrl;
+        }
+
         return Ok(new
         {
             id = userId,
             email,
             name,
-            roles
+            roles,
+            avatarUrl
         });
     }
 }

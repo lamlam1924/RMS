@@ -21,6 +21,7 @@ export default function JobRequestWizard({
   handleFileChange,
   initialJdUrl = null,
   isEdit = false,
+  jobRequestId = null,
 }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState(new Set());
@@ -127,6 +128,7 @@ export default function JobRequestWizard({
           handleFileChange={handleFileChange}
           positions={positions}
           initialJdUrl={initialJdUrl}
+          jobRequestId={jobRequestId}
           isEdit={isEdit}
         />
 

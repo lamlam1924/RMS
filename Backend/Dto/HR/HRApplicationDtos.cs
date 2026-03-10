@@ -12,7 +12,7 @@ public class ApplicationListDto
     public string DepartmentName { get; set; } = "";
     public int StatusId { get; set; }
     public string CurrentStatus { get; set; } = "";
-    public int Priority { get; set; }
+    public int? Priority { get; set; }
     public DateTime AppliedDate { get; set; }
     public int? YearsOfExperience { get; set; }
 }
@@ -21,7 +21,7 @@ public class ApplicationDetailDto : ApplicationListDto
 {
     public string? Phone { get; set; }
     public string? CVFileName { get; set; }
-    public string? CVUrl { get; set; }
+    public string? CvUrl { get; set; }
     public List<StatusHistoryDto> StatusHistory { get; set; } = new();
 }
 

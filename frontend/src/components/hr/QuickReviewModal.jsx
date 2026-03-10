@@ -192,7 +192,7 @@ export default function QuickReviewModal({
                   {request.jdFileUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
                     <div className="relative border-2 border-blue-200 dark:border-blue-800 rounded-xl overflow-hidden bg-white dark:bg-slate-800 shadow-sm">
                       <img
-                        src={request.jdFileUrl}
+                        src={`/api/files/jd/${request.id}`}
                         alt="Job Description"
                         className="w-full h-auto max-h-[600px] object-contain"
                       />
@@ -209,7 +209,7 @@ export default function QuickReviewModal({
                       </div>
                     </div>
                     <a
-                      href={request.jdFileUrl}
+                      href={`/api/files/jd/${request.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="px-4 py-2 bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600 text-white text-xs font-bold rounded-lg transition-all"

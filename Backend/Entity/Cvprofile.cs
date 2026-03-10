@@ -21,6 +21,8 @@ public partial class Cvprofile
 
     public string? Source { get; set; }
 
+    public string? CvFileUrl { get; set; }
+
     public DateTime? CreatedAt { get; set; }
 
     public virtual ICollection<Application> Applications { get; set; } = new List<Application>();

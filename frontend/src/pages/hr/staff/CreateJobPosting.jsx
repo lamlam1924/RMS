@@ -111,12 +111,12 @@ export default function CreateJobPosting() {
                 <p style={{ fontWeight: 500, marginBottom: 8 }}>Ảnh JD từ phòng ban:</p>
                 {jobRequest.jdFileUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
                   <img
-                    src={jobRequest.jdFileUrl}
+                    src={`/api/files/jd/${jobRequest.id}`}
                     alt="JD"
                     style={{ maxWidth: '100%', borderRadius: 6, border: '1px solid #d1d5db' }}
                   />
                 ) : (
-                  <a href={jobRequest.jdFileUrl} target="_blank" rel="noopener noreferrer"
+                  <a href={`/api/files/jd/${jobRequest.id}`} target="_blank" rel="noopener noreferrer"
                     style={{ color: '#3b82f6', textDecoration: 'underline' }}>
                     Xem file JD đính kèm
                   </a>

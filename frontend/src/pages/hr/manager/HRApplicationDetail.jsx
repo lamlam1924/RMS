@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import hrService from '../../../services/hrService';
+import { authService } from '../../../services/authService';
 import { formatDate, formatCurrency, formatDateTime } from '../../../utils/formatters/display';
 import { PriorityBadge, StatusBadge } from '../../../components/shared/Badge';
 import notify from '../../../utils/notification';
@@ -15,13 +16,40 @@ export default function HRApplicationDetail() {
   const [newStatusId, setNewStatusId] = useState(null);
   const [note, setNote] = useState('');
 
+  // Determine current user role
+  const userRoles = authService.getUserInfo()?.roles || [];
+  const isHRManager = userRoles.includes('HR_MANAGER');
+
   const statusOptions = [
-    { value: 9, label: 'Applied', color: '#06b6d4' },
-    { value: 10, label: 'Screening', color: '#f59e0b' },
+    { value: 9,  label: 'Applied',      color: '#06b6d4' },
+    { value: 10, label: 'Screening',    color: '#f59e0b' },
     { value: 11, label: 'Interviewing', color: '#8b5cf6' },
-    { value: 12, label: 'Offered', color: '#10b981' },
-    { value: 13, label: 'Rejected', color: '#ef4444' }
+    { value: 12, label: 'Passed',       color: '#10b981' },
+    { value: 13, label: 'Rejected',     color: '#ef4444' }
   ];
+
+  /**
+   * Allowed next statuses based on current status + role:
+   *   HR Staff:   APPLIED→SCREENING, APPLIED→REJECTED
+   *               SCREENING→INTERVIEWING, SCREENING→REJECTED
+   *               INTERVIEWING and beyond → no action
+   *   HR Manager: APPLIED→SCREENING, APPLIED→REJECTED
+   *               SCREENING→INTERVIEWING, SCREENING→REJECTED
+   *               INTERVIEWING→PASSED, INTERVIEWING→REJECTED
+   */
+  const getAllowedNextStatuses = (currentStatusId) => {
+    const transitions = {
+      9:  { staff: [10, 13], manager: [10, 13] },
+      10: { staff: [11, 13], manager: [11, 13] },
+      11: { staff: [],       manager: [12, 13] },
+      12: { staff: [],       manager: [] },
+      13: { staff: [],       manager: [] },
+    };
+    const t = transitions[currentStatusId];
+    if (!t) return [];
+    const allowed = isHRManager ? t.manager : t.staff;
+    return statusOptions.filter(s => allowed.includes(s.value));
+  };
 
   useEffect(() => {
     loadApplication();
@@ -44,10 +72,7 @@ export default function HRApplicationDetail() {
 
     try {
       setUpdating(true);
-      await hrService.applications.updateStatus(id, {
-        toStatusId: newStatusId,
-        note: note
-      });
+      await hrService.applications.updateStatus(id, newStatusId, note);
       setShowStatusModal(false);
       setNote('');
       await loadApplication();
@@ -134,23 +159,25 @@ export default function HRApplicationDetail() {
               Application #{application.id}
             </p>
           </div>
-          <button
-            onClick={() => {
-              setNewStatusId(application.statusId);
-              setShowStatusModal(true);
-            }}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: 6,
-              cursor: 'pointer',
-              fontWeight: 500
-            }}
-          >
-            Update Status
-          </button>
+          {getAllowedNextStatuses(application.statusId).length > 0 && (
+            <button
+              onClick={() => {
+                setNewStatusId(null);
+                setShowStatusModal(true);
+              }}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: 6,
+                cursor: 'pointer',
+                fontWeight: 500
+              }}
+            >
+              Update Status
+            </button>
+          )}
         </div>
       </div>
 
@@ -235,7 +262,7 @@ export default function HRApplicationDetail() {
                 Documents
               </h2>
               <a
-                href={application.cvUrl}
+                href={`/api/files/application/${application.id}/cv`}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
@@ -250,7 +277,7 @@ export default function HRApplicationDetail() {
                   fontWeight: 500
                 }}
               >
-                📄 View CV/Resume
+                📄 Xem CV/Resume
               </a>
             </div>
           )}
@@ -365,19 +392,18 @@ export default function HRApplicationDetail() {
           </div>
 
           {/* Priority */}
-          {application.priority && (
-            <div style={{
-              backgroundColor: 'white',
-              padding: 20,
-              borderRadius: 8,
-              border: '1px solid #e5e7eb'
-            }}>
-              <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 8 }}>Priority</div>
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                {getPriorityBadge(application.priority)}
-              </div>
+          <div style={{
+            backgroundColor: 'white',
+            padding: 16,
+            borderRadius: 8,
+            border: '1px solid #e5e7eb',
+            marginBottom: 8
+          }}>
+            <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 8 }}>Priority</div>
+            <div>
+              {getPriorityBadge(application.priority ?? 3)}
             </div>
-          )}
+          </div>
 
           {/* Quick Actions */}
           <div style={{
@@ -402,20 +428,23 @@ export default function HRApplicationDetail() {
               >
                 Schedule Interview
               </button>
-              <button
-                onClick={() => navigate(`/staff/hr-manager/offers/create?applicationId=${id}`)}
-                style={{
-                  padding: '10px 16px',
-                  backgroundColor: '#10b981',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  fontWeight: 500
-                }}
-              >
-                Create Offer
-              </button>
+              {/* Chỉ HR Manager thấy nút Create Offer, và chỉ khi ứng viên đã Passed */}
+              {isHRManager && application.statusId === 12 && (
+                <button
+                  onClick={() => navigate(`/staff/hr-manager/offers/create?applicationId=${id}`)}
+                  style={{
+                    padding: '10px 16px',
+                    backgroundColor: '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    fontWeight: 500
+                  }}
+                >
+                  Create Offer
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -461,7 +490,7 @@ export default function HRApplicationDetail() {
                 }}
               >
                 <option value="">Select status</option>
-                {statusOptions.map((option) => (
+                {getAllowedNextStatuses(application.statusId).map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>

@@ -27,6 +27,8 @@ public partial class User
 
     public int? DeletedBy { get; set; }
 
+    public string? AvatarUrl { get; set; }
+
     public string? PasswordHash { get; set; }
 
     public string? GoogleId { get; set; }

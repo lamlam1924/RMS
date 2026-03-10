@@ -430,3 +430,33 @@ SET AssignedStaffId = 4
 WHERE StatusId = 4 AND AssignedStaffId IS NULL AND IsDeleted = 0;
 PRINT 'Assigned HR Staff (Id=4) to existing APPROVED JobRequests';
 GO
+
+/* =========================================================
+   2026-03-09 | System
+   Change: Thêm cột CvFileUrl vào CVProfiles
+   Purpose: Lưu đường dẫn CV (PDF/DOCX) ứng viên tải lên từ máy cá nhân
+   ========================================================= */
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('CVProfiles') AND name = 'CvFileUrl')
+BEGIN
+    ALTER TABLE CVProfiles ADD CvFileUrl NVARCHAR(MAX) NULL;
+    PRINT 'Added column CvFileUrl to CVProfiles';
+END
+GO
+
+/* =========================================================
+   2026-03-09 | System
+   Change: Thêm cột AvatarUrl
+   Purpose: Hỗ trợ người dùng tải ảnh đại diện lên Cloudinary
+   ========================================================= */
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Candidates') AND name = 'AvatarUrl')
+BEGIN
+    ALTER TABLE Candidates ADD AvatarUrl NVARCHAR(MAX) NULL;
+    PRINT 'Added column AvatarUrl to Candidates';
+END
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Users') AND name = 'AvatarUrl')
+BEGIN
+    ALTER TABLE Users ADD AvatarUrl NVARCHAR(MAX) NULL;
+    PRINT 'Added column AvatarUrl to Users';
+END
+GO

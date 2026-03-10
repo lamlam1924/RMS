@@ -1,5 +1,5 @@
 // HR Service - API calls for HR Manager and HR Staff operations
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = '';
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
@@ -8,7 +8,6 @@ const getAuthHeaders = () => {
     'Authorization': token ? `Bearer ${token}` : ''
   };
 };
-
 const hrService = {
   // ===== JOB REQUESTS =====
   jobRequests: {
@@ -324,7 +323,7 @@ const hrService = {
     
     getByStatus: async (statusId) => {
       const url = statusId !== null && statusId !== undefined 
-        ? `${API_BASE_URL}/api/hr/applications?status=${statusId}`
+        ? `${API_BASE_URL}/api/hr/applications?statusId=${statusId}`
         : `${API_BASE_URL}/api/hr/applications`;
       const response = await fetch(url, {
         headers: getAuthHeaders()
@@ -482,3 +481,4 @@ const hrService = {
 };
 
 export default hrService;
+

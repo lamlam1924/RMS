@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using RMS.Data;
 using RMS.Dto.Candidate;
 using RMS.Entity;
+using RMS.Service.Interface;
 
 namespace RMS.Controller;
 
@@ -18,11 +19,16 @@ public class CandidateCvProfileController : ControllerBase
 {
     private readonly RecruitmentDbContext _context;
     private readonly ILogger<CandidateCvProfileController> _logger;
+    private readonly ICloudinaryService _cloudinaryService;
 
-    public CandidateCvProfileController(RecruitmentDbContext context, ILogger<CandidateCvProfileController> logger)
+    public CandidateCvProfileController(
+        RecruitmentDbContext context, 
+        ILogger<CandidateCvProfileController> logger,
+        ICloudinaryService cloudinaryService)
     {
         _context = context;
         _logger = logger;
+        _cloudinaryService = cloudinaryService;
     }
 
     private int? GetCandidateId()
@@ -63,8 +69,9 @@ public class CandidateCvProfileController : ControllerBase
             Summary = profile.Summary,
             YearsOfExperience = profile.YearsOfExperience,
             Source = profile.Source,
+            CvFileUrl = profile.CvFileUrl,
             CreatedAt = profile.CreatedAt,
-            Experiences = profile.Cvexperiences.Select(e => new CvExperienceDto
+            Experiences = (profile.Cvexperiences ?? new List<Cvexperience>()).Select(e => new CvExperienceDto
             {
                 Id = e.Id,
                 CompanyName = e.CompanyName,
@@ -73,7 +80,7 @@ public class CandidateCvProfileController : ControllerBase
                 EndDate = e.EndDate,
                 Description = e.Description
             }).ToList(),
-            Educations = profile.Cveducations.Select(e => new CvEducationDto
+            Educations = (profile.Cveducations ?? new List<Cveducation>()).Select(e => new CvEducationDto
             {
                 Id = e.Id,
                 SchoolName = e.SchoolName,
@@ -83,7 +90,7 @@ public class CandidateCvProfileController : ControllerBase
                 EndYear = e.EndYear,
                 Gpa = e.Gpa
             }).ToList(),
-            Certificates = profile.Cvcertificates.Select(c => new CvCertificateDto
+            Certificates = (profile.Cvcertificates ?? new List<Cvcertificate>()).Select(c => new CvCertificateDto
             {
                 Id = c.Id,
                 CertificateName = c.CertificateName,
@@ -93,6 +100,57 @@ public class CandidateCvProfileController : ControllerBase
         };
 
         return Ok(dto);
+    }
+
+    /// <summary>
+    /// Upload file CV
+    /// </summary>
+    [HttpPost("upload-file")]
+    public async Task<ActionResult<CvFileUploadResponseDto>> UploadCvFile([FromForm] IFormFile file)
+    {
+        try
+        {
+            var candidateId = GetCandidateId();
+            if (candidateId == null)
+                return Unauthorized();
+
+            if (file == null || file.Length == 0)
+                return BadRequest(new { message = "Vui lòng chọn file CV" });
+
+            // Validate extension
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            string[] allowedExtensions = { ".pdf", ".doc", ".docx" };
+            if (!allowedExtensions.Contains(extension))
+                return BadRequest(new { message = "Chỉ chấp nhận file định dạng PDF, DOC, DOCX" });
+
+            // Validate size (10MB)
+            if (file.Length > 10 * 1024 * 1024)
+                return BadRequest(new { message = "Kích thước file quá lớn (tối đa 10MB)" });
+
+            // Upload to Cloudinary
+            using var stream = file.OpenReadStream();
+            var fileName = $"cv_{candidateId}_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
+            var result = await _cloudinaryService.UploadAsync(stream, fileName, "cv-files");
+
+            // Update profile DB
+            var profile = await _context.Cvprofiles.FirstOrDefaultAsync(c => c.CandidateId == candidateId);
+            if (profile != null)
+            {
+                profile.CvFileUrl = result.SecureUrl;
+                await _context.SaveChangesAsync();
+            }
+
+            return Ok(new CvFileUploadResponseDto
+            {
+                CvFileUrl = result.SecureUrl,
+                Message = "Tải file CV lên thành công"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error uploading CV file");
+            return StatusCode(500, new { message = "Lỗi khi upload CV" });
+        }
     }
 
     /// <summary>
@@ -217,35 +275,39 @@ public class CandidateCvProfileController : ControllerBase
         profile.YearsOfExperience = request.YearsOfExperience;
         profile.Source = request.Source?.Trim();
 
-        var existingExpIds = (request.Experiences ?? [])
-            .Where(e => e.Id.HasValue)
-            .Select(e => e.Id!.Value)
-            .ToHashSet();
+        // Compute the IDs the client wants to KEEP (sent with existing ID)
+        var requestedExpIds = (request.Experiences ?? [])
+            .Where(e => e.Id.HasValue).Select(e => e.Id!.Value).ToHashSet();
+        var requestedEduIds = (request.Educations ?? [])
+            .Where(e => e.Id.HasValue).Select(e => e.Id!.Value).ToHashSet();
+        var requestedCertIds = (request.Certificates ?? [])
+            .Where(c => c.Id.HasValue).Select(c => c.Id!.Value).ToHashSet();
 
-        var existingEduIds = (request.Educations ?? [])
-            .Where(e => e.Id.HasValue)
-            .Select(e => e.Id!.Value)
-            .ToHashSet();
+        // ── DELETE first (before adding new ones) ──────────────────────────────
+        // IMPORTANT: must run before Add() calls because EF Core navigation fixup
+        // would add the new (unsaved, id=0) entities into profile.Cvexperiences,
+        // causing them to be incorrectly included in the "to-remove" set.
+        var toRemoveExp  = profile.Cvexperiences .Where(e => !requestedExpIds .Contains(e.Id)).ToList();
+        var toRemoveEdu  = profile.Cveducations  .Where(e => !requestedEduIds .Contains(e.Id)).ToList();
+        var toRemoveCert = profile.Cvcertificates.Where(c => !requestedCertIds.Contains(c.Id)).ToList();
+        _context.Cvexperiences .RemoveRange(toRemoveExp);
+        _context.Cveducations  .RemoveRange(toRemoveEdu);
+        _context.Cvcertificates.RemoveRange(toRemoveCert);
 
-        var existingCertIds = (request.Certificates ?? [])
-            .Where(c => c.Id.HasValue)
-            .Select(c => c.Id!.Value)
-            .ToHashSet();
-
-        // Update or add experiences
+        // ── ADD / UPDATE experiences ───────────────────────────────────────────
         foreach (var exp in request.Experiences ?? [])
         {
             if (string.IsNullOrWhiteSpace(exp.CompanyName) || string.IsNullOrWhiteSpace(exp.JobTitle))
                 continue;
-            if (exp.Id.HasValue && existingExpIds.Contains(exp.Id.Value))
+            if (exp.Id.HasValue)
             {
                 var existing = profile.Cvexperiences.FirstOrDefault(e => e.Id == exp.Id.Value);
                 if (existing != null)
                 {
                     existing.CompanyName = exp.CompanyName.Trim();
-                    existing.JobTitle = exp.JobTitle.Trim();
-                    existing.StartDate = exp.StartDate;
-                    existing.EndDate = exp.EndDate;
+                    existing.JobTitle    = exp.JobTitle.Trim();
+                    existing.StartDate   = exp.StartDate;
+                    existing.EndDate     = exp.EndDate;
                     existing.Description = exp.Description?.Trim();
                     continue;
                 }
@@ -254,90 +316,68 @@ public class CandidateCvProfileController : ControllerBase
             {
                 CvprofileId = profile.Id,
                 CompanyName = exp.CompanyName.Trim(),
-                JobTitle = exp.JobTitle.Trim(),
-                StartDate = exp.StartDate,
-                EndDate = exp.EndDate,
+                JobTitle    = exp.JobTitle.Trim(),
+                StartDate   = exp.StartDate,
+                EndDate     = exp.EndDate,
                 Description = exp.Description?.Trim()
             });
         }
 
-        // Remove experiences not in request
-        var requestedExpIds = (request.Experiences ?? [])
-            .Where(e => e.Id.HasValue)
-            .Select(e => e.Id!.Value)
-            .ToHashSet();
-        var toRemoveExp = profile.Cvexperiences.Where(e => !requestedExpIds.Contains(e.Id)).ToList();
-        _context.Cvexperiences.RemoveRange(toRemoveExp);
-
-        // Update or add educations
+        // ── ADD / UPDATE educations ────────────────────────────────────────────
         foreach (var edu in request.Educations ?? [])
         {
             if (string.IsNullOrWhiteSpace(edu.SchoolName))
                 continue;
-            if (edu.Id.HasValue && existingEduIds.Contains(edu.Id.Value))
+            if (edu.Id.HasValue)
             {
                 var existing = profile.Cveducations.FirstOrDefault(e => e.Id == edu.Id.Value);
                 if (existing != null)
                 {
                     existing.SchoolName = edu.SchoolName.Trim();
-                    existing.Degree = edu.Degree?.Trim();
-                    existing.Major = edu.Major?.Trim();
-                    existing.StartYear = edu.StartYear;
-                    existing.EndYear = edu.EndYear;
-                    existing.Gpa = edu.Gpa;
+                    existing.Degree     = edu.Degree?.Trim();
+                    existing.Major      = edu.Major?.Trim();
+                    existing.StartYear  = edu.StartYear;
+                    existing.EndYear    = edu.EndYear;
+                    existing.Gpa        = edu.Gpa;
                     continue;
                 }
             }
             _context.Cveducations.Add(new Cveducation
             {
                 CvprofileId = profile.Id,
-                SchoolName = edu.SchoolName.Trim(),
-                Degree = edu.Degree?.Trim(),
-                Major = edu.Major?.Trim(),
-                StartYear = edu.StartYear,
-                EndYear = edu.EndYear,
-                Gpa = edu.Gpa
+                SchoolName  = edu.SchoolName.Trim(),
+                Degree      = edu.Degree?.Trim(),
+                Major       = edu.Major?.Trim(),
+                StartYear   = edu.StartYear,
+                EndYear     = edu.EndYear,
+                Gpa         = edu.Gpa
             });
         }
 
-        var requestedEduIds = (request.Educations ?? [])
-            .Where(e => e.Id.HasValue)
-            .Select(e => e.Id!.Value)
-            .ToHashSet();
-        var toRemoveEdu = profile.Cveducations.Where(e => !requestedEduIds.Contains(e.Id)).ToList();
-        _context.Cveducations.RemoveRange(toRemoveEdu);
-
-        // Update or add certificates
+        // ── ADD / UPDATE certificates ──────────────────────────────────────────
         foreach (var cert in request.Certificates ?? [])
         {
             if (string.IsNullOrWhiteSpace(cert.CertificateName))
                 continue;
-            if (cert.Id.HasValue && existingCertIds.Contains(cert.Id.Value))
+            if (cert.Id.HasValue)
             {
                 var existing = profile.Cvcertificates.FirstOrDefault(c => c.Id == cert.Id.Value);
                 if (existing != null)
                 {
                     existing.CertificateName = cert.CertificateName.Trim();
-                    existing.Issuer = cert.Issuer?.Trim();
-                    existing.IssuedYear = cert.IssuedYear;
+                    existing.Issuer          = cert.Issuer?.Trim();
+                    existing.IssuedYear      = cert.IssuedYear;
                     continue;
                 }
             }
             _context.Cvcertificates.Add(new Cvcertificate
             {
-                CvprofileId = profile.Id,
+                CvprofileId     = profile.Id,
                 CertificateName = cert.CertificateName.Trim(),
-                Issuer = cert.Issuer?.Trim(),
-                IssuedYear = cert.IssuedYear
+                Issuer          = cert.Issuer?.Trim(),
+                IssuedYear      = cert.IssuedYear
             });
         }
-
-        var requestedCertIds = (request.Certificates ?? [])
-            .Where(c => c.Id.HasValue)
-            .Select(c => c.Id!.Value)
-            .ToHashSet();
-        var toRemoveCert = profile.Cvcertificates.Where(c => !requestedCertIds.Contains(c.Id)).ToList();
-        _context.Cvcertificates.RemoveRange(toRemoveCert);
 
         await _context.SaveChangesAsync();
 
@@ -362,6 +402,7 @@ public class CandidateCvProfileController : ControllerBase
             Summary = profile.Summary,
             YearsOfExperience = profile.YearsOfExperience,
             Source = profile.Source,
+            CvFileUrl = profile.CvFileUrl,
             CreatedAt = profile.CreatedAt,
             Experiences = profile.Cvexperiences.Select(e => new CvExperienceDto
             {

@@ -47,6 +47,14 @@ public interface IAuthService
     /// <summary>Đăng nhập bằng Google OAuth (xử lý authorization code)</summary>
     Task<LoginResponseDto> LoginWithGoogleAsync(string code);
     
+    // ==================== Profile Management ====================
+
+    /// <summary>Đổi mật khẩu khi đã đăng nhập (yêu cầu xác nhận mật khẩu cũ)</summary>
+    Task ChangePasswordAsync(string userId, bool isCandidate, string currentPassword, string newPassword);
+
+    /// <summary>Upload avatar cho User hoặc Candidate</summary>
+    Task<string> UploadAvatarAsync(string userId, bool isCandidate, Stream fileStream, string fileName);
+
     // ==================== Token Management ====================
     
     /// <summary>Làm mới access token bằng refresh token</summary>
