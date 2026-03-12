@@ -43,6 +43,7 @@ public class HRApplicationsService : IHRApplicationsService
         var statusHistory = await _jobRequestsRepository.GetStatusHistoryAsync(id, "Application");
 
         dto.CurrentStatus = entity.Status.Name;
+        dto.CvUrl = await _repository.GetCvFileUrlAsync(id);
         dto.StatusHistory = _mapper.Map<List<RMS.Dto.Common.StatusHistoryDto>>(statusHistory);
 
         return dto;

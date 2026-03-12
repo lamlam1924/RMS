@@ -13,5 +13,9 @@ public partial class EvaluationTemplate
 
     public DateTime? CreatedAt { get; set; }
 
+    public int? PositionId { get; set; }
+
     public virtual ICollection<EvaluationCriterion> EvaluationCriteria { get; set; } = new List<EvaluationCriterion>();
+
+    public virtual Position? Position { get; set; }
 }

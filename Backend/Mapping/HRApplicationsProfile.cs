@@ -14,6 +14,7 @@ public class HRApplicationsProfile : Profile
             .ForMember(dest => dest.CandidatePhone, opt => opt.MapFrom(src => src.Cvprofile.Phone))
             .ForMember(dest => dest.PositionTitle, opt => opt.MapFrom(src => src.JobRequest.Position.Title))
             .ForMember(dest => dest.DepartmentName, opt => opt.MapFrom(src => src.JobRequest.Position.Department.Name))
+            .ForMember(dest => dest.Priority, opt => opt.MapFrom(src => src.JobRequest.Priority > 0 ? src.JobRequest.Priority : 3))
             .ForMember(dest => dest.CurrentStatus, opt => opt.Ignore())
             .ForMember(dest => dest.AppliedDate, opt => opt.MapFrom(src => src.AppliedAt ?? DateTime.Now))
             .ForMember(dest => dest.YearsOfExperience, opt => opt.MapFrom(src => src.Cvprofile.YearsOfExperience));

@@ -33,7 +33,9 @@ import WorkflowManagement from "./pages/admin/WorkflowManagement";
 import DirectorDashboard from "./pages/director/DirectorDashboard";
 import DirectorJobRequestList from "./pages/director/DirectorJobRequestList";
 import OfferApprovals from "./pages/director/OfferApprovals";
-import MyOffers from "./pages/candidate/MyOffers";
+import DirectorInterviewList from "./pages/director/DirectorInterviewList";
+import DirectorInterviewDetail from "./pages/director/DirectorInterviewDetail";
+import DirectorNominationList from "./pages/director/DirectorNominationList";
 
 // Department Manager Pages
 import DeptManagerDashboard from "./pages/department-manager/DeptManagerDashboard";
@@ -43,6 +45,7 @@ import DeptManagerJobRequestDetail from "./pages/department-manager/DeptManagerJ
 import DeptManagerJobRequestEdit from "./pages/department-manager/DeptManagerJobRequestEdit";
 import DeptManagerInterviewList from "./pages/department-manager/DeptManagerInterviewList";
 import DeptManagerInterviewDetail from "./pages/department-manager/DeptManagerInterviewDetail";
+import DeptManagerNominationList from "./pages/department-manager/DeptManagerNominationList";
 
 // HR Manager Pages
 import HRManagerDashboard from "./pages/hr/dashboard/HRManagerDashboard";
@@ -52,6 +55,8 @@ import HRManagerJobPostingList from "./pages/hr/manager/HRManagerJobPostingList"
 import HRApplicationList from "./pages/hr/manager/HRApplicationList";
 import HRApplicationDetail from "./pages/hr/manager/HRApplicationDetail";
 import HRInterviewList from "./pages/hr/manager/HRInterviewList";
+import HRInterviewDetail from "./pages/hr/manager/HRInterviewDetail";
+import HRInterviewCreate from "./pages/hr/manager/HRInterviewCreate";
 import HROfferList from "./pages/hr/manager/HROfferList";
 import HROfferCreate from "./pages/hr/manager/HROfferCreate";
 import HROfferDetail from "./pages/hr/manager/HROfferDetail";
@@ -70,6 +75,7 @@ import JobBoard from "./pages/candidate/JobBoard";
 import JobDetail from "./pages/candidate/JobDetail";
 import MyApplications from "./pages/candidate/MyApplications";
 import MyProfile from "./pages/candidate/MyProfile";
+import CandidateInterviewList from "./pages/candidate/CandidateInterviewList";
 
 // Resume Builder (standalone)
 import ResumePage from "./pages/resume-builder/ResumePage";
@@ -177,7 +183,7 @@ export default function App() {
           <Route path="jobs" element={<JobBoard />} />
           <Route path="jobs/:id" element={<JobDetail />} />
           <Route path="applications" element={<MyApplications />} />
-          <Route path="offers" element={<MyOffers />} />
+          <Route path="interviews" element={<CandidateInterviewList />} />
           <Route path="profile" element={<MyProfile />} />
           {/* Default redirect to jobs */}
           <Route index element={<Navigate to="jobs" replace />} />
@@ -349,6 +355,30 @@ export default function App() {
               </PrivateRoute>
             }
           />
+          <Route
+            path="director/my-interviews"
+            element={
+              <PrivateRoute roles={[ROLES.DIRECTOR]}>
+                <DirectorInterviewList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="director/my-interviews/:id"
+            element={
+              <PrivateRoute roles={[ROLES.DIRECTOR]}>
+                <DirectorInterviewDetail />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="director/nominations"
+            element={
+              <PrivateRoute roles={[ROLES.DIRECTOR]}>
+                <DirectorNominationList />
+              </PrivateRoute>
+            }
+          />
 
           {/* Department Manager Routes */}
           <Route
@@ -404,6 +434,14 @@ export default function App() {
             element={
               <PrivateRoute roles={[ROLES.DEPARTMENT_MANAGER]}>
                 <DeptManagerInterviewDetail />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="dept-manager/nominations"
+            element={
+              <PrivateRoute roles={[ROLES.DEPARTMENT_MANAGER]}>
+                <DeptManagerNominationList />
               </PrivateRoute>
             }
           />
@@ -512,18 +550,18 @@ export default function App() {
             }
           />
           <Route
-            path="hr-manager/offers/create"
+            path="hr-manager/interviews/create"
             element={
               <PrivateRoute roles={[ROLES.HR_MANAGER, ROLES.HR_STAFF]}>
-                <HROfferCreate />
+                <HRInterviewCreate />
               </PrivateRoute>
             }
           />
           <Route
-            path="hr-manager/offers/:id"
+            path="hr-manager/interviews/:id"
             element={
               <PrivateRoute roles={[ROLES.HR_MANAGER, ROLES.HR_STAFF]}>
-                <HROfferDetail />
+                <HRInterviewDetail />
               </PrivateRoute>
             }
           />

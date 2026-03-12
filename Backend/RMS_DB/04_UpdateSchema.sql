@@ -430,3 +430,155 @@ SET AssignedStaffId = 4
 WHERE StatusId = 4 AND AssignedStaffId IS NULL AND IsDeleted = 0;
 PRINT 'Assigned HR Staff (Id=4) to existing APPROVED JobRequests';
 GO
+
+/* =========================================================
+   2026-03-09 | System
+   Change: Thêm cột CvFileUrl vào CVProfiles
+   Purpose: Lưu đường dẫn CV (PDF/DOCX) ứng viên tải lên từ máy cá nhân
+   ========================================================= */
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('CVProfiles') AND name = 'CvFileUrl')
+BEGIN
+    ALTER TABLE CVProfiles ADD CvFileUrl NVARCHAR(MAX) NULL;
+    PRINT 'Added column CvFileUrl to CVProfiles';
+END
+GO
+
+/* =========================================================
+   2026-03-09 | System
+   Change: Thêm cột AvatarUrl
+   Purpose: Hỗ trợ người dùng tải ảnh đại diện lên Cloudinary
+   ========================================================= */
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Candidates') AND name = 'AvatarUrl')
+BEGIN
+    ALTER TABLE Candidates ADD AvatarUrl NVARCHAR(MAX) NULL;
+    PRINT 'Added column AvatarUrl to Candidates';
+END
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Users') AND name = 'AvatarUrl')
+BEGIN
+    ALTER TABLE Users ADD AvatarUrl NVARCHAR(MAX) NULL;
+    PRINT 'Added column AvatarUrl to Users';
+END
+GO
+   2026-03-09 | Lâm
+   Change:  Thêm trạng thái phỏng vấn và cấu hình workflow cho Interviews
+            Thêm PositionId vào EvaluationTemplates, Note vào InterviewFeedbacks
+   Purpose: Hỗ trợ quản lý trạng thái phỏng vấn chi tiết hơn (lên lịch, xác nhận, từ chối, dời lịch, hoàn thành, huỷ)
+            Gắn template đánh giá vào từng vị trí cụ thể
+            HR Manager và Interviewer có thể để lại ghi chú khi feedback về buổi phỏng vấn
+   ========================================================= */
+
+IF NOT EXISTS (SELECT 1 FROM StatusTypes WHERE Code = 'INTERVIEW')
+    INSERT INTO StatusTypes (Id, Code, Description) VALUES
+    (5, 'INTERVIEW', N'Trạng thái buổi phỏng vấn');
+
+IF NOT EXISTS (SELECT 1 FROM Statuses WHERE Code = 'SCHEDULED')
+    INSERT INTO Statuses (Id, StatusTypeId, Code, Name, OrderNo, IsFinal) VALUES
+    (24, 5, 'SCHEDULED', N'Đã lên lịch', 1, 0);
+
+IF NOT EXISTS (SELECT 1 FROM Statuses WHERE Code = 'CONFIRMED')
+    INSERT INTO Statuses (Id, StatusTypeId, Code, Name, OrderNo, IsFinal) VALUES
+    (25, 5, 'CONFIRMED', N'Ứng viên xác nhận', 2, 0);
+
+IF NOT EXISTS (SELECT 1 FROM Statuses WHERE Code = 'DECLINED_BY_CANDIDATE')
+    INSERT INTO Statuses (Id, StatusTypeId, Code, Name, OrderNo, IsFinal) VALUES
+    (26, 5, 'DECLINED_BY_CANDIDATE', N'Ứng viên từ chối', 3, 1);
+
+IF NOT EXISTS (SELECT 1 FROM Statuses WHERE Code = 'RESCHEDULED')
+    INSERT INTO Statuses (Id, StatusTypeId, Code, Name, OrderNo, IsFinal) VALUES
+    (27, 5, 'RESCHEDULED', N'Đã dời lịch', 4, 0);
+
+IF NOT EXISTS (SELECT 1 FROM Statuses WHERE Code = 'COMPLETED')
+    INSERT INTO Statuses (Id, StatusTypeId, Code, Name, OrderNo, IsFinal) VALUES
+    (28, 5, 'COMPLETED', N'Hoàn thành', 5, 1);
+
+IF NOT EXISTS (SELECT 1 FROM Statuses WHERE Code = 'CANCELLED')
+    INSERT INTO Statuses (Id, StatusTypeId, Code, Name, OrderNo, IsFinal) VALUES
+    (29, 5, 'CANCELLED', N'Đã huỷ', 6, 1);
+GO
+
+/* Fix seed data: interview (Id=1) dùng sai StatusId → chuyển sang SCHEDULED */
+UPDATE Interviews
+SET StatusId = (SELECT Id FROM Statuses WHERE Code = 'SCHEDULED')
+WHERE Id = 1;
+GO
+
+
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID('EvaluationTemplates') AND name = 'PositionId')
+BEGIN
+    ALTER TABLE EvaluationTemplates
+        ADD PositionId INT NULL
+            CONSTRAINT FK_EvalTemplate_Position FOREIGN KEY REFERENCES Positions(Id);
+END
+GO
+
+/* Gắn template hiện có vào Backend Developer (PositionId = 3) */
+UPDATE EvaluationTemplates SET PositionId = 3 WHERE Id = 1;
+GO
+
+
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID('InterviewFeedbacks') AND name = 'Note')
+BEGIN
+    ALTER TABLE InterviewFeedbacks
+        ADD Note NVARCHAR(1000) NULL;
+END
+GO
+/* =========================================================
+   2026-03-09 | Lâm
+   Change: Thêm bảng ParticipantRequests để quản lý việc HR Manager yêu cầu Dept Manager đề cử người tham gia phỏng vấn
+             (trường hợp HR cần thêm người vào buổi phỏng vấn đã lên lịch, hoặc muốn chuyển buổi phỏng vấn đó cho Director duyệt nếu cần thêm quá nhiều người)
+   Purpose:  Hỗ trợ HR Manager chủ động yêu cầu Dept Manager đề cử thêm người tham gia phỏng vấn khi cần (ví dụ: thêm reviewer chuyên môn, thêm người hỗ trợ đánh giá kỹ năng mềm, hoặc chuyển sang Director duyệt nếu cần quá nhiều người tham gia)
+   ========================================================= */
+
+IF NOT EXISTS (SELECT 1 FROM StatusTypes WHERE Code = 'PARTICIPANT_REQUEST')
+    INSERT INTO StatusTypes (Id, Code, Description) VALUES
+    (6, 'PARTICIPANT_REQUEST', N'Trạng thái yêu cầu nhân sự phỏng vấn');
+GO
+
+IF NOT EXISTS (SELECT 1 FROM Statuses WHERE Code = 'PENDING' AND StatusTypeId = 6)
+    INSERT INTO Statuses (Id, StatusTypeId, Code, Name, OrderNo, IsFinal) VALUES
+    (30, 6, 'PENDING', N'Chờ xử lý', 1, 0);
+
+IF NOT EXISTS (SELECT 1 FROM Statuses WHERE Code = 'FORWARDED' AND StatusTypeId = 6)
+    INSERT INTO Statuses (Id, StatusTypeId, Code, Name, OrderNo, IsFinal) VALUES
+    (31, 6, 'FORWARDED', N'Đã chuyển GĐ', 2, 0);
+
+IF NOT EXISTS (SELECT 1 FROM Statuses WHERE Code = 'FULFILLED' AND StatusTypeId = 6)
+    INSERT INTO Statuses (Id, StatusTypeId, Code, Name, OrderNo, IsFinal) VALUES
+    (32, 6, 'FULFILLED', N'Đã đề cử đủ', 3, 1);
+
+IF NOT EXISTS (SELECT 1 FROM Statuses WHERE Code = 'CANCELLED' AND StatusTypeId = 6)
+    INSERT INTO Statuses (Id, StatusTypeId, Code, Name, OrderNo, IsFinal) VALUES
+    (33, 6, 'CANCELLED', N'Đã huỷ', 4, 1);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'ParticipantRequests')
+BEGIN
+    CREATE TABLE ParticipantRequests (
+        Id              INT IDENTITY(1,1) PRIMARY KEY,
+        InterviewId     INT NOT NULL,
+        RequestedByUserId INT NOT NULL,
+        AssignedToUserId  INT NOT NULL,
+        RequiredCount   INT NOT NULL DEFAULT 1,
+        Message         NVARCHAR(500) NULL,
+        StatusId        INT NOT NULL,
+        ForwardedToUserId INT NULL,
+        CreatedAt       DATETIME NOT NULL DEFAULT GETDATE(),
+        RespondedAt     DATETIME NULL,
+
+        CONSTRAINT FK_PR_Interview     FOREIGN KEY (InterviewId)       REFERENCES Interviews(Id),
+        CONSTRAINT FK_PR_RequestedBy   FOREIGN KEY (RequestedByUserId) REFERENCES Users(Id),
+        CONSTRAINT FK_PR_AssignedTo    FOREIGN KEY (AssignedToUserId)  REFERENCES Users(Id),
+        CONSTRAINT FK_PR_Status        FOREIGN KEY (StatusId)          REFERENCES Statuses(Id),
+        CONSTRAINT FK_PR_ForwardedTo   FOREIGN KEY (ForwardedToUserId) REFERENCES Users(Id)
+    );
+    PRINT 'Created ParticipantRequests table';
+END
+ELSE
+    PRINT 'ParticipantRequests table already exists';
+GO
+

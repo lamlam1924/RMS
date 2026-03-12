@@ -21,6 +21,13 @@ public class AuthRepository : IAuthRepository
             .FirstOrDefaultAsync();
     }
 
+    public async Task<User?> GetUserByIdAsync(int id)
+    {
+        return await _context.Users
+            .Where(u => u.Id == id && u.IsActive == true && u.IsDeleted != true)
+            .FirstOrDefaultAsync();
+    }
+
     public async Task<User?> GetUserByGoogleIdAsync(string googleId)
     {
         return await _context.Users
@@ -100,6 +107,13 @@ public class AuthRepository : IAuthRepository
     {
         return await _context.Candidates
             .Where(c => c.Email == email && c.IsDeleted != true)
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task<Candidate?> GetCandidateByIdAsync(int id)
+    {
+        return await _context.Candidates
+            .Where(c => c.Id == id && c.IsDeleted != true)
             .FirstOrDefaultAsync();
     }
 

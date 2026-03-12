@@ -5,7 +5,7 @@ import { FileText, Upload, AlertCircle, X, Eye, Download } from 'lucide-react';
  * Step3JobDescription - Wizard Step 3: Job Description Upload
  * Upload JD file with preview capability
  */
-export default function Step3JobDescription({ formData, errors, handleFileChange, initialJdUrl = null }) {
+export default function Step3JobDescription({ formData, errors, handleFileChange, initialJdUrl = null, jobRequestId = null }) {
   const [preview, setPreview] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
   const fileInputRef = useRef(null);
@@ -78,6 +78,7 @@ export default function Step3JobDescription({ formData, errors, handleFileChange
         {!formData.jdFile && initialJdUrl ? (
           <ExistingFileCard
             url={initialJdUrl}
+            jobRequestId={jobRequestId}
             onReplace={() => fileInputRef.current?.click()}
           />
         ) : !formData.jdFile ? (
@@ -319,42 +320,61 @@ function getFileType(mimeType) {
 /**
  * ExistingFileCard - Shows the already-uploaded JD file when editing
  */
-function ExistingFileCard({ url, onReplace }) {
+function ExistingFileCard({ url, jobRequestId, onReplace }) {
   const fileName = url.split('/').pop().split('?')[0] || 'job-description';
+  const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+  // Prefer the authenticated proxy URL so the link works in new tabs without auth
+  const fileHref = jobRequestId ? `/api/files/jd/${jobRequestId}` : url;
+  const imgSrc  = jobRequestId ? `/api/files/jd/${jobRequestId}` : url;
+
   return (
-    <div className="rounded-2xl border-2 border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950 dark:to-teal-950 p-6 animate-in fade-in zoom-in-95 duration-300">
-      <div className="flex items-start gap-4">
-        <div className="w-14 h-14 rounded-xl bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center flex-shrink-0">
-          <FileText className="w-7 h-7 text-emerald-600 dark:text-emerald-400" />
+    <div className="rounded-2xl border-2 border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950 dark:to-teal-950 overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+      {/* Inline image preview — matches the candidate job detail view */}
+      {isImage && (
+        <div className="border-b border-emerald-200 dark:border-emerald-800 bg-white dark:bg-slate-800">
+          <img
+            src={imgSrc}
+            alt="Ảnh mô tả công việc"
+            className="w-full h-auto max-h-[480px] object-contain"
+          />
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-3 mb-3">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate mb-1">
-                {fileName}
-              </h3>
-              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300">
-                ĐÃ TẢI LÊN
-              </span>
+      )}
+      <div className="p-6">
+        <div className="flex items-start gap-4">
+          {!isImage && (
+            <div className="w-14 h-14 rounded-xl bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center flex-shrink-0">
+              <FileText className="w-7 h-7 text-emerald-600 dark:text-emerald-400" />
             </div>
-          </div>
-          <div className="flex gap-2">
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-3 py-1.5 rounded-lg bg-emerald-600 dark:bg-emerald-500 text-white text-xs font-bold hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors flex items-center gap-1.5"
-            >
-              <Eye className="w-3.5 h-3.5" />
-              Xem file hiện tại
-            </a>
-            <button
-              onClick={onReplace}
-              className="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors flex items-center gap-1.5"
-            >
-              <Upload className="w-3.5 h-3.5" />
-              Thay thế file
-            </button>
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate mb-1">
+                  {fileName}
+                </h3>
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300">
+                  ĐÃ TẢI LÊN
+                </span>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <a
+                href={fileHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 rounded-lg bg-emerald-600 dark:bg-emerald-500 text-white text-xs font-bold hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors flex items-center gap-1.5"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                Xem file hiện tại
+              </a>
+              <button
+                onClick={onReplace}
+                className="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors flex items-center gap-1.5"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                Thay thế file
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -301,14 +301,14 @@ export default function DeptManagerJobRequestDetail() {
                       {jobRequest.jdFileUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
                         <div className="relative border-2 border-emerald-200 dark:border-emerald-800 rounded-3xl overflow-hidden bg-white dark:bg-slate-700 shadow-sm">
                           <img
-                            src={jobRequest.jdFileUrl}
+                            src={`/api/files/jd/${jobRequest.id}`}
                             alt="Job Description"
                             className="w-full h-auto max-h-[800px] object-contain"
                           />
                         </div>
                       ) : null}
                       <a
-                        href={jobRequest.jdFileUrl}
+                        href={`/api/files/jd/${jobRequest.id}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="group flex items-center justify-between p-5 bg-white dark:bg-slate-700 rounded-3xl border border-emerald-200 dark:border-emerald-800 hover:border-emerald-300 dark:hover:border-emerald-600 hover:bg-emerald-50/30 dark:hover:bg-emerald-900/20 transition-all shadow-sm"

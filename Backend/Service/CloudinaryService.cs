@@ -40,7 +40,8 @@ public class CloudinaryService : ICloudinaryService
         var uploadParams = new RawUploadParams()
         {
             File = new FileDescription(fileName, fileStream),
-            Folder = folder
+            Folder = folder,
+            AccessMode = "public"
         };
 
         var uploadResult = await _cloudinary.UploadAsync(uploadParams);
@@ -68,5 +69,18 @@ public class CloudinaryService : ICloudinaryService
         var result = await _cloudinary.DestroyAsync(deletionParams);
 
         return result.Result == "ok";
+    }
+
+    public async Task<byte[]> FetchFileAsync(string fileUrl, string publicId)
+    {
+        using var httpClient = new System.Net.Http.HttpClient();
+
+        // 1st attempt: direct public URL
+        var response = await httpClient.GetAsync(fileUrl);
+
+        if (response.IsSuccessStatusCode)
+            return await response.Content.ReadAsByteArrayAsync();
+
+        throw new Exception($"Không thể tải file từ Cloudinary. Status: {(int)response.StatusCode}");
     }
 }

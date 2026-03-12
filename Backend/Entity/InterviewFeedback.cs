@@ -13,6 +13,8 @@ public partial class InterviewFeedback
 
     public DateTime? CreatedAt { get; set; }
 
+    public string? Note { get; set; }
+
     public virtual Interview Interview { get; set; } = null!;
 
     public virtual ICollection<InterviewScore> InterviewScores { get; set; } = new List<InterviewScore>();

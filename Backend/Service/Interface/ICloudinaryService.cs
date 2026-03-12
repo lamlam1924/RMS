@@ -17,6 +17,11 @@ public interface ICloudinaryService
     Task<CloudinaryUploadResultDto> UploadAsync(Stream fileStream, string fileName, string folder);
 
     /// <summary>
+    /// Fetch raw bytes của file từ Cloudinary, dùng ExplicitAsync để mở quyền truy cập nếu cần.
+    /// </summary>
+    Task<byte[]> FetchFileAsync(string fileUrl, string publicId);
+
+    /// <summary>
     /// Xóa file khỏi Cloudinary
     /// </summary>
     /// <param name="publicId">Public ID của file trên Cloudinary</param>

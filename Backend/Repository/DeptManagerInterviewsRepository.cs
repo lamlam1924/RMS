@@ -145,10 +145,20 @@ public class DeptManagerInterviewsRepository : IDeptManagerInterviewsRepository
 
     public async Task<List<EvaluationCriterion>> GetEvaluationCriteriaByPositionAsync(int positionId)
     {
-        // Note: EvaluationTemplate doesn't have PositionId property
-        // This method needs to be redesigned based on actual business logic
-        // For now, return all criteria from all templates
-        return await _context.EvaluationCriteria
+        var criteria = await _context.EvaluationCriteria
+            .Include(c => c.Template)
+            .Where(c => c.Template.PositionId == positionId)
             .ToListAsync();
+
+        if (criteria.Count == 0)
+        {
+            // Fallback: template chung không gắn với position cụ thể
+            criteria = await _context.EvaluationCriteria
+                .Include(c => c.Template)
+                .Where(c => c.Template.PositionId == null)
+                .ToListAsync();
+        }
+
+        return criteria;
     }
 }

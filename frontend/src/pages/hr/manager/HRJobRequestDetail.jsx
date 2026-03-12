@@ -379,17 +379,17 @@ export default function HRJobRequestDetail() {
                 </h3>
                 {jobRequest.jdFileUrl ? (
                   <div className="space-y-4">
-                    {jobRequest.jdFileUrl.match(/\\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                    {jobRequest.jdFileUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
                       <div className="relative border-2 border-slate-200 dark:border-slate-600 rounded-3xl overflow-hidden bg-white dark:bg-slate-750 shadow-sm">
                         <img
-                          src={jobRequest.jdFileUrl}
-                          alt="Job Description"
+                          src={`/api/files/jd/${jobRequest.id}`}
+                          alt="Mô tả công việc"
                           className="w-full h-auto max-h-[800px] object-contain"
                         />
                       </div>
                     ) : null}
                     <a
-                      href={jobRequest.jdFileUrl}
+                      href={`/api/files/jd/${jobRequest.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="group flex items-center justify-between p-5 bg-white dark:bg-slate-750 rounded-3xl border border-slate-200 dark:border-slate-600 hover:border-emerald-300 dark:hover:border-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all shadow-sm"
@@ -407,10 +407,10 @@ export default function HRJobRequestDetail() {
                           </p>
                         </div>
                       </div>
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs group-hover:translate-x-1 transition-transform tracking-tight">
-                      Mở tệp →
-                    </span>
-                  </a>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs group-hover:translate-x-1 transition-transform tracking-tight">
+                        Mở tệp →
+                      </span>
+                    </a>
                   </div>
                 ) : (
                   <div className="p-6 text-center border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-3xl text-slate-400 dark:text-slate-500 font-bold text-xs italic">

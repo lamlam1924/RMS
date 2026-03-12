@@ -251,14 +251,14 @@ export default function JobRequestDetailPanel({
               {detail.jdFileUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
                 <div className="relative border-2 border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden bg-white dark:bg-slate-800 shadow-sm">
                   <img
-                    src={detail.jdFileUrl}
+                    src={`/api/files/jd/${detail.id}`}
                     alt="Job Description"
                     className="w-full h-auto max-h-[800px] object-contain"
                   />
                 </div>
               ) : null}
               <a
-                href={detail.jdFileUrl}
+                href={`/api/files/jd/${detail.id}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="group flex items-center justify-between p-5 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-all shadow-sm"

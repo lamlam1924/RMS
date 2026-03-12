@@ -170,6 +170,7 @@ export default function DeptManagerJobRequestEdit() {
           handleSubmit={handleSaveAndSubmit}
           handleSaveDraft={handleSave}
           initialJdUrl={initialJdUrl}
+          jobRequestId={id}
           isEdit={true}
         />
 

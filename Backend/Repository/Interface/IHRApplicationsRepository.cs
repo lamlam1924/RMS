@@ -6,5 +6,6 @@ public interface IHRApplicationsRepository
 {
     Task<List<Application>> GetApplicationsAsync(int? statusId = null);
     Task<Application?> GetApplicationByIdAsync(int id);
+    Task<string?> GetCvFileUrlAsync(int applicationId);
     Task<bool> UpdateApplicationStatusAsync(int applicationId, int toStatusId, int userId, string? note = null);
 }

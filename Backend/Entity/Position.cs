@@ -23,5 +23,7 @@ public partial class Position
 
     public virtual Department Department { get; set; } = null!;
 
+    public virtual ICollection<EvaluationTemplate> EvaluationTemplates { get; set; } = new List<EvaluationTemplate>();
+
     public virtual ICollection<JobRequest> JobRequests { get; set; } = new List<JobRequest>();
 }

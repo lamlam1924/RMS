@@ -11,6 +11,9 @@ public interface IAuthRepository
 {
     // ==================== User Operations ====================
     
+    /// <summary>Lấy user theo ID</summary>
+    Task<User?> GetUserByIdAsync(int id);
+
     /// <summary>Lấy user theo email</summary>
     Task<User?> GetUserByEmailAsync(string email);
     
@@ -46,6 +49,9 @@ public interface IAuthRepository
     Task<List<string>> GetUserDepartmentsAsync(int userId);
 
     // ==================== Candidate Operations ====================
+    /// <summary>Lấy candidate theo ID</summary>
+    Task<Candidate?> GetCandidateByIdAsync(int id);
+
     /// <summary>Lấy candidate theo email</summary>
     Task<Candidate?> GetCandidateByEmailAsync(string email);
 

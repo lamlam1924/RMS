@@ -63,78 +63,37 @@ public class DeptManagerInterviewsService : IDeptManagerInterviewsService
     public async Task<ActionResponseDto> SubmitInterviewFeedbackAsync(
         int interviewId, SubmitInterviewFeedbackDto feedback, int managerId)
     {
-        try
+        if (!await _repository.IsInterviewParticipantAsync(interviewId, managerId))
+            return ResponseHelper.CreateActionResponse(false, "", "Bạn không được phân công vào phỏng vấn này");
+
+        if (await _repository.GetFeedbackByInterviewerAsync(interviewId, managerId) != null)
+            return ResponseHelper.CreateActionResponse(false, "", "Bạn đã gửi đánh giá cho phỏng vấn này rồi");
+
+        var interviewFeedback = new InterviewFeedback
         {
-            // Validate participation
-            var isParticipant = await _repository.IsInterviewParticipantAsync(interviewId, managerId);
-            if (!isParticipant)
-            {
-                return ResponseHelper.CreateActionResponse(false,
-                    "", "You are not a participant in this interview");
-            }
+            InterviewId   = interviewId,
+            InterviewerId = managerId,
+            Note          = feedback.Comment,
+            CreatedAt     = DateTimeHelper.Now
+        };
 
-            // Check if already submitted feedback
-            var existingFeedback = await _repository.GetFeedbackByInterviewerAsync(interviewId, managerId);
-            if (existingFeedback != null)
-            {
-                return ResponseHelper.CreateActionResponse(false,
-                    "", "You have already submitted feedback for this interview");
-            }
+        await _context.InterviewFeedbacks.AddAsync(interviewFeedback);
+        await _context.SaveChangesAsync();
 
-            // Create interview feedback
-            var interviewFeedback = new InterviewFeedback
-            {
-                InterviewId = interviewId,
-                InterviewerId = managerId,
-                CreatedAt = DateTimeHelper.Now
-            };
-
-            await _context.InterviewFeedbacks.AddAsync(interviewFeedback);
-            await _context.SaveChangesAsync();
-
-            // Create scores for each criterion
-            if (feedback.Scores != null && feedback.Scores.Any())
-            {
-                var scores = feedback.Scores.Select(s => new InterviewScore
-                {
-                    FeedbackId = interviewFeedback.Id,
-                    CriteriaId = s.CriterionId,
-                    Score = s.Score
-                }).ToList();
-
-                await _context.InterviewScores.AddRangeAsync(scores);
-            }
-
-            await _context.SaveChangesAsync();
-
-            // Update application status if decision is PASS or REJECT
-            if (feedback.Decision == "PASS" || feedback.Decision == "REJECT")
-            {
-                var interview = await _context.Interviews
-                    .Include(i => i.Application)
-                    .FirstOrDefaultAsync(i => i.Id == interviewId);
-
-                if (interview?.Application != null)
-                {
-                    var newStatusCode = feedback.Decision == "PASS" ? "INTERVIEW_PASSED" : "INTERVIEW_FAILED";
-                    var newStatus = await _context.Statuses
-                        .FirstOrDefaultAsync(s => s.Code == newStatusCode && s.StatusTypeId == 2);
-
-                    if (newStatus != null)
-                    {
-                        await _repository.UpdateApplicationStatusAsync(
-                            interview.Application.Id, newStatus.Id, managerId, feedback.Comment);
-                    }
-                }
-            }
-
-            return ResponseHelper.CreateActionResponse(true,
-                "Feedback submitted successfully", "");
-        }
-        catch (Exception ex)
+        if (feedback.Scores?.Any() == true)
         {
-            return ResponseHelper.CreateActionResponse(false,
-                "", $"Error submitting feedback: {ex.Message}");
+            var scores = feedback.Scores.Select(s => new InterviewScore
+            {
+                FeedbackId = interviewFeedback.Id,
+                CriteriaId = s.CriterionId,
+                Score      = s.Score
+            }).ToList();
+
+            await _context.InterviewScores.AddRangeAsync(scores);
+            await _context.SaveChangesAsync();
         }
+
+        // Không tự đổi Application status — HR sẽ chốt sau khi xem toàn bộ feedback
+        return ResponseHelper.CreateActionResponse(true, "Đánh giá đã được ghi nhận", "");
     }
 }

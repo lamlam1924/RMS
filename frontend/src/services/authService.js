@@ -212,6 +212,30 @@ export const authService = {
   },
 
   /**
+   * Change password
+   */
+  async changePassword(currentPassword, newPassword, confirmNewPassword) {
+    const response = await authFetch(`${API_BASE_URL}/auth/change-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword, newPassword, confirmNewPassword })
+    });
+
+    const text = await response.text();
+    let data = {};
+    try {
+      if (text) data = JSON.parse(text);
+    } catch (e) {
+      console.error("Error parsing response", e);
+    }
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Đổi mật khẩu thất bại');
+    }
+    return data;
+  },
+
+  /**
    * Logout
    */
   async logout() {
@@ -233,6 +257,34 @@ export const authService = {
     }
 
     this.clearTokens();
+  },
+
+  /**
+   * Upload user avatar
+   */
+  async uploadAvatar(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await authFetch(`${API_BASE_URL}/auth/upload-avatar`, {
+      method: 'POST',
+      body: formData
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Tải ảnh đại diện thất bại');
+    }
+
+    // Refresh user info from server to get latest data including avatarUrl
+    const updatedUserInfo = await this.getCurrentUser();
+    const userInfo = this.getUserInfo();
+    if (userInfo && updatedUserInfo) {
+      userInfo.avatarUrl = updatedUserInfo.avatarUrl;
+      localStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo));
+    }
+
+    return data;
   },
 
   /**

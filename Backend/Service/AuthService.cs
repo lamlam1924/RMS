@@ -5,6 +5,7 @@ using RMS.Common;
 using RMS.Dto.Auth;
 using RMS.Entity;
 using RMS.Repository;
+using RMS.Service.Interface;
 
 namespace RMS.Service;
 
@@ -17,6 +18,7 @@ public class AuthService : IAuthService
     private readonly IConfiguration _configuration;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<AuthService> _logger;
+    private readonly ICloudinaryService _cloudinaryService;
 
     public AuthService(
         IAuthRepository authRepository,
@@ -25,7 +27,8 @@ public class AuthService : IAuthService
         JwtTokenHelper jwtTokenHelper,
         IConfiguration configuration,
         IHttpClientFactory httpClientFactory,
-        ILogger<AuthService> logger)
+        ILogger<AuthService> logger,
+        ICloudinaryService cloudinaryService)
     {
         _authRepository = authRepository;
         _cache = cache;
@@ -34,6 +37,7 @@ public class AuthService : IAuthService
         _configuration = configuration;
         _httpClientFactory = httpClientFactory;
         _logger = logger;
+        _cloudinaryService = cloudinaryService;
     }
 
     public async Task<bool> EmailExistsAsync(string email)
@@ -204,6 +208,7 @@ public class AuthService : IAuthService
                 Id = candidate.Id,
                 FullName = candidate.FullName,
                 Email = candidate.Email,
+                AvatarUrl = candidate.AvatarUrl,
                 AuthProvider = candidate.AuthProvider,
                 Roles = new List<string> { "CANDIDATE" }, // Hardcode role
                 Departments = new List<string>()
@@ -389,7 +394,7 @@ public class AuthService : IAuthService
             return new LoginResponseDto
             {
                 AccessToken = accessToken, RefreshToken = refreshToken,
-                User = new UserInfoDto { Id = user.Id, FullName = user.FullName, Email = user.Email, AuthProvider = user.AuthProvider, Roles = roles, Departments = departments }
+                User = new UserInfoDto { Id = user.Id, FullName = user.FullName, Email = user.Email, AvatarUrl = user.AvatarUrl, AuthProvider = user.AuthProvider, Roles = roles, Departments = departments }
             };
         }
 
@@ -407,7 +412,7 @@ public class AuthService : IAuthService
             return new LoginResponseDto
             {
                 AccessToken = accessToken, RefreshToken = null,
-                User = new UserInfoDto { Id = candidate.Id, FullName = candidate.FullName, Email = candidate.Email, AuthProvider = candidate.AuthProvider, Roles = new List<string> { "CANDIDATE" }, Departments = new List<string>() }
+                User = new UserInfoDto { Id = candidate.Id, FullName = candidate.FullName, Email = candidate.Email, AvatarUrl = candidate.AvatarUrl, AuthProvider = candidate.AuthProvider, Roles = new List<string> { "CANDIDATE" }, Departments = new List<string>() }
             };
         }
 
@@ -439,7 +444,7 @@ public class AuthService : IAuthService
             
             await _authRepository.CreateRefreshTokenAsync(new RefreshToken { UserId = user.Id, Token = refreshToken, ExpiresAt = DateTimeHelper.Now.AddDays(expirationDays), CreatedAt = DateTimeHelper.Now, IsRevoked = false });
 
-            return new LoginResponseDto { AccessToken = accessToken, RefreshToken = refreshToken, User = new UserInfoDto { Id = user.Id, FullName = user.FullName, Email = user.Email, AuthProvider = user.AuthProvider, Roles = roles, Departments = departments } };
+            return new LoginResponseDto { AccessToken = accessToken, RefreshToken = refreshToken, User = new UserInfoDto { Id = user.Id, FullName = user.FullName, Email = user.Email, AvatarUrl = user.AvatarUrl, AuthProvider = user.AuthProvider, Roles = roles, Departments = departments } };
         }
 
         // 2. Check if Candidate exists
@@ -466,7 +471,7 @@ public class AuthService : IAuthService
         return new LoginResponseDto
         {
             AccessToken = candidateToken, RefreshToken = null,
-            User = new UserInfoDto { Id = candidate.Id, FullName = candidate.FullName, Email = candidate.Email, AuthProvider = candidate.AuthProvider, Roles = new List<string> { "CANDIDATE" }, Departments = new List<string>() }
+            User = new UserInfoDto { Id = candidate.Id, FullName = candidate.FullName, Email = candidate.Email, AvatarUrl = candidate.AvatarUrl, AuthProvider = candidate.AuthProvider, Roles = new List<string> { "CANDIDATE" }, Departments = new List<string>() }
         };
     }
 
@@ -510,6 +515,7 @@ public class AuthService : IAuthService
                 Id = user.Id,
                 FullName = user.FullName,
                 Email = user.Email,
+                AvatarUrl = user.AvatarUrl,
                 AuthProvider = user.AuthProvider,
                 Roles = roles,
                 Departments = departments
@@ -524,6 +530,70 @@ public class AuthService : IAuthService
         {
             await _authRepository.RevokeRefreshTokenAsync(tokenEntity.Id);
         }
+    }
+
+    public async Task ChangePasswordAsync(string userId, bool isCandidate, string currentPassword, string newPassword)
+    {
+        if (isCandidate)
+        {
+            var candidate = await _authRepository.GetCandidateByIdAsync(int.Parse(userId));
+            if (candidate == null)
+                throw new InvalidOperationException("Không tìm thấy tài khoản");
+
+            // Google OAuth candidates may not have a password
+            if (string.IsNullOrEmpty(candidate.PasswordHash))
+                throw new InvalidOperationException("Tài khoản đăng nhập bằng Google không thể đổi mật khẩu theo cách này");
+
+            if (!PasswordHelper.VerifyPassword(currentPassword, candidate.PasswordHash))
+                throw new InvalidOperationException("Mật khẩu hiện tại không đúng");
+
+            candidate.PasswordHash = PasswordHelper.HashPassword(newPassword);
+            await _authRepository.UpdateCandidateAsync(candidate);
+        }
+        else
+        {
+            var user = await _authRepository.GetUserByIdAsync(int.Parse(userId));
+            if (user == null)
+                throw new InvalidOperationException("Không tìm thấy tài khoản");
+
+            if (string.IsNullOrEmpty(user.PasswordHash))
+                throw new InvalidOperationException("Tài khoản đăng nhập bằng Google không thể đổi mật khẩu theo cách này");
+
+            if (!PasswordHelper.VerifyPassword(currentPassword, user.PasswordHash))
+                throw new InvalidOperationException("Mật khẩu hiện tại không đúng");
+
+            user.PasswordHash = PasswordHelper.HashPassword(newPassword);
+            user.UpdatedAt = DateTimeHelper.Now;
+            await _authRepository.UpdateUserAsync(user);
+        }
+
+        _logger.LogInformation("Password changed successfully for userId: {UserId}", userId);
+    }
+
+    public async Task<string> UploadAvatarAsync(string userId, bool isCandidate, Stream fileStream, string fileName)
+    {
+        var result = await _cloudinaryService.UploadAsync(fileStream, fileName, "avatars");
+        var avatarUrl = result.SecureUrl;
+
+        if (isCandidate)
+        {
+            var candidate = await _authRepository.GetCandidateByIdAsync(int.Parse(userId));
+            if (candidate == null) throw new InvalidOperationException("Không tìm thấy tài khoản");
+            
+            candidate.AvatarUrl = avatarUrl;
+            await _authRepository.UpdateCandidateAsync(candidate);
+        }
+        else
+        {
+            var user = await _authRepository.GetUserByIdAsync(int.Parse(userId));
+            if (user == null) throw new InvalidOperationException("Không tìm thấy tài khoản");
+            
+            user.AvatarUrl = avatarUrl;
+            user.UpdatedAt = DateTimeHelper.Now;
+            await _authRepository.UpdateUserAsync(user);
+        }
+        
+        return avatarUrl;
     }
 
     // Private helper methods for Google OAuth

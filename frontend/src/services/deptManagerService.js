@@ -34,6 +34,15 @@ const deptManagerService = {
       api.post(`/dept-manager/interviews/${id}/feedback`, feedback),
   },
 
+  // Participant Requests (nomination requests from HR)
+  participantRequests: {
+    getMyAssigned: () => api.get('/dept-manager/participant-requests'),
+    getById: (reqId) => api.get(`/dept-manager/participant-requests/${reqId}`),
+    getTeamMembers: () => api.get('/dept-manager/participant-requests/team-members'),
+    nominate: (reqId, userIds) =>
+      api.post(`/dept-manager/participant-requests/${reqId}/nominate`, { userIds }),
+  },
+
   // Applications (for reference)
   applications: {
     getByJobRequest: (jobRequestId) => 
