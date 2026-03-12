@@ -403,7 +403,7 @@ export default function HRApplicationDetail() {
                 Schedule Interview
               </button>
               <button
-                onClick={() => navigate(`/staff/hr-manager/offers/create?applicationId=${id}`)}
+                onClick={() => navigate(`/staff/hr-manager/offers/create?candidateId=${application?.candidateId ?? ''}&jobRequestId=${application?.jobRequestId ?? ''}`)}
                 style={{
                   padding: '10px 16px',
                   backgroundColor: '#10b981',

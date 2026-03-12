@@ -21,6 +21,8 @@ public class HRApplicationsProfile : Profile
         CreateMap<Application, ApplicationDetailDto>()
             .IncludeBase<Application, ApplicationListDto>()
             .ForMember(dest => dest.CandidateName, opt => opt.MapFrom(src => src.Cvprofile.Candidate.FullName))
+            .ForMember(dest => dest.CandidateId, opt => opt.MapFrom(src => src.Cvprofile.CandidateId))
+            .ForMember(dest => dest.JobRequestId, opt => opt.MapFrom(src => src.JobRequestId))
             .ForMember(dest => dest.Phone, opt => opt.MapFrom(src => src.Cvprofile.Phone))
             .ForMember(dest => dest.StatusHistory, opt => opt.Ignore());
     }

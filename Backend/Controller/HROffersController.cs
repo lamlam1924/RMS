@@ -115,6 +115,27 @@ public class HROffersController : ControllerBase
     }
 
     /// <summary>
+    /// Update offer details (salary, benefits, start date) - only when DRAFT or IN_REVIEW
+    /// </summary>
+    [HttpPut("{id}")]
+    [Authorize(Roles = "HR_MANAGER,HR_STAFF")]
+    public async Task<ActionResult<ActionResponseDto>> UpdateOffer(int id, [FromBody] UpdateOfferDto dto)
+    {
+        try
+        {
+            var userId = CurrentUserHelper.GetCurrentUserId(this);
+            var result = await _hrOffersService.UpdateOfferAsync(id, dto, userId);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to update offer", error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Update offer status (HR Manager approve/reject)
     /// </summary>
     [HttpPut("{id}/status")]
@@ -140,10 +161,10 @@ public class HROffersController : ControllerBase
     }
 
     /// <summary>
-    /// Send offer to candidate (HR Staff action)
+    /// Send offer to candidate (HR Staff/Manager)
     /// </summary>
     [HttpPut("{id}/send")]
-    [Authorize(Roles = "HR_STAFF")]
+    [Authorize(Roles = "HR_MANAGER,HR_STAFF")]
     public async Task<ActionResult<ActionResponseDto>> SendOffer(int id)
     {
         try
@@ -159,6 +180,29 @@ public class HROffersController : ControllerBase
         catch (Exception ex)
         {
             return StatusCode(500, new { message = "Failed to send offer", error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Update offer after candidate negotiates, then resend (status must be NEGOTIATING)
+    /// </summary>
+    [HttpPut("{id}/negotiation")]
+    [Authorize(Roles = "HR_MANAGER,HR_STAFF")]
+    public async Task<ActionResult<ActionResponseDto>> UpdateAfterNegotiation(int id, [FromBody] UpdateOfferAfterNegotiationDto dto)
+    {
+        try
+        {
+            var userId = CurrentUserHelper.GetCurrentUserId(this);
+            var result = await _hrOffersService.UpdateOfferAfterNegotiationAsync(id, dto, userId);
+            
+            if (result.Success)
+                return Ok(result);
+            else
+                return BadRequest(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to update offer", error = ex.Message });
         }
     }
 }

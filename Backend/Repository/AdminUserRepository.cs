@@ -154,13 +154,30 @@ public class AdminUserRepository : IAdminUserRepository
 
     public async Task<bool> DeleteUserAsync(int id, int deletedBy)
     {
-        var user = await _context.Users.FindAsync(id);
-        if (user == null || user.IsDeleted == true) return false;
+        var user = await _context.Users
+            .Include(u => u.UserDepartments)
+            .Include(u => u.RefreshTokens)
+            .Include(u => u.Roles)
+            .FirstOrDefaultAsync(u => u.Id == id);
+        if (user == null) return false;
 
-        user.IsDeleted = true;
-        user.DeletedAt = DateTime.UtcNow;
-        user.DeletedBy = deletedBy;
+        // Remove all related data before deleting user
+        _context.RefreshTokens.RemoveRange(user.RefreshTokens);
+        user.Roles.Clear();
+        _context.UserDepartments.RemoveRange(user.UserDepartments);
 
+        var interviewParticipants = await _context.InterviewParticipants.Where(ip => ip.UserId == id).ToListAsync();
+        _context.InterviewParticipants.RemoveRange(interviewParticipants);
+
+        var interviewFeedbacks = await _context.InterviewFeedbacks
+            .Include(f => f.InterviewScores)
+            .Where(f => f.InterviewerId == id)
+            .ToListAsync();
+        foreach (var fb in interviewFeedbacks)
+            _context.InterviewScores.RemoveRange(fb.InterviewScores);
+        _context.InterviewFeedbacks.RemoveRange(interviewFeedbacks);
+
+        _context.Users.Remove(user);
         await _context.SaveChangesAsync();
         return true;
     }

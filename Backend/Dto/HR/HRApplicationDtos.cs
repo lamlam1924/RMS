@@ -19,6 +19,8 @@ public class ApplicationListDto
 
 public class ApplicationDetailDto : ApplicationListDto
 {
+    public int CandidateId { get; set; }
+    public int JobRequestId { get; set; }
     public string? Phone { get; set; }
     public string? CVFileName { get; set; }
     public string? CVUrl { get; set; }

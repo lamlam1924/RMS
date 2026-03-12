@@ -17,7 +17,10 @@ var config = builder.Configuration;
 
 // ======================= DATABASE =======================
 builder.Services.AddDbContext<RecruitmentDbContext>(options =>
-    options.UseSqlServer(config.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(config.GetConnectionString("DefaultConnection"), sqlOpts =>
+    {
+        sqlOpts.CommandTimeout(60); // Tăng timeout cho truy vấn (mặc định 30s)
+    }));
 
 // ======================= CONTROLLERS =======================
 builder.Services.AddControllers()
@@ -189,6 +192,7 @@ builder.Services.AddScoped<IHRJobRequestsService, HRJobRequestsService>();
 builder.Services.AddScoped<IHRApplicationsService, HRApplicationsService>();
 builder.Services.AddScoped<IHRInterviewsService, HRInterviewsService>();
 builder.Services.AddScoped<IHROffersService, HROffersService>();
+builder.Services.AddScoped<ICandidateOffersService, CandidateOffersService>();
 builder.Services.AddScoped<IHRJobPostingsService, HRJobPostingsService>();
 builder.Services.AddScoped<IEmployeeInterviewsService, EmployeeInterviewsService>();
 

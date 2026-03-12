@@ -49,7 +49,7 @@ public class HRJobRequestsRepository : IHRJobRequestsRepository
     {
         // Lấy status ID từ code
         var status = await _context.Statuses
-            .FirstOrDefaultAsync(s => s.Code == statusCode && s.StatusType.Code == "JOB_REQUEST");
+            .FirstOrDefaultAsync(s => s.Code == statusCode && s.StatusType.Code == "RECRUITMENT_REQUEST");
         
         if (status == null)
             return new List<JobRequest>();

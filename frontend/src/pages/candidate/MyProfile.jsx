@@ -1,53 +1,126 @@
 import React, { useState, useEffect } from 'react';
+import jsPDF from 'jspdf';
 import { candidateService } from '../../services/candidateService';
-import { authService } from '../../services/authService';
 
-const emptyExperience = () => ({
-  id: null,
-  companyName: '',
-  jobTitle: '',
-  startDate: '',
-  endDate: '',
-  description: '',
-});
+const formatDate = (s) => (s ? new Date(s).toLocaleDateString('vi-VN') : '');
 
-const emptyEducation = () => ({
-  id: null,
-  schoolName: '',
-  degree: '',
-  major: '',
-  startYear: '',
-  endYear: '',
-  gpa: '',
-});
+function generateCvPdf(cv) {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const margin = 14;
+  let y = 20;
 
-const emptyCertificate = () => ({
-  id: null,
-  certificateName: '',
-  issuer: '',
-  issuedYear: '',
-});
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text(cv.fullName || 'CV', margin, y);
+  y += 10;
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  const contact = [cv.email, cv.phone].filter(Boolean).join(' | ');
+  if (contact) {
+    doc.text(contact, margin, y);
+    y += 8;
+  }
+
+  if (cv.yearsOfExperience != null && cv.yearsOfExperience !== '') {
+    doc.text(`Năm kinh nghiệm: ${cv.yearsOfExperience}`, margin, y);
+    y += 8;
+  }
+
+  if (cv.summary) {
+    y += 4;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('Giới thiệu', margin, y);
+    y += 8;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    const split = doc.splitTextToSize(cv.summary, 180);
+    doc.text(split, margin, y);
+    y += split.length * 6 + 8;
+  }
+
+  if (cv.experiences?.length > 0) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('Kinh nghiệm làm việc', margin, y);
+    y += 8;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    cv.experiences.forEach((exp) => {
+      if (y > 260) {
+        doc.addPage();
+        y = 20;
+      }
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${exp.companyName} - ${exp.jobTitle}`, margin, y);
+      y += 6;
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${formatDate(exp.startDate)} — ${exp.endDate ? formatDate(exp.endDate) : 'Hiện tại'}`, margin, y);
+      y += 6;
+      if (exp.description) {
+        const descLines = doc.splitTextToSize(exp.description, 180);
+        doc.text(descLines, margin, y);
+        y += descLines.length * 5 + 4;
+      } else {
+        y += 4;
+      }
+    });
+    y += 6;
+  }
+
+  if (cv.educations?.length > 0) {
+    if (y > 250) {
+      doc.addPage();
+      y = 20;
+    }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('Học vấn', margin, y);
+    y += 8;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    cv.educations.forEach((edu) => {
+      if (y > 260) {
+        doc.addPage();
+        y = 20;
+      }
+      doc.setFont('helvetica', 'bold');
+      doc.text(edu.schoolName, margin, y);
+      y += 6;
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${edu.degree || ''} ${edu.major ? `· ${edu.major}` : ''}`, margin, y);
+      y += 6;
+      doc.text(`${edu.startYear || ''} — ${edu.endYear || '—'}${edu.gpa != null ? ` · GPA ${edu.gpa}` : ''}`, margin, y);
+      y += 10;
+    });
+    y += 4;
+  }
+
+  if (cv.certificates?.length > 0) {
+    if (y > 250) {
+      doc.addPage();
+      y = 20;
+    }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('Chứng chỉ', margin, y);
+    y += 8;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    cv.certificates.forEach((c) => {
+      doc.text(`${c.certificateName}${c.issuer ? ` (${c.issuer})` : ''}${c.issuedYear ? ` · ${c.issuedYear}` : ''}`, margin, y);
+      y += 8;
+    });
+  }
+
+  return doc;
+}
 
 export default function MyProfile() {
-  const user = authService.getUserInfo();
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [cv, setCv] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
-
-  const [form, setForm] = useState({
-    fullName: user?.fullName || '',
-    email: user?.email || '',
-    phone: '',
-    summary: '',
-    yearsOfExperience: '',
-    source: '',
-    experiences: [emptyExperience()],
-    educations: [emptyEducation()],
-    certificates: [emptyCertificate()],
-  });
 
   useEffect(() => {
     loadCv();
@@ -58,54 +131,6 @@ export default function MyProfile() {
       setError('');
       const data = await candidateService.getMyCv();
       setCv(data);
-      if (data) {
-        setForm({
-          fullName: data.fullName || '',
-          email: data.email || '',
-          phone: data.phone || '',
-          summary: data.summary || '',
-          yearsOfExperience: data.yearsOfExperience ?? '',
-          source: data.source || '',
-          experiences:
-            data.experiences?.length > 0
-              ? data.experiences.map((e) => ({
-                  id: e.id,
-                  companyName: e.companyName || '',
-                  jobTitle: e.jobTitle || '',
-                  startDate: e.startDate ? e.startDate.slice(0, 10) : '',
-                  endDate: e.endDate ? e.endDate.slice(0, 10) : '',
-                  description: e.description || '',
-                }))
-              : [emptyExperience()],
-          educations:
-            data.educations?.length > 0
-              ? data.educations.map((e) => ({
-                  id: e.id,
-                  schoolName: e.schoolName || '',
-                  degree: e.degree || '',
-                  major: e.major || '',
-                  startYear: e.startYear ?? '',
-                  endYear: e.endYear ?? '',
-                  gpa: e.gpa ?? '',
-                }))
-              : [emptyEducation()],
-          certificates:
-            data.certificates?.length > 0
-              ? data.certificates.map((c) => ({
-                  id: c.id,
-                  certificateName: c.certificateName || '',
-                  issuer: c.issuer || '',
-                  issuedYear: c.issuedYear ?? '',
-                }))
-              : [emptyCertificate()],
-        });
-      } else {
-        setForm((f) => ({
-          ...f,
-          fullName: user?.fullName || f.fullName,
-          email: user?.email || f.email,
-        }));
-      }
     } catch (err) {
       setError(err.message || 'Không thể tải CV');
     } finally {
@@ -113,104 +138,14 @@ export default function MyProfile() {
     }
   };
 
-  const updateField = (field, value) => {
-    setForm((f) => ({ ...f, [field]: value }));
-    setError('');
-    setSuccess('');
-  };
-
-  const updateArrayItem = (arrayName, index, field, value) => {
-    setForm((f) => {
-      const arr = [...(f[arrayName] || [])];
-      arr[index] = { ...arr[index], [field]: value };
-      return { ...f, [arrayName]: arr };
-    });
-  };
-
-  const addArrayItem = (arrayName, emptyFn) => {
-    setForm((f) => ({
-      ...f,
-      [arrayName]: [...(f[arrayName] || []), emptyFn()],
-    }));
-  };
-
-  const removeArrayItem = (arrayName, index) => {
-    setForm((f) => {
-      const arr = [...(f[arrayName] || [])];
-      if (arr.length <= 1) return f;
-      arr.splice(index, 1);
-      return { ...f, [arrayName]: arr };
-    });
-  };
-
-  const toApiPayload = () => {
-    return {
-      fullName: form.fullName.trim(),
-      email: form.email?.trim() || null,
-      phone: form.phone?.trim() || null,
-      summary: form.summary?.trim() || null,
-      yearsOfExperience: form.yearsOfExperience ? parseInt(form.yearsOfExperience, 10) : null,
-      source: form.source?.trim() || null,
-      experiences: form.experiences
-        .filter((e) => e.companyName?.trim() && e.jobTitle?.trim())
-        .map((e) => ({
-          id: e.id || undefined,
-          companyName: e.companyName.trim(),
-          jobTitle: e.jobTitle.trim(),
-          startDate: e.startDate || '2020-01-01',
-          endDate: e.endDate || null,
-          description: e.description?.trim() || null,
-        })),
-      educations: form.educations
-        .filter((e) => e.schoolName?.trim())
-        .map((e) => ({
-          id: e.id || undefined,
-          schoolName: e.schoolName.trim(),
-          degree: e.degree?.trim() || null,
-          major: e.major?.trim() || null,
-          startYear: e.startYear ? parseInt(e.startYear, 10) : null,
-          endYear: e.endYear ? parseInt(e.endYear, 10) : null,
-          gpa: e.gpa ? parseFloat(e.gpa) : null,
-        })),
-      certificates: form.certificates
-        .filter((c) => c.certificateName?.trim())
-        .map((c) => ({
-          id: c.id || undefined,
-          certificateName: c.certificateName.trim(),
-          issuer: c.issuer?.trim() || null,
-          issuedYear: c.issuedYear ? parseInt(c.issuedYear, 10) : null,
-        })),
-    };
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-    if (!form.fullName?.trim()) {
-      setError('Vui lòng nhập họ tên');
-      return;
-    }
-    setSaving(true);
+  const handleDownloadPdf = () => {
+    if (!cv) return;
     try {
-      const payload = toApiPayload();
-      if (cv) {
-        await candidateService.updateCv(cv.id, payload);
-        const refreshed = await candidateService.getMyCv();
-        setCv(refreshed);
-        setSuccess('Cập nhật CV thành công!');
-        setIsEditing(false);
-      } else {
-        const created = await candidateService.createCv(payload);
-        setCv(created);
-        setSuccess('Tạo CV thành công!');
-        setIsEditing(false);
-      }
+      const doc = generateCvPdf(cv);
+      const fileName = `CV_${(cv.fullName || 'Candidate').replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
+      doc.save(fileName);
     } catch (err) {
-      setError(err.message || 'Lưu CV thất bại');
-      console.error('CV save error:', err);
-    } finally {
-      setSaving(false);
+      setError('Không thể tạo file PDF');
     }
   };
 
@@ -225,26 +160,46 @@ export default function MyProfile() {
     );
   }
 
-  const showViewMode = cv && !isEditing;
-
-  const formatDate = (s) => s ? new Date(s).toLocaleDateString('vi-VN') : '';
-
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900">CV của tôi</h1>
-        <p className="text-slate-500 mt-1">
-          {showViewMode ? 'Thông tin CV của bạn' : cv ? 'Chỉnh sửa thông tin CV của bạn' : 'Tạo CV profile để ứng tuyển'}
-        </p>
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">CV của tôi</h1>
+          <p className="text-slate-500 mt-1">
+            {cv ? 'Thông tin CV của bạn' : 'Chưa có CV trong hệ thống'}
+          </p>
+        </div>
+        {cv && (
+          <button
+            type="button"
+            onClick={handleDownloadPdf}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+            </svg>
+            Tải CV PDF
+          </button>
+        )}
       </div>
 
-      {success && (
-        <div className="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
-          {success}
+      {error && (
+        <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+          {error}
         </div>
       )}
 
-      {showViewMode ? (
+      {!cv ? (
+        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+          <div className="text-slate-400 mb-4">
+            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-slate-700 mb-2">Chưa có CV</h3>
+          <p className="text-slate-500">Bạn chưa tạo CV trong hệ thống. Liên hệ quản trị viên nếu cần hỗ trợ.</p>
+        </div>
+      ) : (
         <div className="space-y-6">
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
@@ -278,7 +233,7 @@ export default function MyProfile() {
                 ))}
               </div>
             ) : (
-              <p className="text-slate-500 text-sm py-2">Chưa có kinh nghiệm. Nhấn <strong>Cập nhật</strong> bên dưới để thêm.</p>
+              <p className="text-slate-500 text-sm py-2">Chưa có kinh nghiệm.</p>
             )}
           </div>
 
@@ -298,7 +253,7 @@ export default function MyProfile() {
                 ))}
               </div>
             ) : (
-              <p className="text-slate-500 text-sm py-2">Chưa có học vấn. Nhấn <strong>Cập nhật</strong> bên dưới để thêm.</p>
+              <p className="text-slate-500 text-sm py-2">Chưa có học vấn.</p>
             )}
           </div>
 
@@ -314,392 +269,10 @@ export default function MyProfile() {
                 ))}
               </div>
             ) : (
-              <p className="text-slate-500 text-sm py-2">Chưa có chứng chỉ. Nhấn <strong>Cập nhật</strong> bên dưới để thêm.</p>
+              <p className="text-slate-500 text-sm py-2">Chưa có chứng chỉ.</p>
             )}
           </div>
-
-          <div className="flex justify-end pt-4">
-            <button
-              type="button"
-              onClick={() => {
-                if (cv) {
-                  setForm({
-                    fullName: cv.fullName || '',
-                    email: cv.email || '',
-                    phone: cv.phone || '',
-                    summary: cv.summary || '',
-                    yearsOfExperience: cv.yearsOfExperience ?? '',
-                    source: cv.source || '',
-                    experiences: cv.experiences?.length ? cv.experiences.map((e) => ({
-                      id: e.id, companyName: e.companyName || '', jobTitle: e.jobTitle || '',
-                      startDate: e.startDate ? e.startDate.slice(0, 10) : '', endDate: e.endDate ? e.endDate.slice(0, 10) : '',
-                      description: e.description || '',
-                    })) : [emptyExperience()],
-                    educations: cv.educations?.length ? cv.educations.map((e) => ({
-                      id: e.id, schoolName: e.schoolName || '', degree: e.degree || '', major: e.major || '',
-                      startYear: e.startYear ?? '', endYear: e.endYear ?? '', gpa: e.gpa ?? '',
-                    })) : [emptyEducation()],
-                    certificates: cv.certificates?.length ? cv.certificates.map((c) => ({
-                      id: c.id, certificateName: c.certificateName || '', issuer: c.issuer || '', issuedYear: c.issuedYear ?? '',
-                    })) : [emptyCertificate()],
-                  });
-                }
-                setIsEditing(true);
-                setSuccess('');
-                setError('');
-              }}
-              className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors"
-            >
-              Cập nhật
-            </button>
-          </div>
         </div>
-      ) : (
-      <form onSubmit={handleSubmit} className="space-y-8">
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-            {error}
-          </div>
-        )}
-        {success && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
-            {success}
-          </div>
-        )}
-
-        {/* Thông tin cơ bản */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-            <span className="w-1 h-5 bg-blue-600 rounded-full" />
-            Thông tin cá nhân
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Họ và tên <span className="text-red-500">*</span></label>
-              <input
-                type="text"
-                value={form.fullName}
-                onChange={(e) => updateField('fullName', e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Nguyễn Văn A"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
-              <input
-                type="email"
-                value={form.email}
-                onChange={(e) => updateField('email', e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="email@example.com"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Số điện thoại</label>
-              <input
-                type="tel"
-                value={form.phone}
-                onChange={(e) => updateField('phone', e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="0901234567"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Năm kinh nghiệm</label>
-              <input
-                type="number"
-                min="0"
-                value={form.yearsOfExperience}
-                onChange={(e) => updateField('yearsOfExperience', e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="2"
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Giới thiệu bản thân</label>
-              <textarea
-                value={form.summary}
-                onChange={(e) => updateField('summary', e.target.value)}
-                rows={4}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Mô tả ngắn gọn về bản thân, mục tiêu nghề nghiệp..."
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Nguồn tham khảo</label>
-              <input
-                type="text"
-                value={form.source}
-                onChange={(e) => updateField('source', e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="WEBSITE, REFERRAL, SOCIAL..."
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Kinh nghiệm làm việc */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-              <span className="w-1 h-5 bg-blue-600 rounded-full" />
-              Kinh nghiệm làm việc
-            </h2>
-            <button
-              type="button"
-              onClick={() => addArrayItem('experiences', emptyExperience)}
-              className="text-sm font-medium text-blue-600 hover:text-blue-700"
-            >
-              + Thêm
-            </button>
-          </div>
-          {form.experiences.map((exp, idx) => (
-            <div key={idx} className="mb-6 p-4 bg-slate-50 rounded-xl border border-slate-100">
-              <div className="flex justify-between items-start mb-3">
-                <span className="text-sm font-medium text-slate-600">#{idx + 1}</span>
-                {form.experiences.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeArrayItem('experiences', idx)}
-                    className="text-red-600 hover:text-red-700 text-sm"
-                  >
-                    Xóa
-                  </button>
-                )}
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Công ty <span className="text-red-500">*</span></label>
-                  <input
-                    value={exp.companyName}
-                    onChange={(e) => updateArrayItem('experiences', idx, 'companyName', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                    placeholder="Tên công ty"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Vị trí <span className="text-red-500">*</span></label>
-                  <input
-                    value={exp.jobTitle}
-                    onChange={(e) => updateArrayItem('experiences', idx, 'jobTitle', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                    placeholder="Job title"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Từ ngày <span className="text-red-500">*</span></label>
-                  <input
-                    type="date"
-                    value={exp.startDate}
-                    onChange={(e) => updateArrayItem('experiences', idx, 'startDate', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Đến ngày (để trống nếu hiện tại)</label>
-                  <input
-                    type="date"
-                    value={exp.endDate}
-                    onChange={(e) => updateArrayItem('experiences', idx, 'endDate', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Mô tả</label>
-                  <textarea
-                    value={exp.description}
-                    onChange={(e) => updateArrayItem('experiences', idx, 'description', e.target.value)}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                    placeholder="Mô tả công việc đã làm..."
-                  />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Học vấn */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-              <span className="w-1 h-5 bg-blue-600 rounded-full" />
-              Học vấn
-            </h2>
-            <button
-              type="button"
-              onClick={() => addArrayItem('educations', emptyEducation)}
-              className="text-sm font-medium text-blue-600 hover:text-blue-700"
-            >
-              + Thêm
-            </button>
-          </div>
-          {form.educations.map((edu, idx) => (
-            <div key={idx} className="mb-6 p-4 bg-slate-50 rounded-xl border border-slate-100">
-              <div className="flex justify-between items-start mb-3">
-                <span className="text-sm font-medium text-slate-600">#{idx + 1}</span>
-                {form.educations.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeArrayItem('educations', idx)}
-                    className="text-red-600 hover:text-red-700 text-sm"
-                  >
-                    Xóa
-                  </button>
-                )}
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Trường <span className="text-red-500">*</span></label>
-                  <input
-                    value={edu.schoolName}
-                    onChange={(e) => updateArrayItem('educations', idx, 'schoolName', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                    placeholder="Tên trường"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Bằng cấp</label>
-                  <input
-                    value={edu.degree}
-                    onChange={(e) => updateArrayItem('educations', idx, 'degree', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                    placeholder="Cử nhân, Thạc sĩ..."
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Chuyên ngành</label>
-                  <input
-                    value={edu.major}
-                    onChange={(e) => updateArrayItem('educations', idx, 'major', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                    placeholder="CNTT, Marketing..."
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Năm bắt đầu</label>
-                  <input
-                    type="number"
-                    min="1990"
-                    max="2030"
-                    value={edu.startYear}
-                    onChange={(e) => updateArrayItem('educations', idx, 'startYear', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                    placeholder="2020"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Năm tốt nghiệp</label>
-                  <input
-                    type="number"
-                    min="1990"
-                    max="2030"
-                    value={edu.endYear}
-                    onChange={(e) => updateArrayItem('educations', idx, 'endYear', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                    placeholder="2024"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">GPA</label>
-                  <input
-                    type="text"
-                    value={edu.gpa}
-                    onChange={(e) => updateArrayItem('educations', idx, 'gpa', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                    placeholder="3.5"
-                  />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Chứng chỉ */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-              <span className="w-1 h-5 bg-blue-600 rounded-full" />
-              Chứng chỉ
-            </h2>
-            <button
-              type="button"
-              onClick={() => addArrayItem('certificates', emptyCertificate)}
-              className="text-sm font-medium text-blue-600 hover:text-blue-700"
-            >
-              + Thêm
-            </button>
-          </div>
-          {form.certificates.map((cert, idx) => (
-            <div key={idx} className="mb-6 p-4 bg-slate-50 rounded-xl border border-slate-100">
-              <div className="flex justify-between items-start mb-3">
-                <span className="text-sm font-medium text-slate-600">#{idx + 1}</span>
-                {form.certificates.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeArrayItem('certificates', idx)}
-                    className="text-red-600 hover:text-red-700 text-sm"
-                  >
-                    Xóa
-                  </button>
-                )}
-              </div>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Tên chứng chỉ <span className="text-red-500">*</span></label>
-                  <input
-                    value={cert.certificateName}
-                    onChange={(e) => updateArrayItem('certificates', idx, 'certificateName', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                    placeholder="TOEIC, AWS..."
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Tổ chức cấp</label>
-                  <input
-                    value={cert.issuer}
-                    onChange={(e) => updateArrayItem('certificates', idx, 'issuer', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                    placeholder="IIG, Microsoft..."
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Năm</label>
-                  <input
-                    type="number"
-                    min="1990"
-                    max="2030"
-                    value={cert.issuedYear}
-                    onChange={(e) => updateArrayItem('certificates', idx, 'issuedYear', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                    placeholder="2024"
-                  />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex justify-end gap-3">
-          {cv && (
-            <button
-              type="button"
-              onClick={() => { setIsEditing(false); setError(''); setSuccess(''); }}
-              className="px-6 py-3 border border-slate-300 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition-colors"
-            >
-              Hủy
-            </button>
-          )}
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {saving ? 'Đang lưu...' : cv ? 'Lưu thay đổi' : 'Tạo CV'}
-          </button>
-        </div>
-      </form>
       )}
     </div>
   );

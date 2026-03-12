@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using RMS.Entity;
@@ -50,8 +50,6 @@ public partial class RecruitmentDbContext : DbContext
 
     public virtual DbSet<JobRequest> JobRequests { get; set; }
 
-    public virtual DbSet<JobPosting> JobPostings { get; set; }
-
     public virtual DbSet<Offer> Offers { get; set; }
 
     public virtual DbSet<OfferApproval> OfferApprovals { get; set; }
@@ -77,8 +75,6 @@ public partial class RecruitmentDbContext : DbContext
     public virtual DbSet<UserDepartment> UserDepartments { get; set; }
 
     public virtual DbSet<WorkflowTransition> WorkflowTransitions { get; set; }
-
-    public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -499,36 +495,6 @@ public partial class RecruitmentDbContext : DbContext
                 .HasConstraintName("FK_JobRequests_AssignedStaff");
         });
 
-        modelBuilder.Entity<JobPosting>(entity =>
-        {
-            entity.HasKey(e => e.Id).HasName("PK__JobPosti__3214EC07");
-
-            entity.Property(e => e.Title).HasMaxLength(300);
-            entity.Property(e => e.Location).HasMaxLength(200);
-            entity.Property(e => e.SalaryMin).HasColumnType("decimal(18, 2)");
-            entity.Property(e => e.SalaryMax).HasColumnType("decimal(18, 2)");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnType("datetime");
-            entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
-            entity.Property(e => e.DeletedAt).HasColumnType("datetime");
-            entity.Property(e => e.IsDeleted).HasDefaultValue(false);
-
-            entity.HasOne(d => d.JobRequest).WithMany()
-                .HasForeignKey(d => d.JobRequestId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__JobPostin__JobRe__");
-
-            entity.HasOne(d => d.Status).WithMany()
-                .HasForeignKey(d => d.StatusId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__JobPostin__Statu__");
-
-            entity.HasOne(d => d.CreatedByNavigation).WithMany()
-                .HasForeignKey(d => d.CreatedBy)
-                .HasConstraintName("FK__JobPostin__Creat__");
-        });
-
         modelBuilder.Entity<Offer>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__Offers__3214EC07E812C1E8");
@@ -542,8 +508,21 @@ public partial class RecruitmentDbContext : DbContext
 
             entity.HasOne(d => d.Application).WithMany(p => p.Offers)
                 .HasForeignKey(d => d.ApplicationId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Offers__Applicat__236943A5");
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_Offers_Application");
+
+            entity.HasOne(d => d.Candidate).WithMany()
+                .HasForeignKey(d => d.CandidateId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_Offers_Candidate");
+
+            entity.HasOne(d => d.JobRequest).WithMany()
+                .HasForeignKey(d => d.JobRequestId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_Offers_JobRequest");
 
             entity.HasOne(d => d.Status).WithMany(p => p.Offers)
                 .HasForeignKey(d => d.StatusId)

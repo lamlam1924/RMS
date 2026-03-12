@@ -38,9 +38,18 @@ public class HROffersService : IHROffersService
     public async Task<ActionResponseDto> CreateOfferAsync(CreateOfferDto dto, int userId)
     {
         var offerId = await _repository.CreateOfferAsync(
-            dto.ApplicationId, dto.Salary, userId);
+            dto.CandidateId, dto.JobRequestId, dto.Salary, dto.Benefits, dto.StartDate, userId);
 
         return ResponseHelper.CreateActionResponse(offerId, "Offer");
+    }
+
+    public async Task<ActionResponseDto> UpdateOfferAsync(int offerId, UpdateOfferDto dto, int userId)
+    {
+        var success = await _repository.UpdateOfferAsync(offerId, dto.Salary, dto.Benefits, dto.StartDate, userId);
+        return ResponseHelper.CreateActionResponse(
+            success,
+            "Đã cập nhật thư mời thành công",
+            "Không thể chỉnh sửa. Chỉ offer ở trạng thái Nháp hoặc Đang duyệt mới được sửa.");
     }
 
     public async Task<ActionResponseDto> UpdateOfferStatusAsync(UpdateOfferStatusDto dto, int userId)
@@ -63,5 +72,16 @@ public class HROffersService : IHROffersService
             "Offer sent successfully", 
             "Failed to send offer"
         );
+    }
+
+    public async Task<ActionResponseDto> UpdateOfferAfterNegotiationAsync(int offerId, UpdateOfferAfterNegotiationDto dto, int userId)
+    {
+        var success = await _repository.UpdateOfferAfterNegotiationAsync(
+            offerId, dto.ProposedSalary, dto.Benefits, dto.StartDate, userId);
+
+        return ResponseHelper.CreateActionResponse(
+            success,
+            "Offer updated and resent successfully",
+            "Failed to update offer (offer must be in NEGOTIATING status)");
     }
 }

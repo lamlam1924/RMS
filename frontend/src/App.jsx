@@ -33,6 +33,7 @@ import WorkflowManagement from "./pages/admin/WorkflowManagement";
 import DirectorDashboard from "./pages/director/DirectorDashboard";
 import DirectorJobRequestList from "./pages/director/DirectorJobRequestList";
 import OfferApprovals from "./pages/director/OfferApprovals";
+import MyOffers from "./pages/candidate/MyOffers";
 
 // Department Manager Pages
 import DeptManagerDashboard from "./pages/department-manager/DeptManagerDashboard";
@@ -52,6 +53,8 @@ import HRApplicationList from "./pages/hr/manager/HRApplicationList";
 import HRApplicationDetail from "./pages/hr/manager/HRApplicationDetail";
 import HRInterviewList from "./pages/hr/manager/HRInterviewList";
 import HROfferList from "./pages/hr/manager/HROfferList";
+import HROfferCreate from "./pages/hr/manager/HROfferCreate";
+import HROfferDetail from "./pages/hr/manager/HROfferDetail";
 
 // HR Staff Pages
 import HRJobPostingList from "./pages/hr/staff/HRJobPostingList";
@@ -174,6 +177,7 @@ export default function App() {
           <Route path="jobs" element={<JobBoard />} />
           <Route path="jobs/:id" element={<JobDetail />} />
           <Route path="applications" element={<MyApplications />} />
+          <Route path="offers" element={<MyOffers />} />
           <Route path="profile" element={<MyProfile />} />
           {/* Default redirect to jobs */}
           <Route index element={<Navigate to="jobs" replace />} />
@@ -504,6 +508,22 @@ export default function App() {
             element={
               <PrivateRoute roles={[ROLES.HR_MANAGER, ROLES.HR_STAFF]}>
                 <HRInterviewList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="hr-manager/offers/create"
+            element={
+              <PrivateRoute roles={[ROLES.HR_MANAGER, ROLES.HR_STAFF]}>
+                <HROfferCreate />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="hr-manager/offers/:id"
+            element={
+              <PrivateRoute roles={[ROLES.HR_MANAGER, ROLES.HR_STAFF]}>
+                <HROfferDetail />
               </PrivateRoute>
             }
           />

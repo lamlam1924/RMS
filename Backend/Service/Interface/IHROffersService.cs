@@ -10,6 +10,8 @@ public interface IHROffersService
     Task<List<OfferListDto>> GetApprovedOffersAsync();
     Task<OfferDetailDto?> GetOfferByIdAsync(int id);
     Task<ActionResponseDto> CreateOfferAsync(CreateOfferDto dto, int userId);
+    Task<ActionResponseDto> UpdateOfferAsync(int offerId, UpdateOfferDto dto, int userId);
     Task<ActionResponseDto> UpdateOfferStatusAsync(UpdateOfferStatusDto dto, int userId);
     Task<ActionResponseDto> SendOfferAsync(int offerId, int userId);
+    Task<ActionResponseDto> UpdateOfferAfterNegotiationAsync(int offerId, UpdateOfferAfterNegotiationDto dto, int userId);
 }

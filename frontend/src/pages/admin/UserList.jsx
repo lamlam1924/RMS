@@ -45,10 +45,11 @@ export default function UserList() {
       async () => {
         try {
           await userService.delete(id);
+          setUsers((prev) => prev.filter((u) => u.userId !== id));
           notify.success('Xóa người dùng thành công');
-          loadUsers();
         } catch (err) {
           notify.error("Lỗi khi xóa người dùng: " + err.message);
+          loadUsers();
         }
       }
     );
