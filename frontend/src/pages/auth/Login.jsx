@@ -102,7 +102,11 @@ export default function Login() {
       await authService.login(email, password, rememberMe);
       redirectBasedOnRole();
     } catch (err) {
-      setError(err.message || 'Đăng nhập thất bại');
+      let msg = err.message || 'Đăng nhập thất bại';
+      if (msg.includes('fetch') || msg.includes('Network') || msg.includes('Failed to fetch')) {
+        msg = 'Không thể kết nối đến server. Vui lòng kiểm tra backend đã chạy chưa (localhost:3000).';
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }

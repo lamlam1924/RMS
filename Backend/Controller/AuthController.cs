@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using RMS.Data;
 using RMS.Dto.Auth;
@@ -181,7 +182,10 @@ public class AuthController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during login");
-            return StatusCode(500, new { message = "Đã có lỗi xảy ra" });
+            var msg = HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment()
+                ? ex.Message
+                : "Đã có lỗi xảy ra";
+            return StatusCode(500, new { message = msg });
         }
     }
 
