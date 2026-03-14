@@ -106,10 +106,13 @@ public class CandidateCvProfileController : ControllerBase
     /// Upload file CV
     /// </summary>
     [HttpPost("upload-file")]
-    public async Task<ActionResult<CvFileUploadResponseDto>> UploadCvFile([FromForm] IFormFile file)
+    [Consumes("multipart/form-data")]
+    public async Task<ActionResult<CvFileUploadResponseDto>> UploadCvFile([FromForm] UploadCvFileRequestDto request)
     {
         try
         {
+            var file = request.File;
+
             var candidateId = GetCandidateId();
             if (candidateId == null)
                 return Unauthorized();

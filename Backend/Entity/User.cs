@@ -27,21 +27,25 @@ public partial class User
 
     public int? DeletedBy { get; set; }
 
-    public string? AvatarUrl { get; set; }
-
     public string? PasswordHash { get; set; }
 
     public string? GoogleId { get; set; }
 
     public string AuthProvider { get; set; } = null!;
 
+    public string? AvatarUrl { get; set; }
+
     public virtual ICollection<Department> Departments { get; set; } = new List<Department>();
+
+    public virtual ICollection<Interview> InterviewCreatedByNavigations { get; set; } = new List<Interview>();
 
     public virtual ICollection<InterviewFeedback> InterviewFeedbacks { get; set; } = new List<InterviewFeedback>();
 
     public virtual ICollection<InterviewParticipant> InterviewParticipants { get; set; } = new List<InterviewParticipant>();
 
-    public virtual ICollection<Interview> Interviews { get; set; } = new List<Interview>();
+    public virtual ICollection<InterviewRoundDecision> InterviewRoundDecisions { get; set; } = new List<InterviewRoundDecision>();
+
+    public virtual ICollection<Interview> InterviewUpdatedByNavigations { get; set; } = new List<Interview>();
 
     public virtual ICollection<JobPosting> JobPostingAssignedStaffs { get; set; } = new List<JobPosting>();
 

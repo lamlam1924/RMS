@@ -110,6 +110,20 @@ export const candidateService = {
     return res.json();
   },
 
+  async getInterviewDetail(id) {
+    const res = await authFetch(`${API_BASE_URL}/candidate/interviews/${id}`);
+    if (!res.ok) {
+      if (res.status === 404) {
+        throw new Error("Lịch phỏng vấn không tồn tại hoặc bạn không có quyền xem");
+      }
+      if (res.status === 401) {
+        throw new Error("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại");
+      }
+      throw new Error("Không thể tải chi tiết phỏng vấn");
+    }
+    return res.json();
+  },
+
   async respondInterview(id, response) {
     const res = await authFetch(`${API_BASE_URL}/candidate/interviews/${id}/respond`, {
       method: "POST",

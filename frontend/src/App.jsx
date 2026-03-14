@@ -69,6 +69,8 @@ import EditJobPosting from "./pages/hr/staff/EditJobPosting";
 // Employee Pages
 import EmployeeInterviewList from "./pages/employee/EmployeeInterviewList";
 import EmployeeInterviewDetail from "./pages/employee/EmployeeInterviewDetail";
+import InterviewerInterviewList from "./pages/interviewer/InterviewerInterviewList";
+import InterviewerInterviewDetail from "./pages/interviewer/InterviewerInterviewDetail";
 
 // Candidate Pages
 import JobBoard from "./pages/candidate/JobBoard";
@@ -76,12 +78,21 @@ import JobDetail from "./pages/candidate/JobDetail";
 import MyApplications from "./pages/candidate/MyApplications";
 import MyProfile from "./pages/candidate/MyProfile";
 import CandidateInterviewList from "./pages/candidate/CandidateInterviewList";
+import CandidateInterviewDetail from "./pages/candidate/CandidateInterviewDetail";
 
 // Resume Builder (standalone)
 import ResumePage from "./pages/resume-builder/ResumePage";
 
 const STAFF_ROLES = [
   ROLES.ADMIN,
+  ROLES.DIRECTOR,
+  ROLES.HR_MANAGER,
+  ROLES.HR_STAFF,
+  ROLES.DEPARTMENT_MANAGER,
+  ROLES.EMPLOYEE,
+];
+
+const INTERVIEWER_ROLES = [
   ROLES.DIRECTOR,
   ROLES.HR_MANAGER,
   ROLES.HR_STAFF,
@@ -184,6 +195,7 @@ export default function App() {
           <Route path="jobs/:id" element={<JobDetail />} />
           <Route path="applications" element={<MyApplications />} />
           <Route path="interviews" element={<CandidateInterviewList />} />
+          <Route path="interviews/:id" element={<CandidateInterviewDetail />} />
           <Route path="profile" element={<MyProfile />} />
           {/* Default redirect to jobs */}
           <Route index element={<Navigate to="jobs" replace />} />
@@ -199,6 +211,23 @@ export default function App() {
           }
         >
           <Route path="dashboard" element={<RoleBasedRedirect />} />
+
+          <Route
+            path="interviews"
+            element={
+              <PrivateRoute roles={INTERVIEWER_ROLES}>
+                <InterviewerInterviewList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="interviews/:id"
+            element={
+              <PrivateRoute roles={INTERVIEWER_ROLES}>
+                <InterviewerInterviewDetail />
+              </PrivateRoute>
+            }
+          />
 
           {/* Admin Management Routes */}
           <Route

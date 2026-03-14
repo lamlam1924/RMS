@@ -40,7 +40,7 @@ const MENU_CONFIG = [
       {
         key: "directorMyInterviews",
         label: "Phỏng vấn của tôi",
-        to: "/staff/director/my-interviews",
+        to: "/staff/interviews",
       },
       {
         key: "directorNominations",
@@ -69,7 +69,7 @@ const MENU_CONFIG = [
       {
         key: "deptManagerInterviews",
         label: "Phỏng vấn của tôi",
-        to: "/staff/dept-manager/interviews",
+        to: "/staff/interviews",
       },
       {
         key: "deptManagerNominations",
@@ -96,6 +96,11 @@ const MENU_CONFIG = [
         to: "/staff/hr-manager/job-requests",
       },
       {
+        key: "hrManagerMyInterviews",
+        label: "Phỏng vấn của tôi",
+        to: "/staff/interviews",
+      },
+      {
         key: "hrManagerJobPostings",
         label: "Tin tuyển dụng",
         to: "/staff/hr-manager/job-postings",
@@ -109,6 +114,11 @@ const MENU_CONFIG = [
     label: "Nhân viên nhân sự",
     roles: [ROLES.HR_STAFF],
     children: [
+      {
+        key: "hrStaffMyInterviews",
+        label: "Phỏng vấn của tôi",
+        to: "/staff/interviews",
+      },
       {
         key: "hrStaffJobPostings",
         label: "Tin tuyển dụng",
@@ -126,7 +136,7 @@ const MENU_CONFIG = [
       {
         key: "employeeInterviews",
         label: "Phỏng vấn của tôi",
-        to: "/staff/employee/interviews",
+        to: "/staff/interviews",
       },
     ],
   },
@@ -147,7 +157,7 @@ const MENU_CONFIG = [
   },
   {
     key: "sharedInterviews",
-    label: "Phỏng vấn",
+    label: "Quản lý phỏng vấn",
     to: "/staff/hr-manager/interviews",
     roles: [ROLES.HR_MANAGER, ROLES.HR_STAFF],
   },

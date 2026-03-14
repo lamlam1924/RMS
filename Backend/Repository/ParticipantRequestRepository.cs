@@ -151,7 +151,7 @@ public class ParticipantRequestRepository : IParticipantRequestRepository
         if (!deptIds.Any()) return new();
 
         return await _context.UserDepartments
-            .Where(ud => deptIds.Contains(ud.DepartmentId) && ud.UserId != userId)
+            .Where(ud => deptIds.Contains(ud.DepartmentId))
             .Select(ud => new SimpleUserDto
             {
                 Id = ud.User.Id,

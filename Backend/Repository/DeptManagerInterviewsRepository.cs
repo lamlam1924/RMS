@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using RMS.Common;
 using RMS.Data;
+using RMS.Dto.DepartmentManager;
 using RMS.Entity;
 using RMS.Repository.Interface;
 
@@ -77,6 +79,10 @@ public class DeptManagerInterviewsRepository : IDeptManagerInterviewsRepository
         return await _context.Interviews
             .Include(i => i.Application)
                 .ThenInclude(a => a.Cvprofile)
+                    .ThenInclude(cv => cv.Cvexperiences)
+            .Include(i => i.Application)
+                .ThenInclude(a => a.Cvprofile)
+                    .ThenInclude(cv => cv.Cveducations)
             .Include(i => i.Application)
                 .ThenInclude(a => a.JobRequest)
                     .ThenInclude(jr => jr.Position)
@@ -143,22 +149,35 @@ public class DeptManagerInterviewsRepository : IDeptManagerInterviewsRepository
         return await _context.SaveChangesAsync() > 0;
     }
 
-    public async Task<List<EvaluationCriterion>> GetEvaluationCriteriaByPositionAsync(int positionId)
+    public async Task<List<EvaluationCriterion>> GetEvaluationCriteriaByPositionAsync(int positionId, int roundNo)
     {
-        var criteria = await _context.EvaluationCriteria
-            .Include(c => c.Template)
-            .Where(c => c.Template.PositionId == positionId)
+        return await EvaluationCriteriaQueryHelper.GetCriteriaByPositionAndRoundAsync(_context, positionId, roundNo);
+    }
+
+    public async Task<List<PreviousRoundSummaryDto>> GetPreviousRoundsAsync(int applicationId, int currentRoundNo)
+    {
+        return await _context.Interviews
+            .Include(i => i.Status)
+            .Include(i => i.InterviewRoundDecision)
+            .Where(i => i.ApplicationId == applicationId
+                        && i.RoundNo < currentRoundNo
+                        && i.IsDeleted == false)
+            .OrderBy(i => i.RoundNo)
+            .Select(i => new PreviousRoundSummaryDto
+            {
+                RoundNo = i.RoundNo,
+                InterviewId = i.Id,
+                StartTime = i.StartTime,
+                StatusCode = i.Status.Code,
+                StatusName = i.Status.Name,
+                AverageScore = i.InterviewFeedbacks.Any(f => f.InterviewScores.Any())
+                    ? (decimal?)i.InterviewFeedbacks
+                        .SelectMany(f => f.InterviewScores)
+                        .Average(s => s.Score)
+                    : null,
+                DecisionCode = i.InterviewRoundDecision != null ? i.InterviewRoundDecision.DecisionCode : null,
+                DecisionNote = i.InterviewRoundDecision != null ? i.InterviewRoundDecision.Note : null
+            })
             .ToListAsync();
-
-        if (criteria.Count == 0)
-        {
-            // Fallback: template chung không gắn với position cụ thể
-            criteria = await _context.EvaluationCriteria
-                .Include(c => c.Template)
-                .Where(c => c.Template.PositionId == null)
-                .ToListAsync();
-        }
-
-        return criteria;
     }
 }

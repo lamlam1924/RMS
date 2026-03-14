@@ -1,15 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import hrService from '../../../services/hrService';
+import notify from '../../../utils/notification';
 import ApplicationProgressBar from '../../../components/hr/ApplicationProgressBar';
 import { formatDate, formatCurrency } from '../../../utils/formatters/display';
-import { PriorityBadge, StatusBadge } from '../../../components/shared/Badge';
 
 export default function HRApplicationList() {
   const navigate = useNavigate();
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState(null);
+  const [searchText, setSearchText] = useState('');
+  const [focusMode, setFocusMode] = useState('all');
+  const [selectedIds, setSelectedIds] = useState([]);
 
   const statusOptions = [
     { value: null, label: 'All Applications', color: '#3b82f6' },
@@ -23,6 +26,10 @@ export default function HRApplicationList() {
   useEffect(() => {
     loadApplications();
   }, [statusFilter]);
+
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [statusFilter, searchText, focusMode]);
 
   const loadApplications = async () => {
     try {
@@ -58,13 +65,65 @@ export default function HRApplicationList() {
     );
   };
 
-  const formatDate = (date) => {
-    return new Date(date).toLocaleDateString('vi-VN');
-  };
-
   const getStatusColor = (statusId) => {
     const status = statusOptions.find(s => s.value === statusId);
     return status ? status.color : '#6b7280';
+  };
+
+  const stats = useMemo(() => {
+    const total = applications.length;
+    const interviewing = applications.filter((item) => item.statusId === 11).length;
+    const highPriority = applications.filter((item) => (item.priority ?? 3) <= 2).length;
+    return { total, interviewing, highPriority };
+  }, [applications]);
+
+  const filteredApplications = useMemo(() => {
+    const keyword = searchText.trim().toLowerCase();
+    return applications.filter((app) => {
+      if (focusMode === 'interviewing' && app.statusId !== 11) return false;
+      if (focusMode === 'priority' && (app.priority ?? 3) > 2) return false;
+
+      if (!keyword) return true;
+
+      return [
+        app.candidateName,
+        app.candidateEmail,
+        app.positionTitle,
+        app.departmentName,
+        app.currentStatus
+      ].some((value) => String(value || '').toLowerCase().includes(keyword));
+    });
+  }, [applications, searchText, focusMode]);
+
+  const allVisibleSelected = filteredApplications.length > 0 && filteredApplications.every((item) => selectedIds.includes(item.id));
+
+  const toggleSelectAllVisible = () => {
+    if (allVisibleSelected) {
+      setSelectedIds([]);
+      return;
+    }
+    setSelectedIds(filteredApplications.map((item) => item.id));
+  };
+
+  const toggleSelection = (applicationId) => {
+    setSelectedIds((prev) => (
+      prev.includes(applicationId)
+        ? prev.filter((id) => id !== applicationId)
+        : [...prev, applicationId]
+    ));
+  };
+
+  const handleQuickSchedule = () => {
+    if (selectedIds.length === 0) {
+      notify.warning('Vui lòng chọn ít nhất 1 hồ sơ để xếp lịch');
+      return;
+    }
+
+    const query = selectedIds.length > 1
+      ? `applicationIds=${selectedIds.join(',')}`
+      : `applicationId=${selectedIds[0]}`;
+
+    navigate(`/staff/hr-manager/interviews/create?${query}`);
   };
 
   return (
@@ -77,6 +136,73 @@ export default function HRApplicationList() {
         <p style={{ color: '#6b7280' }}>
           Manage candidate applications and move them through the pipeline
         </p>
+      </div>
+
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+        gap: 12,
+        marginBottom: 16
+      }}>
+        <div style={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: 14 }}>
+          <div style={{ fontSize: 12, color: '#6b7280' }}>Tổng hồ sơ</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#111827' }}>{stats.total}</div>
+        </div>
+        <div style={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: 14 }}>
+          <div style={{ fontSize: 12, color: '#6b7280' }}>Đang phỏng vấn</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#7c3aed' }}>{stats.interviewing}</div>
+        </div>
+        <div style={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: 14 }}>
+          <div style={{ fontSize: 12, color: '#6b7280' }}>Ưu tiên cao/khẩn</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#dc2626' }}>{stats.highPriority}</div>
+        </div>
+      </div>
+
+      <div style={{
+        backgroundColor: 'white',
+        border: '1px solid #e5e7eb',
+        borderRadius: 8,
+        padding: 12,
+        marginBottom: 16,
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 8,
+        alignItems: 'center'
+      }}>
+        <input
+          placeholder='Tìm theo ứng viên, email, vị trí, phòng ban...'
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          style={{
+            flex: 1,
+            minWidth: 220,
+            padding: '8px 10px',
+            borderRadius: 6,
+            border: '1px solid #d1d5db'
+          }}
+        />
+        {[
+          { id: 'all', label: 'Tất cả' },
+          { id: 'interviewing', label: 'Cần xếp lịch' },
+          { id: 'priority', label: 'Ưu tiên cao' }
+        ].map((mode) => (
+          <button
+            key={mode.id}
+            onClick={() => setFocusMode(mode.id)}
+            style={{
+              padding: '8px 12px',
+              borderRadius: 6,
+              border: `1px solid ${focusMode === mode.id ? '#2563eb' : '#d1d5db'}`,
+              backgroundColor: focusMode === mode.id ? '#2563eb' : 'white',
+              color: focusMode === mode.id ? 'white' : '#374151',
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: 13
+            }}
+          >
+            {mode.label}
+          </button>
+        ))}
       </div>
 
       {/* Status Filter */}
@@ -104,7 +230,7 @@ export default function HRApplicationList() {
       {/* Applications List */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: 40 }}>Loading...</div>
-      ) : applications.length === 0 ? (
+      ) : filteredApplications.length === 0 ? (
         <div style={{
           backgroundColor: 'white',
           padding: 40,
@@ -120,7 +246,15 @@ export default function HRApplicationList() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {applications.map((app) => (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#374151' }}>
+              <input type='checkbox' checked={allVisibleSelected} onChange={toggleSelectAllVisible} />
+              Chọn tất cả kết quả ({filteredApplications.length})
+            </label>
+            <div style={{ fontSize: 13, color: '#6b7280' }}>Đã chọn: {selectedIds.length}</div>
+          </div>
+
+          {filteredApplications.map((app) => (
             <div
               key={app.id}
               onClick={() => navigate(`/staff/hr-manager/applications/${app.id}`)}
@@ -144,6 +278,15 @@ export default function HRApplicationList() {
               {/* Candidate Info */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 12 }}>
                 <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                    <input
+                      type='checkbox'
+                      checked={selectedIds.includes(app.id)}
+                      onChange={() => toggleSelection(app.id)}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <div style={{ fontSize: 12, color: '#6b7280' }}>ID #{app.id}</div>
+                  </div>
                   <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 4 }}>
                     {app.candidateName}
                   </div>
@@ -209,7 +352,7 @@ export default function HRApplicationList() {
                   <div>
                     <div style={{ fontSize: 12, color: '#6b7280' }}>Expected Salary</div>
                     <div style={{ fontWeight: 500, color: '#10b981' }}>
-                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(app.expectedSalary)}
+                      {formatCurrency(app.expectedSalary)}
                     </div>
                   </div>
                 )}
@@ -236,6 +379,55 @@ export default function HRApplicationList() {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {selectedIds.length > 0 && (
+        <div style={{
+          position: 'sticky',
+          bottom: 12,
+          marginTop: 16,
+          backgroundColor: '#111827',
+          color: 'white',
+          borderRadius: 10,
+          padding: '12px 14px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 12
+        }}>
+          <div style={{ fontSize: 14 }}>
+            Đã chọn <strong>{selectedIds.length}</strong> hồ sơ để xếp lịch.
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => setSelectedIds([])}
+              style={{
+                padding: '8px 12px',
+                border: '1px solid #4b5563',
+                borderRadius: 6,
+                backgroundColor: 'transparent',
+                color: 'white',
+                cursor: 'pointer'
+              }}
+            >
+              Bỏ chọn
+            </button>
+            <button
+              onClick={handleQuickSchedule}
+              style={{
+                padding: '8px 12px',
+                border: 'none',
+                borderRadius: 6,
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                cursor: 'pointer',
+                fontWeight: 600
+              }}
+            >
+              Lên lịch nhanh
+            </button>
+          </div>
         </div>
       )}
     </div>

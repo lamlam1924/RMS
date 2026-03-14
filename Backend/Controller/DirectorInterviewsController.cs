@@ -8,56 +8,22 @@ using RMS.Service.Interface;
 
 namespace RMS.Controller;
 
+/// <summary>
+/// Phỏng vấn dành cho Director — xử lý yêu cầu đề cử người tham gia được chuyển tiếp từ HR Manager
+/// </summary>
 [ApiController]
 [Route("api/director/interviews")]
 [Authorize(Roles = "DIRECTOR")]
 public class DirectorInterviewsController : ControllerBase
 {
-    private readonly IDeptManagerInterviewsService _interviewsService;
     private readonly IParticipantRequestService _requestService;
 
-    public DirectorInterviewsController(
-        IDeptManagerInterviewsService interviewsService,
-        IParticipantRequestService requestService)
+    public DirectorInterviewsController(IParticipantRequestService requestService)
     {
-        _interviewsService = interviewsService;
         _requestService = requestService;
     }
 
-    // ==================== Phỏng vấn của Giám đốc (với tư cách interviewer) ====================
-
-    [HttpGet]
-    public async Task<ActionResult<List<DeptManagerInterviewListDto>>> GetMyInterviews()
-    {
-        var userId = CurrentUserHelper.GetCurrentUserId(this);
-        return Ok(await _interviewsService.GetInterviewsAsync(userId));
-    }
-
-    [HttpGet("upcoming")]
-    public async Task<ActionResult<List<DeptManagerInterviewListDto>>> GetUpcomingInterviews()
-    {
-        var userId = CurrentUserHelper.GetCurrentUserId(this);
-        return Ok(await _interviewsService.GetUpcomingInterviewsAsync(userId));
-    }
-
-    [HttpGet("{id}")]
-    public async Task<ActionResult<DeptManagerInterviewDetailDto>> GetInterviewDetail(int id)
-    {
-        var userId = CurrentUserHelper.GetCurrentUserId(this);
-        var detail = await _interviewsService.GetInterviewDetailAsync(id, userId);
-        return detail == null ? NotFound() : Ok(detail);
-    }
-
-    [HttpPost("{id}/feedback")]
-    public async Task<ActionResult> SubmitFeedback(int id, [FromBody] SubmitInterviewFeedbackDto dto)
-    {
-        var userId = CurrentUserHelper.GetCurrentUserId(this);
-        var result = await _interviewsService.SubmitInterviewFeedbackAsync(id, dto, userId);
-        return result.Success ? Ok(result) : BadRequest(new { message = result.Message });
-    }
-
-    // ==================== Yêu cầu đề cử chuyển tiếp từ HR Manager ====================
-
+    /// <summary>Lấy danh sách yêu cầu đề cử được HR Manager chuyển tiếp lên</summary>
     [HttpGet("participant-requests")]
     public async Task<ActionResult<List<ParticipantRequestDto>>> GetForwardedRequests()
     {
@@ -65,6 +31,7 @@ public class DirectorInterviewsController : ControllerBase
         return Ok(await _requestService.GetForwardedToMeAsync(userId));
     }
 
+    /// <summary>Lấy chi tiết một yêu cầu đề cử</summary>
     [HttpGet("participant-requests/{reqId}")]
     public async Task<ActionResult<ParticipantRequestDto>> GetRequestById(int reqId)
     {
@@ -72,6 +39,7 @@ public class DirectorInterviewsController : ControllerBase
         return dto == null ? NotFound() : Ok(dto);
     }
 
+    /// <summary>Đề cử người tham gia phỏng vấn cho vị trí cấp cao</summary>
     [HttpPost("participant-requests/{reqId}/nominate")]
     public async Task<ActionResult<ActionResponseDto>> Nominate(
         int reqId, [FromBody] NominateParticipantsDto dto)

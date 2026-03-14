@@ -5,6 +5,9 @@ import notify from '../../../utils/notification';
 import { authService } from '../../../services/authService';
 import { ROLES } from '../../../constants/roles';
 import { getStatusBadge } from '../../../utils/helpers/badge';
+import PhaseTwoActionsPanel from '../../../components/hr/interviews/PhaseTwoActionsPanel';
+import InterviewSection from '../../../components/hr/interviews/InterviewSection';
+import InterviewFeedbackForm from '../../../components/shared/InterviewFeedbackForm';
 
 const formatDateTime = (dateStr) => {
   if (!dateStr) return 'N/A';
@@ -41,7 +44,7 @@ export default function HRInterviewDetail() {
   const [forwardForm, setForwardForm] = useState({ toUserId: '', message: '' });
 
   // HR feedback form (when HR is a participant)
-  const [feedback, setFeedback] = useState({ scores: [], comment: '', decision: '' });
+  const [feedback, setFeedback] = useState({ comment: '', decision: '' });
 
   const user = authService.getUserInfo();
   const isManager = user?.roles?.includes(ROLES.HR_MANAGER);
@@ -58,13 +61,6 @@ export default function HRInterviewDetail() {
       ]);
       setInterview(data);
       setParticipantRequests(reqs || []);
-      // Init feedback scores from evaluationCriteria if present
-      if (data.evaluationCriteria?.length) {
-        setFeedback(prev => ({
-          ...prev,
-          scores: data.evaluationCriteria.map(c => ({ criterionId: c.id, score: 0 }))
-        }));
-      }
     } catch {
       notify.error('Không thể tải thông tin phỏng vấn');
       navigate('/staff/hr-manager/interviews');
@@ -187,9 +183,12 @@ export default function HRInterviewDetail() {
   const isParticipant = interview.participants?.some(p => p.userId === currentUserId);
   const myFeedback = interview.feedbacks?.find(fb => fb.interviewerId === currentUserId);
   const canSubmitFeedback = isParticipant && !myFeedback && !isFinal;
+  const feedbackProgressLabel = `${interview.feedbackCount || 0}/${interview.participantCount || 0}`;
+  const missingFeedbackCount = Math.max((interview.participantCount || 0) - (interview.feedbackCount || 0), 0);
 
   return (
-    <div style={{ padding: 24, backgroundColor: '#f9fafb', minHeight: '100vh' }}>
+    <div style={{ padding: 24, backgroundColor: '#f8fafc', minHeight: '100vh' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <button
@@ -206,23 +205,16 @@ export default function HRInterviewDetail() {
         </span>
       </div>
 
-      {/* Candidate info */}
-      <div style={{ backgroundColor: 'white', borderRadius: 8, border: '1px solid #e5e7eb', padding: 20, marginBottom: 16 }}>
+      <InterviewSection step="Tổng quan" title="Thông tin chính" description="Thông tin cốt lõi của buổi phỏng vấn và tiến độ feedback.">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
           <div><div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Ứng viên</div><div style={{ fontWeight: 500 }}>{interview.candidateName}</div></div>
           <div><div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Vị trí</div><div style={{ fontWeight: 500 }}>{interview.positionTitle}</div></div>
           <div><div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Phòng ban</div><div style={{ fontWeight: 500 }}>{interview.departmentName}</div></div>
           <div><div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Application ID</div><div style={{ fontWeight: 500 }}>#{interview.applicationId}</div></div>
-        </div>
-      </div>
-
-      {/* Schedule */}
-      <div style={{ backgroundColor: 'white', borderRadius: 8, border: '1px solid #e5e7eb', padding: 20, marginBottom: 16 }}>
-        <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, marginTop: 0 }}>Lịch phỏng vấn</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
           <div><div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Bắt đầu</div><div style={{ fontWeight: 500 }}>{formatDateTime(interview.startTime)}</div></div>
           <div><div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Kết thúc</div><div style={{ fontWeight: 500 }}>{formatDateTime(interview.endTime)}</div></div>
           <div><div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Địa điểm</div><div style={{ fontWeight: 500 }}>{interview.location || '—'}</div></div>
+          <div><div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Tiến độ feedback</div><div style={{ fontWeight: 700, color: '#111827' }}>{feedbackProgressLabel}</div></div>
           <div>
             <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Link họp</div>
             {interview.meetingLink
@@ -230,13 +222,12 @@ export default function HRInterviewDetail() {
               : <span style={{ fontWeight: 500 }}>—</span>}
           </div>
         </div>
-      </div>
+      </InterviewSection>
+
+      <PhaseTwoActionsPanel interview={interview} onUpdated={loadAll} />
 
       {/* Participants */}
-      <div style={{ backgroundColor: 'white', borderRadius: 8, border: '1px solid #e5e7eb', padding: 20, marginBottom: 16 }}>
-        <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, marginTop: 0 }}>
-          Người tham gia ({interview.participants?.length ?? 0})
-        </h3>
+      <InterviewSection step="Phối hợp" title={`Người tham gia (${interview.participants?.length ?? 0})`} description="Theo dõi ai sẽ tham gia phỏng vấn và ai đã hoàn thành đánh giá.">
         {!interview.participants?.length ? (
           <div style={{ color: '#6b7280', fontSize: 13 }}>Chưa có người tham gia</div>
         ) : (
@@ -259,23 +250,22 @@ export default function HRInterviewDetail() {
             ))}
           </div>
         )}
-      </div>
+      </InterviewSection>
 
       {/* Participant Requests */}
-      <div style={{ backgroundColor: 'white', borderRadius: 8, border: '1px solid #e5e7eb', padding: 20, marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>
-            Yêu cầu đề cử ({participantRequests.length})
-          </h3>
-          {!isFinal && (
-            <button
-              onClick={openRequestModal}
-              style={{ padding: '6px 14px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
-            >
-              + Gửi yêu cầu
-            </button>
-          )}
-        </div>
+      <InterviewSection
+        step="Điều phối"
+        title={`Yêu cầu đề cử (${participantRequests.length})`}
+        description="Dùng khi cần bổ sung interviewer hoặc chuyển tiếp lên giám đốc."
+        actions={!isFinal && (
+          <button
+            onClick={openRequestModal}
+            style={{ padding: '6px 14px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+          >
+            + Gửi yêu cầu
+          </button>
+        )}
+      >
         {!participantRequests.length ? (
           <div style={{ color: '#6b7280', fontSize: 13 }}>Chưa có yêu cầu đề cử nào</div>
         ) : (
@@ -314,129 +304,114 @@ export default function HRInterviewDetail() {
             })}
           </div>
         )}
-      </div>
+      </InterviewSection>
 
       {/* Feedbacks */}
       {interview.feedbacks?.length > 0 && (
-        <div style={{ backgroundColor: 'white', borderRadius: 8, border: '1px solid #e5e7eb', padding: 20, marginBottom: 16 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, marginTop: 0 }}>Đánh giá ({interview.feedbacks.length})</h3>
+        <InterviewSection step="Đánh giá" title={`Danh sách đánh giá (${interview.feedbacks.length})`} description="Đọc nhanh ý kiến của từng người phỏng vấn để chốt kết quả vòng phỏng vấn.">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {interview.feedbacks.map((fb) => (
               <div key={fb.id} style={{ padding: 14, backgroundColor: '#f9fafb', borderRadius: 6, border: '1px solid #e5e7eb' }}>
                 <div style={{ fontWeight: 600, marginBottom: 4 }}>{fb.interviewerName}</div>
                 {fb.note && <div style={{ fontSize: 13, color: '#374151', marginBottom: 8, fontStyle: 'italic' }}>"{fb.note}"</div>}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {fb.scores?.map((sc, idx) => (
-                    <div key={idx} style={{ padding: '4px 10px', borderRadius: 6, fontSize: 12, backgroundColor: 'white', border: '1px solid #e5e7eb' }}>
-                      {sc.criteriaName}: <strong>{sc.score}</strong>/10
-                    </div>
-                  ))}
-                </div>
               </div>
             ))}
           </div>
-        </div>
+        </InterviewSection>
       )}
 
       {/* HR Feedback form (when HR is a participant) */}
       {canSubmitFeedback && (
-        <div style={{ backgroundColor: 'white', borderRadius: 8, border: '1px solid #e5e7eb', padding: 20, marginBottom: 16 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 16, marginTop: 0 }}>Nộp đánh giá của bạn</h3>
-
-          {feedback.scores.length > 0 && (
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Điểm đánh giá</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {feedback.scores.map(sc => {
-                  const criterion = interview.evaluationCriteria?.find(c => c.id === sc.criterionId);
-                  return (
-                    <div key={sc.criterionId} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <span style={{ flex: 1, fontSize: 13 }}>{criterion?.name || 'Tiêu chí'}</span>
-                      <div style={{ display: 'flex', gap: 4 }}>
-                        {[1,2,3,4,5,6,7,8,9,10].map(n => (
-                          <button
-                            key={n}
-                            type="button"
-                            onClick={() => setFeedback(prev => ({
-                              ...prev,
-                              scores: prev.scores.map(s => s.criterionId === sc.criterionId ? { ...s, score: n } : s)
-                            }))}
-                            style={{
-                              width: 28, height: 28, borderRadius: 4, cursor: 'pointer', fontSize: 12, fontWeight: 600,
-                              border: sc.score === n ? 'none' : '1px solid #e5e7eb',
-                              backgroundColor: sc.score === n ? '#3b82f6' : 'white',
-                              color: sc.score === n ? 'white' : '#374151'
-                            }}
-                          >{n}</button>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Nhận xét</label>
-            <textarea
-              value={feedback.comment}
-              onChange={e => setFeedback(f => ({ ...f, comment: e.target.value }))}
-              rows={3}
-              placeholder="Nhận xét của bạn về ứng viên..."
-              style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #d1d5db', fontSize: 13, resize: 'vertical', boxSizing: 'border-box' }}
-            />
-          </div>
-
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Kết quả <span style={{ color: '#ef4444' }}>*</span></div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              {['PASS', 'REJECT'].map(d => (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => setFeedback(f => ({ ...f, decision: d }))}
-                  style={{
-                    flex: 1, padding: '10px 0', borderRadius: 6, cursor: 'pointer', fontWeight: 600,
-                    border: '2px solid',
-                    borderColor: feedback.decision === d ? (d === 'PASS' ? '#10b981' : '#ef4444') : '#e5e7eb',
-                    backgroundColor: feedback.decision === d ? (d === 'PASS' ? '#dcfce7' : '#fee2e2') : 'white',
-                    color: feedback.decision === d ? (d === 'PASS' ? '#166534' : '#991b1b') : '#374151'
-                  }}
-                >
-                  {d === 'PASS' ? '✅ Đạt' : '❌ Không đạt'}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button
-              onClick={handleSubmitFeedback}
-              disabled={submitting}
-              style={{ padding: '10px 24px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, opacity: submitting ? 0.7 : 1 }}
-            >
-              {submitting ? 'Đang nộp...' : 'Nộp đánh giá'}
-            </button>
-          </div>
-        </div>
+        <InterviewSection step="Việc của bạn" title="Nộp đánh giá của bạn" description="Chỉ hiện khi bạn là người tham gia phỏng vấn và chưa nộp đánh giá.">
+          <InterviewFeedbackForm
+            title="Nộp đánh giá của bạn"
+            description="Ghi nhận xét về ứng viên và chọn kết luận cuối cùng."
+            feedback={feedback}
+            setFeedback={setFeedback}
+            submitting={submitting}
+            onSubmit={handleSubmitFeedback}
+            submitLabel="Nộp đánh giá"
+            commentLabel="Nhận xét"
+            commentPlaceholder="Nhận xét của bạn về ứng viên..."
+          />
+        </InterviewSection>
       )}
 
       {/* Actions */}
-      {(canFinalize || canCancel) && (
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          {canCancel && (
-            <button onClick={() => setShowCancelModal(true)}
-              style={{ padding: '10px 20px', border: '1px solid #ef4444', borderRadius: 6, backgroundColor: 'white', color: '#ef4444', cursor: 'pointer', fontWeight: 500 }}>
-              Hủy phỏng vấn
-            </button>
-          )}
-          {canFinalize && (
-            <button onClick={() => setShowFinalizeModal(true)}
-              style={{ padding: '10px 20px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>
-              Kết thúc phỏng vấn
-            </button>
-          )}
+      {(canFinalize || canCancel || !isFinal) && (
+        <div style={{
+          position: 'sticky',
+          bottom: 12,
+          zIndex: 20,
+          marginTop: 16,
+          borderRadius: 10,
+          padding: '12px 14px',
+          backgroundColor: '#111827',
+          color: 'white',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 12,
+          flexWrap: 'wrap'
+        }}>
+          <div style={{ fontSize: 13 }}>
+            {missingFeedbackCount > 0
+              ? `Còn thiếu ${missingFeedbackCount} feedback để chốt vòng.`
+              : 'Đã đủ feedback, bạn có thể chốt vòng phỏng vấn.'}
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {!isFinal && (
+              <button
+                onClick={openRequestModal}
+                style={{
+                  padding: '8px 12px',
+                  border: '1px solid #4b5563',
+                  borderRadius: 6,
+                  backgroundColor: 'transparent',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                }}
+              >
+                + Gửi yêu cầu đề cử
+              </button>
+            )}
+
+            {canCancel && (
+              <button
+                onClick={() => setShowCancelModal(true)}
+                style={{
+                  padding: '8px 12px',
+                  border: '1px solid #ef4444',
+                  borderRadius: 6,
+                  backgroundColor: 'transparent',
+                  color: '#fca5a5',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                }}
+              >
+                Hủy phỏng vấn
+              </button>
+            )}
+
+            {canFinalize && (
+              <button
+                onClick={() => setShowFinalizeModal(true)}
+                style={{
+                  padding: '8px 12px',
+                  border: 'none',
+                  borderRadius: 6,
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontWeight: 700,
+                }}
+              >
+                Chốt phỏng vấn
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -556,7 +531,7 @@ export default function HRInterviewDetail() {
                       backgroundColor: finalizeDecision === d ? (d === 'PASS' ? '#dcfce7' : '#fee2e2') : 'white',
                       color: finalizeDecision === d ? (d === 'PASS' ? '#166534' : '#991b1b') : '#374151'
                     }}>
-                    {d === 'PASS' ? '✅ PASS' : '❌ REJECT'}
+                    {d === 'PASS' ? '✅ Đạt' : '❌ Không đạt'}
                   </button>
                 ))}
               </div>
@@ -595,6 +570,7 @@ export default function HRInterviewDetail() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -29,6 +29,17 @@ public class CandidateInterviewsController : ControllerBase
         return Ok(await _service.GetInterviewsAsync(candidateId));
     }
 
+    /// <summary>Chi tiết một buổi phỏng vấn (bao gồm ban phỏng vấn và lịch sử các vòng trước)</summary>
+    [HttpGet("{id}")]
+    public async Task<ActionResult<CandidateInterviewDetailDto>> GetInterviewDetail(int id)
+    {
+        var candidateId = CurrentUserHelper.GetCurrentUserId(this);
+        if (candidateId == 0) return Unauthorized();
+
+        var detail = await _service.GetInterviewDetailAsync(id, candidateId);
+        return detail == null ? NotFound() : Ok(detail);
+    }
+
     /// <summary>Xác nhận hoặc từ chối tham gia phỏng vấn (CONFIRM / DECLINE)</summary>
     [HttpPost("{id}/respond")]
     public async Task<ActionResult<ActionResponseDto>> RespondToInterview(int id, [FromBody] RespondInterviewDto dto)

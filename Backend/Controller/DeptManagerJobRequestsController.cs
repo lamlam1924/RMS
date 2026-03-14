@@ -123,8 +123,10 @@ public class DeptManagerJobRequestsController : ControllerBase
     [HttpPost("{id}/upload-jd")]
     [Consumes("multipart/form-data")]
     public async Task<ActionResult<DeptManagerJobRequestDetailDto>> UploadJdFile(
-        int id, IFormFile jdFile)
+        int id, [FromForm] UploadJobDescriptionRequestDto request)
     {
+        var jdFile = request.JdFile;
+
         var managerId = CurrentUserHelper.GetCurrentUserId(this);
         if (managerId == 0)
             return Unauthorized(new { message = "Invalid user" });

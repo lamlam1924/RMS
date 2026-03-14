@@ -7,4 +7,25 @@ public class CandidateProfileSummaryDto
     public string? Phone { get; set; }
     public string? Summary { get; set; }
     public int YearsOfExperience { get; set; }
+    public string? CvFileUrl { get; set; }
+    public List<CandidateCvExperienceDto> Experiences { get; set; } = new();
+    public List<CandidateCvEducationDto> Educations { get; set; } = new();
+}
+
+public class CandidateCvExperienceDto
+{
+    public string CompanyName { get; set; } = "";
+    public string JobTitle { get; set; } = "";
+    public DateOnly StartDate { get; set; }
+    public DateOnly? EndDate { get; set; }
+    public string? Description { get; set; }
+}
+
+public class CandidateCvEducationDto
+{
+    public string SchoolName { get; set; } = "";
+    public string? Degree { get; set; }
+    public string? Major { get; set; }
+    public int? StartYear { get; set; }
+    public int? EndYear { get; set; }
 }

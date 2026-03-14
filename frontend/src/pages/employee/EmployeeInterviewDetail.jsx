@@ -1,8 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import employeeService from '../../services/employeeService';
-import { LoadingSpinner } from '../../components/shared';
-import notify from '../../utils/notification';
+import React, { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import employeeService from "../../services/employeeService";
+import { LoadingSpinner } from "../../components/shared";
+import notify from "../../utils/notification";
+import { getStatusBadge } from "../../utils/helpers/badge";
+import InterviewFeedbackForm from "../../components/shared/InterviewFeedbackForm";
+import SimpleInterviewerDetailPage from "../../components/shared/interviews/SimpleInterviewerDetailPage";
+import { formatDateTime } from "../../utils/formatters/display";
 
 export default function EmployeeInterviewDetail() {
   const { id } = useParams();
@@ -10,9 +14,8 @@ export default function EmployeeInterviewDetail() {
   const [interview, setInterview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState({
-    scores: [],
-    comment: '',
-    decision: '' // 'PASS' or 'REJECT'
+    comment: "",
+    decision: "",
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -24,440 +27,176 @@ export default function EmployeeInterviewDetail() {
     try {
       setLoading(true);
       const data = await employeeService.interviews.getById(id);
-      
+
       if (!data) {
-        notify.error('Không tìm thấy phỏng vấn hoặc bạn không được phân công');
-        navigate('/staff/employee/interviews');
+        notify.error("Không tìm thấy phỏng vấn hoặc bạn không được phân công");
+        navigate("/staff/employee/interviews");
         return;
       }
-      
+
       setInterview(data);
-      
-      // Initialize scores for evaluation criteria
-      if (data.evaluationCriteria) {
-        setFeedback(prev => ({
-          ...prev,
-          scores: data.evaluationCriteria.map(c => ({
-            criteriaId: c.id,
-            score: 0,
-            comment: ''
-          }))
-        }));
-      }
     } catch (error) {
-      console.error('Failed to load interview:', error);
-      notify.error('Không thể tải thông tin phỏng vấn');
-      navigate('/staff/employee/interviews');
+      console.error("Failed to load interview:", error);
+      notify.error("Không thể tải thông tin phỏng vấn");
+      navigate("/staff/employee/interviews");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleScoreChange = (criteriaId, score) => {
-    setFeedback(prev => ({
-      ...prev,
-      scores: prev.scores.map(s => 
-        s.criteriaId === criteriaId ? { ...s, score: parseFloat(score) } : s
-      )
-    }));
-  };
-
-  const handleScoreCommentChange = (criteriaId, comment) => {
-    setFeedback(prev => ({
-      ...prev,
-      scores: prev.scores.map(s => 
-        s.criteriaId === criteriaId ? { ...s, comment } : s
-      )
-    }));
-  };
-
   const handleSubmitFeedback = async () => {
     if (!feedback.decision) {
-      notify.warning('Vui lòng chọn kết quả (Đạt/Trượt)');
-      return;
-    }
-
-    // Validate scores
-    const hasEmptyScores = feedback.scores.some(s => s.score === 0 || s.score === '');
-    if (hasEmptyScores) {
-      notify.warning('Vui lòng điền điểm cho tất cả các tiêu chí');
+      notify.warning("Vui lòng chọn kết quả (Đạt/Trượt)");
       return;
     }
 
     try {
       setSubmitting(true);
-      const result = await employeeService.interviews.submitFeedback(id, feedback);
-      
+      const result = await employeeService.interviews.submitFeedback(
+        id,
+        feedback,
+      );
+
       if (result.success) {
-        notify.success('Gửi đánh giá thành công!');
-        navigate('/staff/employee/interviews');
+        notify.success("Gửi đánh giá thành công!");
+        navigate("/staff/employee/interviews");
       } else {
-        notify.error(result.message || 'Gửi đánh giá thất bại');
+        notify.error(result.message || "Gửi đánh giá thất bại");
       }
     } catch (error) {
-      console.error('Failed to submit feedback:', error);
-      notify.error('Gửi đánh giá thất bại. Vui lòng thử lại.');
+      console.error("Failed to submit feedback:", error);
+      notify.error("Gửi đánh giá thất bại. Vui lòng thử lại.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  const formatDateTime = (dateString) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleString('en-US', { 
-      month: 'short', 
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const isPast = (dateString) => {
-    return new Date(dateString) < new Date();
-  };
+  const isPast = (dateString) => new Date(dateString) < new Date();
 
   if (loading) {
-    return <LoadingSpinner message="Loading interview details..." />;
+    return <LoadingSpinner message="Đang tải chi tiết phỏng vấn..." />;
   }
 
   if (!interview) {
     return (
       <div style={{ padding: 24 }}>
-        <div style={{ fontSize: 18, color: '#6b7280' }}>Interview not found</div>
+        <div style={{ fontSize: 18, color: "#6b7280" }}>
+          Không tìm thấy buổi phỏng vấn
+        </div>
       </div>
     );
   }
 
   const canEvaluate = isPast(interview.endTime) && !interview.hasMyFeedback;
+  const badge = getStatusBadge(interview.statusCode);
+
+  const candidate = interview.candidate || {};
+  const candidateSection = interview.candidate ? (
+    <div
+      style={{
+        backgroundColor: "white",
+        borderRadius: 10,
+        border: "1px solid #e5e7eb",
+        padding: 20,
+        marginBottom: 16,
+      }}
+    >
+      <h3 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 12px 0" }}>
+        Hồ sơ ứng viên
+      </h3>
+      {candidate.summary ? (
+        <div style={{ color: "#4b5563", marginBottom: 10 }}>
+          {candidate.summary}
+        </div>
+      ) : null}
+      {(candidate.experiences || []).slice(0, 3).map((exp, idx) => (
+        <div
+          key={idx}
+          style={{ marginBottom: 8, fontSize: 13, color: "#374151" }}
+        >
+          • {exp.jobTitle} • {exp.companyName}
+        </div>
+      ))}
+      {(candidate.educations || []).slice(0, 2).map((edu, idx) => (
+        <div
+          key={idx}
+          style={{ marginBottom: 6, fontSize: 13, color: "#6b7280" }}
+        >
+          • {edu.degree} • {edu.schoolName}
+        </div>
+      ))}
+    </div>
+  ) : null;
 
   return (
-    <div style={{ padding: 24, backgroundColor: '#f9fafb', minHeight: '100vh' }}>
-      {/* Header */}
-      <div style={{ marginBottom: 24 }}>
-        <button
-          onClick={() => navigate('/staff/employee/interviews')}
-          style={{
-            marginBottom: 16,
-            padding: '8px 16px',
-            backgroundColor: 'white',
-            border: '1px solid #d1d5db',
-            borderRadius: 6,
-            cursor: 'pointer',
-            fontWeight: 500
-          }}
-        >
-          ← Back to My Interviews
-        </button>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: '#111827', marginBottom: 8 }}>
-          Interview Details
-        </h1>
-      </div>
-
-      {/* Interview Info Card */}
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: 8,
-        border: '1px solid #e5e7eb',
-        padding: 24,
-        marginBottom: 24
-      }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 24 }}>
-          <div>
-            <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Candidate</div>
-            <div style={{ fontSize: 18, fontWeight: 600 }}>{interview.candidate.fullName}</div>
-            <div style={{ fontSize: 14, color: '#6b7280' }}>{interview.candidate.email}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Position</div>
-            <div style={{ fontSize: 18, fontWeight: 600 }}>{interview.positionTitle}</div>
-            <div style={{ fontSize: 14, color: '#6b7280' }}>{interview.departmentName}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Interview Round</div>
-            <div style={{ fontSize: 16, fontWeight: 500 }}>Round {interview.roundNo}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Status</div>
-            <div style={{ fontSize: 16, fontWeight: 500 }}>{interview.statusName}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Start Time</div>
-            <div style={{ fontSize: 16 }}>📅 {formatDateTime(interview.startTime)}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>End Time</div>
-            <div style={{ fontSize: 16 }}>📅 {formatDateTime(interview.endTime)}</div>
-          </div>
-          <div style={{ gridColumn: '1 / -1' }}>
-            <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Location</div>
-            <div style={{ fontSize: 16 }}>📍 {interview.location}</div>
-          </div>
-        </div>
-
-        {/* Interview Panel */}
-        {interview.participants && interview.participants.length > 0 && (
-          <div style={{ marginTop: 24, paddingTop: 24, borderTop: '1px solid #e5e7eb' }}>
-            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Interview Panel</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {interview.participants.map((p, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    padding: 12,
-                    backgroundColor: '#f9fafb',
-                    borderRadius: 6,
-                    display: 'flex',
-                    justifyContent: 'space-between'
-                  }}
-                >
-                  <div>
-                    <div style={{ fontWeight: 600 }}>{p.userName}</div>
-                    <div style={{ fontSize: 12, color: '#6b7280' }}>{p.interviewRole}</div>
-                  </div>
-                  {p.hasFeedback && (
-                    <span style={{
-                      padding: '4px 8px',
-                      backgroundColor: '#d1fae5',
-                      color: '#065f46',
-                      borderRadius: 4,
-                      fontSize: 12,
-                      fontWeight: 500
-                    }}>
-                      ✓ Submitted
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Candidate Profile */}
-      {interview.candidate && (
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: 8,
-          border: '1px solid #e5e7eb',
-          padding: 24,
-          marginBottom: 24
-        }}>
-          <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 16 }}>Candidate Profile</h2>
-          
-          {interview.candidate.summary && (
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Summary</div>
-              <div style={{ color: '#4b5563' }}>{interview.candidate.summary}</div>
-            </div>
-          )}
-
-          {interview.candidate.experiences && interview.candidate.experiences.length > 0 && (
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Experience</div>
-              {interview.candidate.experiences.map((exp, idx) => (
-                <div key={idx} style={{ marginBottom: 12, paddingLeft: 12, borderLeft: '2px solid #e5e7eb' }}>
-                  <div style={{ fontWeight: 600 }}>{exp.jobTitle}</div>
-                  <div style={{ fontSize: 14, color: '#6b7280' }}>{exp.companyName}</div>
-                  <div style={{ fontSize: 12, color: '#9ca3af' }}>
-                    {new Date(exp.startDate).getFullYear()} - {exp.endDate ? new Date(exp.endDate).getFullYear() : 'Present'}
-                  </div>
-                  {exp.description && <div style={{ fontSize: 14, marginTop: 4 }}>{exp.description}</div>}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {interview.candidate.educations && interview.candidate.educations.length > 0 && (
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Education</div>
-              {interview.candidate.educations.map((edu, idx) => (
-                <div key={idx} style={{ marginBottom: 12, paddingLeft: 12, borderLeft: '2px solid #e5e7eb' }}>
-                  <div style={{ fontWeight: 600 }}>{edu.degree}</div>
-                  <div style={{ fontSize: 14, color: '#6b7280' }}>{edu.schoolName}</div>
-                  {edu.major && <div style={{ fontSize: 13, color: '#9ca3af' }}>{edu.major}</div>}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Evaluation Form */}
-      {canEvaluate && interview.evaluationCriteria && interview.evaluationCriteria.length > 0 && (
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: 8,
-          border: '1px solid #e5e7eb',
-          padding: 24
-        }}>
-          <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 16 }}>Submit Feedback</h2>
-
-          {/* Evaluation Criteria */}
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Evaluation Scores</div>
-            {interview.evaluationCriteria.map((criterion) => {
-              const score = feedback.scores.find(s => s.criteriaId === criterion.id);
-              return (
-                <div key={criterion.id} style={{ marginBottom: 20, padding: 16, backgroundColor: '#f9fafb', borderRadius: 8 }}>
-                  <div style={{ marginBottom: 8 }}>
-                    <div style={{ fontWeight: 600 }}>{criterion.criteriaName}</div>
-                    {criterion.description && (
-                      <div style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>{criterion.description}</div>
-                    )}
-                    <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>
-                      Max Score: {criterion.maxScore} | Weight: {criterion.weight}%
-                    </div>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: 12, alignItems: 'start' }}>
-                    <input
-                      type="number"
-                      min="0"
-                      max={criterion.maxScore}
-                      step="0.5"
-                      value={score?.score || 0}
-                      onChange={(e) => handleScoreChange(criterion.id, e.target.value)}
-                      style={{
-                        padding: '8px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: 6,
-                        fontSize: 14
-                      }}
-                      placeholder="Score"
-                    />
-                    <input
-                      type="text"
-                      value={score?.comment || ''}
-                      onChange={(e) => handleScoreCommentChange(criterion.id, e.target.value)}
-                      style={{
-                        padding: '8px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: 6,
-                        fontSize: 14
-                      }}
-                      placeholder="Optional comment..."
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Overall Comment */}
-          <div style={{ marginBottom: 20 }}>
-            <label style={{ display: 'block', fontWeight: 600, marginBottom: 8 }}>
-              Overall Comment
-            </label>
-            <textarea
-              value={feedback.comment}
-              onChange={(e) => setFeedback(prev => ({ ...prev, comment: e.target.value }))}
-              rows={4}
-              style={{
-                width: '100%',
-                padding: 12,
-                border: '1px solid #d1d5db',
-                borderRadius: 6,
-                fontSize: 14
-              }}
-              placeholder="Share your overall assessment..."
-            />
-          </div>
-
-          {/* Decision */}
-          <div style={{ marginBottom: 24 }}>
-            <label style={{ display: 'block', fontWeight: 600, marginBottom: 8 }}>
-              Decision *
-            </label>
-            <div style={{ display: 'flex', gap: 12 }}>
-              <button
-                onClick={() => setFeedback(prev => ({ ...prev, decision: 'PASS' }))}
-                style={{
-                  padding: '12px 24px',
-                  backgroundColor: feedback.decision === 'PASS' ? '#10b981' : 'white',
-                  color: feedback.decision === 'PASS' ? 'white' : '#111827',
-                  border: '1px solid #d1d5db',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                  fontSize: 14
-                }}
-              >
-                ✓ Pass
-              </button>
-              <button
-                onClick={() => setFeedback(prev => ({ ...prev, decision: 'REJECT' }))}
-                style={{
-                  padding: '12px 24px',
-                  backgroundColor: feedback.decision === 'REJECT' ? '#ef4444' : 'white',
-                  color: feedback.decision === 'REJECT' ? 'white' : '#111827',
-                  border: '1px solid #d1d5db',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                  fontSize: 14
-                }}
-              >
-                ✗ Reject
-              </button>
-            </div>
-          </div>
-
-          {/* Submit Button */}
-          <button
-            onClick={handleSubmitFeedback}
-            disabled={submitting || !feedback.decision}
-            style={{
-              padding: '12px 32px',
-              backgroundColor: feedback.decision ? '#3b82f6' : '#9ca3af',
-              color: 'white',
-              border: 'none',
-              borderRadius: 6,
-              cursor: feedback.decision ? 'pointer' : 'not-allowed',
-              fontWeight: 600,
-              fontSize: 14
-            }}
-          >
-            {submitting ? 'Submitting...' : 'Submit Feedback'}
-          </button>
-        </div>
-      )}
-
-      {/* Already Submitted */}
-      {interview.hasMyFeedback && (
-        <div style={{
-          backgroundColor: '#d1fae5',
-          border: '1px solid #10b981',
-          borderRadius: 8,
-          padding: 20,
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: 18, fontWeight: 600, color: '#065f46', marginBottom: 8 }}>
-            ✓ Feedback Submitted
-          </div>
-          <div style={{ color: '#047857' }}>
-            You have already submitted your feedback for this interview.
-          </div>
-        </div>
-      )}
-
-      {/* Not Ready for Evaluation */}
-      {!canEvaluate && !interview.hasMyFeedback && (
-        <div style={{
-          backgroundColor: '#fef3c7',
-          border: '1px solid #f59e0b',
-          borderRadius: 8,
-          padding: 20,
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: 16, fontWeight: 600, color: '#92400e', marginBottom: 8 }}>
-            Interview Not Completed Yet
-          </div>
-          <div style={{ color: '#b45309' }}>
-            You can submit feedback after the interview ends on {formatDateTime(interview.endTime)}
-          </div>
-        </div>
-      )}
-    </div>
+    <SimpleInterviewerDetailPage
+      onBack={() => navigate("/staff/employee/interviews")}
+      backLabel="← Quay lại danh sách"
+      title="Chi tiết buổi phỏng vấn"
+      statusBadge={badge}
+      statusText={interview.statusName || badge.label}
+      flowMessage={
+        interview.hasMyFeedback
+          ? "Bạn đã hoàn thành đánh giá cho buổi phỏng vấn này."
+          : canEvaluate
+            ? "Bạn có thể nộp đánh giá ngay bây giờ."
+            : "Phần đánh giá sẽ mở sau khi buổi phỏng vấn kết thúc."
+      }
+      summaryRows={[
+        {
+          label: "Ứng viên",
+          value: candidate.fullName || interview.candidateName,
+        },
+        { label: "Email", value: candidate.email },
+        { label: "Vị trí", value: interview.positionTitle },
+        { label: "Phòng ban", value: interview.departmentName },
+        { label: "Vòng", value: `Vòng ${interview.roundNo}` },
+      ]}
+      scheduleRows={[
+        {
+          label: "Bắt đầu",
+          value: formatDateTime(interview.startTime, "vi-VN"),
+        },
+        {
+          label: "Kết thúc",
+          value: formatDateTime(interview.endTime, "vi-VN"),
+        },
+        { label: "Địa điểm", value: interview.location || "—" },
+      ]}
+      participants={(interview.participants || []).map((p) => ({
+        id: p.userId || p.id,
+        name: p.userName || p.name,
+        email: p.email,
+        role: p.interviewRole || p.role,
+        hasFeedback: p.hasFeedback || p.hasSubmittedFeedback,
+      }))}
+      candidateSection={candidateSection}
+      feedbackSection={
+        canEvaluate ? (
+          <InterviewFeedbackForm
+            title="Nộp đánh giá của bạn"
+            description="Ghi nhận xét về ứng viên và chọn kết luận cuối cùng."
+            feedback={feedback}
+            setFeedback={setFeedback}
+            submitting={submitting}
+            onSubmit={handleSubmitFeedback}
+            submitLabel="Gửi đánh giá"
+            commentLabel="Nhận xét tổng quan"
+            commentPlaceholder="Tóm tắt đánh giá của bạn về ứng viên..."
+          />
+        ) : null
+      }
+      successMessage={
+        interview.hasMyFeedback
+          ? "Đánh giá của bạn đã được lưu. Bạn có thể quay lại danh sách phỏng vấn để tiếp tục công việc khác."
+          : null
+      }
+      pendingMessage={
+        !canEvaluate && !interview.hasMyFeedback
+          ? `Bạn có thể nộp đánh giá sau khi buổi phỏng vấn kết thúc vào ${formatDateTime(interview.endTime, "vi-VN")}`
+          : null
+      }
+      maxWidth={1100}
+    />
   );
 }

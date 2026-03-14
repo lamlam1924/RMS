@@ -460,6 +460,7 @@ BEGIN
     PRINT 'Added column AvatarUrl to Users';
 END
 GO
+/* =========================================================
    2026-03-09 | Lâm
    Change:  Thêm trạng thái phỏng vấn và cấu hình workflow cho Interviews
             Thêm PositionId vào EvaluationTemplates, Note vào InterviewFeedbacks
@@ -541,19 +542,19 @@ GO
 
 IF NOT EXISTS (SELECT 1 FROM Statuses WHERE Code = 'PENDING' AND StatusTypeId = 6)
     INSERT INTO Statuses (Id, StatusTypeId, Code, Name, OrderNo, IsFinal) VALUES
-    (30, 6, 'PENDING', N'Chờ xử lý', 1, 0);
+    (29, 6, 'PENDING', N'Chờ xử lý', 1, 0);
 
 IF NOT EXISTS (SELECT 1 FROM Statuses WHERE Code = 'FORWARDED' AND StatusTypeId = 6)
     INSERT INTO Statuses (Id, StatusTypeId, Code, Name, OrderNo, IsFinal) VALUES
-    (31, 6, 'FORWARDED', N'Đã chuyển GĐ', 2, 0);
+    (30, 6, 'FORWARDED', N'Đã chuyển GĐ', 2, 0);
 
 IF NOT EXISTS (SELECT 1 FROM Statuses WHERE Code = 'FULFILLED' AND StatusTypeId = 6)
     INSERT INTO Statuses (Id, StatusTypeId, Code, Name, OrderNo, IsFinal) VALUES
-    (32, 6, 'FULFILLED', N'Đã đề cử đủ', 3, 1);
+    (31, 6, 'FULFILLED', N'Đã đề cử đủ', 3, 1);
 
 IF NOT EXISTS (SELECT 1 FROM Statuses WHERE Code = 'CANCELLED' AND StatusTypeId = 6)
     INSERT INTO Statuses (Id, StatusTypeId, Code, Name, OrderNo, IsFinal) VALUES
-    (33, 6, 'CANCELLED', N'Đã huỷ', 4, 1);
+    (32, 6, 'CANCELLED', N'Đã huỷ', 4, 1);
 GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'ParticipantRequests')
@@ -581,4 +582,466 @@ END
 ELSE
     PRINT 'ParticipantRequests table already exists';
 GO
+
+/* =========================================================
+   2026-03-13 | Lâm
+   Change: Interview Conflict Detection & Rescheduling Tracking
+   Purpose: Thêm tracking cho interview updates, reschedule count, và conflict detection
+            CHỈ FOCUS vào việc detect conflicts giữa các interviews
+            KHÔNG quản lý working hours/availability (đó là việc của HR system)
+   ========================================================= */
+
+-- 1. Add columns to Interviews table for tracking updates and reschedules
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Interviews') AND name = 'UpdatedAt')
+BEGIN
+    ALTER TABLE Interviews ADD UpdatedAt DATETIME NULL;
+    PRINT 'Added UpdatedAt column to Interviews table';
+END
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Interviews') AND name = 'UpdatedBy')
+BEGIN
+    ALTER TABLE Interviews ADD UpdatedBy INT NULL;
+    ALTER TABLE Interviews ADD CONSTRAINT FK_Interview_UpdatedBy FOREIGN KEY (UpdatedBy) REFERENCES Users(Id);
+    PRINT 'Added UpdatedBy column to Interviews table with FK';
+END
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Interviews') AND name = 'RescheduledCount')
+BEGIN
+    ALTER TABLE Interviews ADD RescheduledCount INT NOT NULL DEFAULT 0;
+    PRINT 'Added RescheduledCount column to Interviews table';
+END
+GO
+
+-- 2. Add new interview statuses (only add ones that don't exist yet)
+-- Note: StatusTypeId = 5 (INTERVIEW) đã có Id 24-29, StatusTypeId = 6 có Id 30-33
+-- Các status mới sẽ dùng Id từ 33 trở đi
+
+-- NO_SHOW: Candidate didn't show up
+IF NOT EXISTS (SELECT * FROM Statuses WHERE Code = 'NO_SHOW' AND StatusTypeId = 5)
+BEGIN
+    INSERT INTO Statuses (Id, StatusTypeId, Code, Name, OrderNo, IsFinal)
+    VALUES (33, 5, 'NO_SHOW', N'Ứng viên vắng mặt', 90, 1);
+    PRINT 'Added NO_SHOW status (Id: 33)';
+END
+
+-- INTERVIEWER_ABSENT: Interviewer couldn't attend
+IF NOT EXISTS (SELECT * FROM Statuses WHERE Code = 'INTERVIEWER_ABSENT' AND StatusTypeId = 5)
+BEGIN
+    INSERT INTO Statuses (Id, StatusTypeId, Code, Name, OrderNo, IsFinal)
+    VALUES (34, 5, 'INTERVIEWER_ABSENT', N'Người phỏng vấn vắng mặt', 91, 1);
+    PRINT 'Added INTERVIEWER_ABSENT status (Id: 34)';
+END
+
+-- IN_PROGRESS: Interview is currently happening
+IF NOT EXISTS (SELECT * FROM Statuses WHERE Code = 'IN_PROGRESS' AND StatusTypeId = 5)
+BEGIN
+    INSERT INTO Statuses (Id, StatusTypeId, Code, Name, OrderNo, IsFinal)
+    VALUES (35, 5, 'IN_PROGRESS', N'Đang diễn ra', 30, 0);
+    PRINT 'Added IN_PROGRESS status (Id: 35)';
+END
+
+-- COMPLETED_PENDING_FEEDBACK: Interview done, waiting for feedback
+IF NOT EXISTS (SELECT * FROM Statuses WHERE Code = 'COMPLETED_PENDING_FEEDBACK' AND StatusTypeId = 5)
+BEGIN
+    INSERT INTO Statuses (Id, StatusTypeId, Code, Name, OrderNo, IsFinal)
+    VALUES (36, 5, 'COMPLETED_PENDING_FEEDBACK', N'Hoàn thành - Chờ đánh giá', 40, 0);
+    PRINT 'Added COMPLETED_PENDING_FEEDBACK status (Id: 36)';
+END
+
+PRINT 'Interview statuses updated successfully';
+GO
+
+-- 3. Create view for real-time conflict detection
+IF EXISTS (SELECT * FROM sys.views WHERE name = 'vw_InterviewConflicts')
+    DROP VIEW vw_InterviewConflicts;
+GO
+
+CREATE VIEW vw_InterviewConflicts AS
+WITH InterviewerSchedule AS (
+    SELECT 
+        i.Id AS InterviewId,
+        i.StartTime,
+        i.EndTime,
+        i.StatusId,
+        s.Code AS StatusCode,
+        ip.UserId AS InterviewerId,
+        u.FullName AS InterviewerName,
+        i.ApplicationId,
+        cv.CandidateId,
+        c.FullName AS CandidateName
+    FROM Interviews i
+    INNER JOIN InterviewParticipants ip ON i.Id = ip.InterviewId
+    INNER JOIN Users u ON ip.UserId = u.Id
+    INNER JOIN Statuses s ON i.StatusId = s.Id
+    INNER JOIN Applications app ON i.ApplicationId = app.Id
+    INNER JOIN CVProfiles cv ON app.CVProfileId = cv.Id
+    INNER JOIN Candidates c ON cv.CandidateId = c.Id
+        WHERE i.IsDeleted = 0 
+            AND s.Code NOT IN ('CANCELLED', 'COMPLETED', 'NO_SHOW', 'INTERVIEWER_ABSENT')
+)
+SELECT 
+    a.InterviewId AS Interview1Id,
+    a.StartTime AS Interview1Start,
+    a.EndTime AS Interview1End,
+    b.InterviewId AS Interview2Id,
+    b.StartTime AS Interview2Start,
+    b.EndTime AS Interview2End,
+    a.InterviewerId AS ConflictingUserId,
+    a.InterviewerName AS ConflictingUserName,
+    'INTERVIEWER_CONFLICT' AS ConflictType,
+    a.CandidateName AS Interview1Candidate,
+    b.CandidateName AS Interview2Candidate
+FROM InterviewerSchedule a
+INNER JOIN InterviewerSchedule b 
+    ON a.InterviewerId = b.InterviewerId 
+    AND a.InterviewId < b.InterviewId  -- Avoid duplicates
+    AND a.StartTime < b.EndTime 
+    AND a.EndTime > b.StartTime;       -- Time overlap condition
+GO
+
+PRINT 'Created vw_InterviewConflicts view for real-time conflict detection';
+GO
+
+-- 4. Create indexes for performance
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Interviews_Time_Status' AND object_id = OBJECT_ID('Interviews'))
+BEGIN
+    CREATE INDEX IX_Interviews_Time_Status 
+    ON Interviews(StartTime, EndTime, StatusId, IsDeleted)
+    INCLUDE (ApplicationId, RescheduledCount);
+    PRINT 'Created index IX_Interviews_Time_Status for conflict detection performance';
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_InterviewParticipants_User_Interview' AND object_id = OBJECT_ID('InterviewParticipants'))
+BEGIN
+    CREATE INDEX IX_InterviewParticipants_User_Interview 
+    ON InterviewParticipants(UserId, InterviewId);
+    PRINT 'Created index IX_InterviewParticipants_User_Interview for interviewer lookup';
+END
+GO
+
+-- 5. Create stored procedure for efficient conflict checking
+IF EXISTS (SELECT * FROM sys.procedures WHERE name = 'sp_CheckInterviewConflicts')
+    DROP PROCEDURE sp_CheckInterviewConflicts;
+GO
+
+CREATE PROCEDURE sp_CheckInterviewConflicts
+    @InterviewerIds VARCHAR(MAX),  -- Comma-separated list: "1,2,3"
+    @StartTime DATETIME,
+    @EndTime DATETIME,
+    @ExcludeInterviewId INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Parse comma-separated IDs into table
+    DECLARE @InterviewerTable TABLE (UserId INT);
+    INSERT INTO @InterviewerTable (UserId)
+    SELECT CAST(value AS INT) FROM STRING_SPLIT(@InterviewerIds, ',');
+
+    -- Find conflicting interviews
+    SELECT 
+        i.Id AS ConflictingInterviewId,
+        i.StartTime,
+        i.EndTime,
+        u.Id AS UserId,
+        u.FullName AS UserName,
+        c.FullName AS CandidateName,
+        'INTERVIEWER' AS ConflictType,
+        'ERROR' AS Severity
+    FROM Interviews i
+    INNER JOIN InterviewParticipants ip ON i.Id = ip.InterviewId
+    INNER JOIN Users u ON ip.UserId = u.Id
+    INNER JOIN Applications app ON i.ApplicationId = app.Id
+    INNER JOIN CVProfiles cv ON app.CVProfileId = cv.Id
+    INNER JOIN Candidates c ON cv.CandidateId = c.Id
+    INNER JOIN Statuses s ON i.StatusId = s.Id
+    WHERE ip.UserId IN (SELECT UserId FROM @InterviewerTable)
+      AND i.IsDeleted = 0
+      AND (@ExcludeInterviewId IS NULL OR i.Id <> @ExcludeInterviewId)
+    AND s.Code NOT IN ('CANCELLED', 'COMPLETED', 'NO_SHOW', 'INTERVIEWER_ABSENT')
+      AND i.StartTime < @EndTime
+      AND i.EndTime > @StartTime;
+END
+GO
+
+PRINT 'Created sp_CheckInterviewConflicts stored procedure';
+GO
+
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Applications') AND name = 'NoShowCount')
+BEGIN
+    ALTER TABLE Applications ADD NoShowCount INT NOT NULL DEFAULT 0;
+    PRINT 'Added NoShowCount column to Applications table';
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Interviews') AND name = 'RequiresFeedbackBy')
+BEGIN
+    ALTER TABLE Interviews ADD RequiresFeedbackBy DATETIME NULL;
+    PRINT 'Added RequiresFeedbackBy column to Interviews table';
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Interviews') AND name = 'FeedbackReminderSent')
+BEGIN
+    ALTER TABLE Interviews ADD FeedbackReminderSent BIT NOT NULL DEFAULT 0;
+    PRINT 'Added FeedbackReminderSent column to Interviews table';
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Interviews') AND name = 'IsNextRoundScheduled')
+BEGIN
+    ALTER TABLE Interviews ADD IsNextRoundScheduled BIT NOT NULL DEFAULT 0;
+    PRINT 'Added IsNextRoundScheduled column to Interviews table';
+END
+GO
+
+IF EXISTS (SELECT * FROM sys.views WHERE name = 'vw_NoShowStatistics')
+    DROP VIEW vw_NoShowStatistics;
+GO
+
+CREATE VIEW vw_NoShowStatistics AS
+SELECT 
+    a.Id AS ApplicationId,
+    c.Id AS CandidateId,
+    c.FullName AS CandidateName,
+    c.Email AS CandidateEmail,
+    a.NoShowCount AS TotalNoShows,
+    (SELECT MAX(sh.ChangedAt) 
+     FROM StatusHistories sh 
+     INNER JOIN Interviews i ON sh.EntityId = i.Id AND sh.EntityTypeId = 4
+     WHERE i.ApplicationId = a.Id AND sh.ToStatusId = (SELECT Id FROM Statuses WHERE Code = 'NO_SHOW')
+    ) AS LastNoShowDate
+FROM Applications a
+INNER JOIN CVProfiles cv ON a.CVProfileId = cv.Id
+INNER JOIN Candidates c ON cv.CandidateId = c.Id
+WHERE a.NoShowCount > 0;
+GO
+
+PRINT 'Created vw_NoShowStatistics view';
+GO
+
+IF EXISTS (SELECT * FROM sys.procedures WHERE name = 'sp_MarkInterviewNoShow')
+    DROP PROCEDURE sp_MarkInterviewNoShow;
+GO
+
+CREATE PROCEDURE sp_MarkInterviewNoShow
+    @InterviewId INT,
+    @NoShowType VARCHAR(20),
+    @MarkedBy INT,
+    @Reason NVARCHAR(500) = NULL,
+    @UserId INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    DECLARE @StatusId INT;
+    DECLARE @ApplicationId INT;
+    DECLARE @OldStatusId INT;
+    DECLARE @CandidateId INT;
+
+    SELECT @ApplicationId = ApplicationId, @OldStatusId = StatusId 
+    FROM Interviews WHERE Id = @InterviewId;
+    
+    SELECT @CandidateId = cv.CandidateId 
+    FROM Applications a 
+    INNER JOIN CVProfiles cv ON a.CVProfileId = cv.Id 
+    WHERE a.Id = @ApplicationId;
+
+    SELECT @StatusId = Id
+    FROM Statuses
+    WHERE Code = CASE WHEN @NoShowType = 'INTERVIEWER' THEN 'INTERVIEWER_ABSENT' ELSE 'NO_SHOW' END;
+    
+    IF @StatusId IS NULL
+    BEGIN
+        RAISERROR('NO_SHOW status not found', 16, 1);
+        RETURN;
+    END
+
+    IF @OldStatusId = @StatusId
+    BEGIN
+        RAISERROR('Interview has already been marked with this no-show status', 16, 1);
+        RETURN;
+    END
+
+    UPDATE Interviews SET StatusId = @StatusId WHERE Id = @InterviewId;
+
+    IF @NoShowType = 'CANDIDATE'
+    BEGIN
+        UPDATE Applications SET NoShowCount = NoShowCount + 1 WHERE Id = @ApplicationId;
+    END
+
+    DECLARE @NoteText NVARCHAR(1000);
+    SET @NoteText = 'NO_SHOW|Type:' + @NoShowType;
+    
+    IF @NoShowType = 'CANDIDATE'
+        SET @NoteText = @NoteText + '|CandidateId:' + CAST(@CandidateId AS VARCHAR(10));
+    
+    IF @NoShowType = 'INTERVIEWER' AND @UserId IS NOT NULL
+        SET @NoteText = @NoteText + '|UserId:' + CAST(@UserId AS VARCHAR(10));
+    
+    IF @Reason IS NOT NULL
+        SET @NoteText = @NoteText + '|Reason:' + @Reason;
+
+    INSERT INTO StatusHistories (EntityTypeId, EntityId, FromStatusId, ToStatusId, ChangedBy, ChangedAt, Note)
+    VALUES (4, @InterviewId, @OldStatusId, @StatusId, @MarkedBy, GETDATE(), @NoteText);
+
+    SELECT 1 AS Success, @ApplicationId AS ApplicationId, @CandidateId AS CandidateId;
+END
+GO
+
+PRINT 'Created sp_MarkInterviewNoShow procedure';
+GO
+
+IF EXISTS (SELECT * FROM sys.procedures WHERE name = 'sp_CheckAndScheduleNextRound')
+    DROP PROCEDURE sp_CheckAndScheduleNextRound;
+GO
+
+CREATE PROCEDURE sp_CheckAndScheduleNextRound
+    @InterviewId INT,
+    @CheckedBy INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    DECLARE @ApplicationId INT;
+    DECLARE @CurrentRound INT;
+    DECLARE @AllFeedbackSubmitted BIT = 0;
+    DECLARE @AverageScore DECIMAL(5,2);
+    DECLARE @PassThreshold DECIMAL(5,2) = 6.0;
+
+    SELECT @ApplicationId = ApplicationId, @CurrentRound = RoundNo 
+    FROM Interviews WHERE Id = @InterviewId;
+
+    DECLARE @TotalInterviewers INT;
+    DECLARE @SubmittedFeedbacks INT;
+
+    SELECT @TotalInterviewers = COUNT(*) 
+    FROM InterviewParticipants 
+    WHERE InterviewId = @InterviewId;
+
+    SELECT @SubmittedFeedbacks = COUNT(DISTINCT InterviewerId)
+    FROM InterviewFeedbacks
+    WHERE InterviewId = @InterviewId;
+
+    IF @TotalInterviewers = @SubmittedFeedbacks
+    BEGIN
+        SET @AllFeedbackSubmitted = 1;
+
+        SELECT @AverageScore = AVG(CAST(s.Score AS DECIMAL(5,2)))
+        FROM InterviewFeedbacks f
+        INNER JOIN InterviewScores s ON f.Id = s.FeedbackId
+        WHERE f.InterviewId = @InterviewId;
+
+        IF @AverageScore >= @PassThreshold
+        BEGIN
+            SELECT 
+                1 AS ShouldScheduleNextRound,
+                @ApplicationId AS ApplicationId,
+                @CurrentRound + 1 AS NextRoundNo,
+                @AverageScore AS AverageScore,
+                'Candidate passed round ' + CAST(@CurrentRound AS VARCHAR(5)) + 
+                ' with average score ' + CAST(@AverageScore AS VARCHAR(10)) AS Message;
+        END
+        ELSE
+        BEGIN
+            SELECT 
+                0 AS ShouldScheduleNextRound,
+                @ApplicationId AS ApplicationId,
+                @CurrentRound AS CurrentRoundNo,
+                @AverageScore AS AverageScore,
+                'Candidate did not pass threshold in round ' + CAST(@CurrentRound AS VARCHAR(5)) AS Message;
+        END
+    END
+    ELSE
+    BEGIN
+        SELECT 
+            0 AS ShouldScheduleNextRound,
+            NULL AS ApplicationId,
+            NULL AS NextRoundNo,
+            NULL AS AverageScore,
+            'Waiting for ' + CAST(@TotalInterviewers - @SubmittedFeedbacks AS VARCHAR(5)) + ' more feedback(s)' AS Message;
+    END
+END
+GO
+
+PRINT 'Created sp_CheckAndScheduleNextRound procedure';
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_InterviewFeedbacks_Interview_Interviewer' AND object_id = OBJECT_ID('InterviewFeedbacks'))
+BEGIN
+    CREATE INDEX IX_InterviewFeedbacks_Interview_Interviewer 
+    ON InterviewFeedbacks(InterviewId, InterviewerId);
+    PRINT 'Created index IX_InterviewFeedbacks_Interview_Interviewer';
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_StatusHistories_EntityType_Status' AND object_id = OBJECT_ID('StatusHistories'))
+BEGIN
+    CREATE INDEX IX_StatusHistories_EntityType_Status 
+    ON StatusHistories(EntityTypeId, ToStatusId, ChangedAt);
+    PRINT 'Created index IX_StatusHistories_EntityType_Status';
+END
+GO
+
+UPDATE i
+SET RequiresFeedbackBy = DATEADD(day, 3, i.EndTime)
+FROM Interviews i
+INNER JOIN Statuses s ON i.StatusId = s.Id
+WHERE s.Code = 'COMPLETED' AND i.RequiresFeedbackBy IS NULL;
+
+PRINT 'Updated existing interviews with RequiresFeedbackBy defaults';
+GO
+
+/* =========================================================
+   2026-03-13 | System
+   Change: Thêm recommendation, round-aware evaluation template, round decision
+   Purpose: Tách feedback khỏi quyết định cuối của HR và hỗ trợ form đánh giá theo từng vòng
+   ========================================================= */
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('EvaluationTemplates') AND name = 'RoundNo')
+BEGIN
+    ALTER TABLE EvaluationTemplates ADD RoundNo INT NULL;
+    PRINT 'Added RoundNo to EvaluationTemplates';
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('InterviewFeedbacks') AND name = 'Recommendation')
+BEGIN
+    ALTER TABLE InterviewFeedbacks ADD Recommendation VARCHAR(30) NULL;
+    PRINT 'Added Recommendation to InterviewFeedbacks';
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'InterviewRoundDecisions')
+BEGIN
+    CREATE TABLE InterviewRoundDecisions (
+        InterviewId INT NOT NULL PRIMARY KEY,
+        DecisionCode VARCHAR(30) NOT NULL,
+        Note NVARCHAR(1000) NULL,
+        DecidedBy INT NOT NULL,
+        DecidedAt DATETIME NOT NULL DEFAULT GETDATE(),
+
+        CONSTRAINT FK_InterviewRoundDecisions_Interview FOREIGN KEY (InterviewId) REFERENCES Interviews(Id),
+        CONSTRAINT FK_InterviewRoundDecisions_DecidedBy FOREIGN KEY (DecidedBy) REFERENCES Users(Id)
+    );
+
+    PRINT 'Created InterviewRoundDecisions table';
+END
+ELSE
+BEGIN
+    PRINT 'InterviewRoundDecisions table already exists';
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_EvaluationTemplates_Position_Round' AND object_id = OBJECT_ID('EvaluationTemplates'))
+BEGIN
+    CREATE INDEX IX_EvaluationTemplates_Position_Round ON EvaluationTemplates(PositionId, RoundNo);
+    PRINT 'Created IX_EvaluationTemplates_Position_Round';
+END
+GO
+
+
+
 

@@ -1,19 +1,24 @@
 using Microsoft.EntityFrameworkCore;
-using RMS.Common;
 using RMS.Data;
 using RMS.Dto.HR;
 using RMS.Entity;
 using RMS.Repository.Interface;
+using RMS.Service.Interface;
+using RMS.Common;
 
 namespace RMS.Repository;
 
 public class HRInterviewsRepository : IHRInterviewsRepository
 {
     private readonly RecruitmentDbContext _context;
+    private readonly IInterviewConflictService _conflictService;
 
-    public HRInterviewsRepository(RecruitmentDbContext context)
+    public HRInterviewsRepository(
+        RecruitmentDbContext context,
+        IInterviewConflictService conflictService)
     {
         _context = context;
+        _conflictService = conflictService;
     }
 
     private async Task<int> GetStatusIdAsync(string code)
@@ -71,6 +76,7 @@ public class HRInterviewsRepository : IHRInterviewsRepository
             Id = f.Id,
             InterviewerId = f.InterviewerId,
             InterviewerName = f.Interviewer.FullName,
+            Recommendation = f.Recommendation,
             Note = f.Note,
             CreatedAt = f.CreatedAt,
             Scores = f.InterviewScores.Select(s => new InterviewScoreItemDto
@@ -80,6 +86,23 @@ public class HRInterviewsRepository : IHRInterviewsRepository
                 Score = s.Score
             }).ToList()
         }).ToList();
+
+        var roundDecision = await _context.InterviewRoundDecisions
+            .Include(d => d.DecidedByNavigation)
+            .FirstOrDefaultAsync(d => d.InterviewId == interviewId);
+
+        if (roundDecision != null)
+        {
+            dto.RoundDecision = new InterviewRoundDecisionDto
+            {
+                InterviewId = roundDecision.InterviewId,
+                DecisionCode = roundDecision.DecisionCode,
+                Note = roundDecision.Note,
+                DecidedBy = roundDecision.DecidedBy,
+                DecidedByName = roundDecision.DecidedByNavigation.FullName,
+                DecidedAt = roundDecision.DecidedAt
+            };
+        }
 
         return dto;
     }
@@ -93,27 +116,34 @@ public class HRInterviewsRepository : IHRInterviewsRepository
             .MaxAsync(i => (int?)i.RoundNo) ?? 0;
         roundNo++;
 
-        // Conflict check: candidate có interview nào trùng giờ không?
-        var candidateId = await _context.Applications
-            .Where(a => a.Id == dto.ApplicationId)
-            .Select(a => a.Cvprofile.CandidateId)
-            .FirstOrDefaultAsync();
+        // Get interviewer IDs from participants
+        var interviewerIds = dto.Participants.Select(p => p.UserId).ToList();
+
+        // Check conflicts using service
+        var conflictResult = await _conflictService.CheckAllConflictsAsync(
+            dto.ApplicationId,
+            interviewerIds,
+            dto.StartTime,
+            dto.EndTime);
 
         string? conflictWarning = null;
-        if (candidateId > 0)
-        {
-            var hasConflict = await _context.Interviews
-                .AnyAsync(i =>
-                    i.Application.Cvprofile.CandidateId == candidateId &&
-                    i.IsDeleted == false &&
-                    i.Status.Code != "CANCELLED" &&
-                    i.Status.Code != "COMPLETED" &&
-                    i.Status.Code != "DECLINED_BY_CANDIDATE" &&
-                    i.StartTime < dto.EndTime &&
-                    i.EndTime > dto.StartTime);
 
-            if (hasConflict)
-                conflictWarning = "Candidate đã có lịch phỏng vấn trùng thời gian này.";
+        if (conflictResult.HasConflicts)
+        {
+            var messages = conflictResult.Conflicts
+                .Select(c => c.ConflictType == "INTERVIEWER"
+                    ? $"{c.UserName} đã có lịch phỏng vấn trùng giờ (ID: {c.ConflictingInterviewId})"
+                    : $"Ứng viên {c.CandidateName} đã có lịch phỏng vấn khác")
+                .ToList();
+
+            conflictWarning = string.Join(". ", messages);
+
+            // Block if ERROR conflicts and not ignored
+            if (!dto.IgnoreConflicts && !conflictResult.CanProceed)
+            {
+                throw new InvalidOperationException(
+                    $"Không thể tạo interview do có conflicts: {conflictWarning}");
+            }
         }
 
         var scheduledId = await GetStatusIdAsync("SCHEDULED");
@@ -129,7 +159,8 @@ public class HRInterviewsRepository : IHRInterviewsRepository
             StatusId = scheduledId,
             CreatedAt = DateTimeHelper.Now,
             CreatedBy = userId,
-            IsDeleted = false
+            IsDeleted = false,
+            RescheduledCount = 0
         };
 
         _context.Interviews.Add(interview);
@@ -149,6 +180,22 @@ public class HRInterviewsRepository : IHRInterviewsRepository
             await _context.SaveChangesAsync();
         }
 
+        // Log conflict override to StatusHistory if needed
+        if (conflictResult.HasConflicts && dto.IgnoreConflicts)
+        {
+            _context.StatusHistories.Add(new StatusHistory
+            {
+                EntityTypeId = 4, // INTERVIEW
+                EntityId = interview.Id,
+                FromStatusId = null,
+                ToStatusId = scheduledId,
+                ChangedBy = userId,
+                ChangedAt = DateTimeHelper.Now,
+                Note = $"Interview created with conflicts (override). Conflicts: {conflictWarning}. Reason: {dto.ConflictOverrideReason ?? "N/A"}"
+            });
+            await _context.SaveChangesAsync();
+        }
+
         return (interview.Id, conflictWarning);
     }
 
@@ -156,19 +203,54 @@ public class HRInterviewsRepository : IHRInterviewsRepository
     {
         var interview = await _context.Interviews
             .Include(i => i.Status)
+            .Include(i => i.InterviewParticipants)
             .FirstOrDefaultAsync(i => i.Id == interviewId && i.IsDeleted == false);
         if (interview == null) return false;
 
-        if (dto.StartTime.HasValue) interview.StartTime = dto.StartTime.Value;
-        if (dto.EndTime.HasValue)   interview.EndTime   = dto.EndTime.Value;
-        if (dto.Location != null)   interview.Location  = dto.Location;
+        bool isRescheduled = false;
+        var oldStartTime = interview.StartTime;
+        var oldEndTime = interview.EndTime;
+
+        if (dto.StartTime.HasValue) 
+        {
+            interview.StartTime = dto.StartTime.Value;
+            isRescheduled = true;
+        }
+        
+        if (dto.EndTime.HasValue)
+        {
+            interview.EndTime = dto.EndTime.Value;
+            isRescheduled = true;
+        }
+        
+        if (dto.Location != null) interview.Location = dto.Location;
         if (dto.MeetingLink != null) interview.MeetingLink = dto.MeetingLink;
 
-        // Dời lịch → RESCHEDULED (chỉ khi đang SCHEDULED hoặc CONFIRMED)
-        if (dto.StartTime.HasValue &&
-            (interview.Status.Code is "SCHEDULED" or "CONFIRMED"))
+        // Track reschedule
+        if (isRescheduled)
         {
-            interview.StatusId = await GetStatusIdAsync("RESCHEDULED");
+            interview.RescheduledCount++;
+            interview.UpdatedAt = DateTimeHelper.Now;
+
+            // Change status to RESCHEDULED if currently SCHEDULED or CONFIRMED
+            if (interview.Status.Code is "SCHEDULED" or "CONFIRMED")
+            {
+                var rescheduledStatusId = await GetStatusIdAsync("RESCHEDULED");
+                var oldStatusId = interview.StatusId;
+                interview.StatusId = rescheduledStatusId;
+
+                // Log to StatusHistory
+                _context.StatusHistories.Add(new StatusHistory
+                {
+                    EntityTypeId = 4, // INTERVIEW
+                    EntityId = interviewId,
+                    FromStatusId = oldStatusId,
+                    ToStatusId = rescheduledStatusId,
+                    ChangedBy = interview.UpdatedBy ?? interview.CreatedBy,
+                    ChangedAt = DateTimeHelper.Now,
+                    Note = $"Reschedule từ {oldStartTime:dd/MM HH:mm}-{oldEndTime:HH:mm} sang {interview.StartTime:dd/MM HH:mm}-{interview.EndTime:HH:mm}"
+                });
+            }
         }
 
         await _context.SaveChangesAsync();
@@ -217,25 +299,16 @@ public class HRInterviewsRepository : IHRInterviewsRepository
         return true;
     }
 
-    public async Task<List<EvaluationCriterion>> GetCriteriaByPositionAsync(int positionId)
+    public async Task<List<EvaluationCriterion>> GetCriteriaByPositionAsync(int positionId, int roundNo)
     {
-        // Lấy criteria từ template gắn với position, fallback về template không gắn position
-        var criteria = await _context.EvaluationCriteria
-            .Include(c => c.Template)
-            .Where(c => c.Template.PositionId == positionId)
-            .ToListAsync();
-
-        if (criteria.Count == 0)
-        {
-            // Fallback: template chung (không gắn position)
-            criteria = await _context.EvaluationCriteria
-                .Include(c => c.Template)
-                .Where(c => c.Template.PositionId == null)
-                .ToListAsync();
-        }
-
-        return criteria;
+        return await EvaluationCriteriaQueryHelper.GetCriteriaByPositionAndRoundAsync(_context, positionId, roundNo);
     }
+
+    public Task<bool> IsInterviewParticipantAsync(int interviewId, int userId)
+        => _context.InterviewParticipants.AnyAsync(ip => ip.InterviewId == interviewId && ip.UserId == userId);
+
+    public Task<bool> HasFeedbackAsync(int interviewId, int userId)
+        => _context.InterviewFeedbacks.AnyAsync(f => f.InterviewId == interviewId && f.InterviewerId == userId);
 
     // ---- Helpers ----
 
@@ -243,6 +316,9 @@ public class HRInterviewsRepository : IHRInterviewsRepository
     {
         return _context.Interviews
             .Include(i => i.Status)
+            .Include(i => i.InterviewParticipants)
+            .Include(i => i.InterviewFeedbacks)
+            .Include(i => i.ParticipantRequests)
             .Include(i => i.Application)
                 .ThenInclude(a => a.Cvprofile)
                     .ThenInclude(cv => cv.Candidate)
@@ -267,7 +343,9 @@ public class HRInterviewsRepository : IHRInterviewsRepository
         StatusCode       = i.Status.Code,
         StatusName       = i.Status.Name,
         ParticipantCount = i.InterviewParticipants.Count,
-        FeedbackCount    = i.InterviewFeedbacks.Count
+        FeedbackCount    = i.InterviewFeedbacks.Count,
+        OpenParticipantRequestCount = i.ParticipantRequests.Count(r => r.Status == "PENDING" || r.Status == "FORWARDED"),
+        FulfilledParticipantRequestCount = i.ParticipantRequests.Count(r => r.Status == "FULFILLED")
     };
 
     private static InterviewDetailDto ToDetailDto(Interview i)
@@ -288,7 +366,9 @@ public class HRInterviewsRepository : IHRInterviewsRepository
             StatusCode       = list.StatusCode,
             StatusName       = list.StatusName,
             ParticipantCount = list.ParticipantCount,
-            FeedbackCount    = list.FeedbackCount
+            FeedbackCount    = list.FeedbackCount,
+            OpenParticipantRequestCount = list.OpenParticipantRequestCount,
+            FulfilledParticipantRequestCount = list.FulfilledParticipantRequestCount
         };
     }
 }

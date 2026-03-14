@@ -1,10 +1,7 @@
 using AutoMapper;
-using Microsoft.EntityFrameworkCore;
 using RMS.Common;
-using RMS.Data;
 using RMS.Dto.Common;
 using RMS.Dto.DepartmentManager;
-using RMS.Entity;
 using RMS.Repository.Interface;
 using RMS.Service.Interface;
 
@@ -13,16 +10,16 @@ namespace RMS.Service;
 public class DeptManagerInterviewsService : IDeptManagerInterviewsService
 {
     private readonly IDeptManagerInterviewsRepository _repository;
-    private readonly RecruitmentDbContext _context;
+    private readonly IInterviewFeedbackSubmissionService _feedbackSubmissionService;
     private readonly IMapper _mapper;
 
     public DeptManagerInterviewsService(
         IDeptManagerInterviewsRepository repository,
-        RecruitmentDbContext context,
+        IInterviewFeedbackSubmissionService feedbackSubmissionService,
         IMapper mapper)
     {
         _repository = repository;
-        _context = context;
+        _feedbackSubmissionService = feedbackSubmissionService;
         _mapper = mapper;
     }
 
@@ -53,8 +50,16 @@ public class DeptManagerInterviewsService : IDeptManagerInterviewsService
         if (interview.Application?.JobRequest?.PositionId != null)
         {
             var criteria = await _repository.GetEvaluationCriteriaByPositionAsync(
-                interview.Application.JobRequest.PositionId);
+                interview.Application.JobRequest.PositionId,
+                interview.RoundNo);
             dto.EvaluationCriteria = _mapper.Map<List<EvaluationCriterionDto>>(criteria);
+        }
+
+        // Populate previous rounds for context
+        if (interview.RoundNo > 1)
+        {
+            dto.PreviousRounds = await _repository.GetPreviousRoundsAsync(
+                interview.ApplicationId, interview.RoundNo);
         }
 
         return dto;
@@ -69,29 +74,11 @@ public class DeptManagerInterviewsService : IDeptManagerInterviewsService
         if (await _repository.GetFeedbackByInterviewerAsync(interviewId, managerId) != null)
             return ResponseHelper.CreateActionResponse(false, "", "Bạn đã gửi đánh giá cho phỏng vấn này rồi");
 
-        var interviewFeedback = new InterviewFeedback
-        {
-            InterviewId   = interviewId,
-            InterviewerId = managerId,
-            Note          = feedback.Comment,
-            CreatedAt     = DateTimeHelper.Now
-        };
-
-        await _context.InterviewFeedbacks.AddAsync(interviewFeedback);
-        await _context.SaveChangesAsync();
-
-        if (feedback.Scores?.Any() == true)
-        {
-            var scores = feedback.Scores.Select(s => new InterviewScore
-            {
-                FeedbackId = interviewFeedback.Id,
-                CriteriaId = s.CriterionId,
-                Score      = s.Score
-            }).ToList();
-
-            await _context.InterviewScores.AddRangeAsync(scores);
-            await _context.SaveChangesAsync();
-        }
+        await _feedbackSubmissionService.SubmitAsync(
+            interviewId,
+            managerId,
+            feedback.Decision,
+            feedback.Comment);
 
         // Không tự đổi Application status — HR sẽ chốt sau khi xem toàn bộ feedback
         return ResponseHelper.CreateActionResponse(true, "Đánh giá đã được ghi nhận", "");

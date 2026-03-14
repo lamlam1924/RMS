@@ -308,11 +308,14 @@ public class AuthController : ControllerBase
     /// Upload avatar cho người dùng đang đăng nhập
     /// </summary>
     [HttpPost("upload-avatar")]
+    [Consumes("multipart/form-data")]
     [Authorize]
-    public async Task<IActionResult> UploadAvatar([FromForm] IFormFile file)
+    public async Task<IActionResult> UploadAvatar([FromForm] UploadAvatarRequestDto request)
     {
         try
         {
+            var file = request.File;
+
             if (file == null || file.Length == 0)
                 return BadRequest(new { message = "Vui lòng chọn file ảnh" });
 

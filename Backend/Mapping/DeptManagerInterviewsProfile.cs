@@ -23,7 +23,8 @@ public class DeptManagerInterviewsProfile : AutoMapper.Profile
             .ForMember(dest => dest.Participants, opt => opt.MapFrom(src => src.InterviewParticipants))
             .ForMember(dest => dest.CandidateProfile, opt => opt.MapFrom(src => src.Application.Cvprofile))
             .ForMember(dest => dest.EvaluationCriteria, opt => opt.Ignore()) // Mapped separately
-            .ForMember(dest => dest.HasMyFeedback, opt => opt.Ignore()); // Set in service
+            .ForMember(dest => dest.HasMyFeedback, opt => opt.Ignore()) // Set in service
+            .ForMember(dest => dest.PreviousRounds, opt => opt.Ignore()); // Populated in service
 
         CreateMap<InterviewParticipant, InterviewParticipantDto>()
             .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.User.FullName))
@@ -31,7 +32,12 @@ public class DeptManagerInterviewsProfile : AutoMapper.Profile
             .ForMember(dest => dest.HasFeedback, opt => opt.MapFrom(src => 
                 src.Interview.InterviewFeedbacks.Any(f => f.InterviewerId == src.UserId)));
 
-        CreateMap<Cvprofile, CandidateProfileSummaryDto>();
+        CreateMap<Cvprofile, CandidateProfileSummaryDto>()
+            .ForMember(dest => dest.Experiences, opt => opt.MapFrom(src => src.Cvexperiences))
+            .ForMember(dest => dest.Educations, opt => opt.MapFrom(src => src.Cveducations));
+
+        CreateMap<Cvexperience, CandidateCvExperienceDto>();
+        CreateMap<Cveducation, CandidateCvEducationDto>();
 
         CreateMap<EvaluationCriterion, EvaluationCriterionDto>()
             .ForMember(dest => dest.CriteriaName, opt => opt.MapFrom(src => src.Name));

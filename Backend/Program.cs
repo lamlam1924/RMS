@@ -119,7 +119,7 @@ builder.Services.AddSwaggerGen(c =>
     });
     
     // Support file upload in Swagger UI
-    // c.OperationFilter<SwaggerFileOperationFilter>();
+    c.OperationFilter<SwaggerFileOperationFilter>();
     
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
@@ -169,7 +169,6 @@ builder.Services.AddScoped<IHRApplicationsRepository, HRApplicationsRepository>(
 builder.Services.AddScoped<IHRInterviewsRepository, HRInterviewsRepository>();
 builder.Services.AddScoped<IHROffersRepository, HROffersRepository>();
 builder.Services.AddScoped<IHRJobPostingsRepository, HRJobPostingsRepository>();
-builder.Services.AddScoped<IEmployeeInterviewsRepository, EmployeeInterviewsRepository>();
 builder.Services.AddScoped<ICandidateInterviewsRepository, CandidateInterviewsRepository>();
 builder.Services.AddScoped<IParticipantRequestRepository, ParticipantRequestRepository>();
 builder.Services.AddScoped<IMediaRepository, MediaRepository>();
@@ -180,6 +179,7 @@ builder.Services.AddScoped<JwtTokenHelper>();
 builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IInterviewEmailService, InterviewEmailService>();
 builder.Services.AddScoped<IAdminUserService, AdminUserService>();
 builder.Services.AddScoped<IAdminRoleService, AdminRoleService>();
 builder.Services.AddScoped<IMediaService, MediaService>();
@@ -194,10 +194,14 @@ builder.Services.AddScoped<IHRStatisticsService, HRStatisticsService>();
 builder.Services.AddScoped<IHRJobRequestsService, HRJobRequestsService>();
 builder.Services.AddScoped<IHRApplicationsService, HRApplicationsService>();
 builder.Services.AddScoped<IHRInterviewsService, HRInterviewsService>();
+builder.Services.AddScoped<IInterviewConflictService, InterviewConflictService>();
+builder.Services.AddScoped<IInterviewNoShowService, InterviewNoShowService>();
+builder.Services.AddScoped<IInterviewMultiRoundService, InterviewMultiRoundService>();
+builder.Services.AddScoped<IInterviewRoundSummaryService, InterviewRoundSummaryService>();
+builder.Services.AddScoped<IInterviewFeedbackSubmissionService, InterviewFeedbackSubmissionService>();
 builder.Services.AddScoped<IHROffersService, HROffersService>();
 builder.Services.AddScoped<ICandidateOffersService, CandidateOffersService>();
 builder.Services.AddScoped<IHRJobPostingsService, HRJobPostingsService>();
-builder.Services.AddScoped<IEmployeeInterviewsService, EmployeeInterviewsService>();
 builder.Services.AddScoped<ICandidateInterviewsService, CandidateInterviewsService>();
 builder.Services.AddScoped<IParticipantRequestService, ParticipantRequestService>();
 builder.Services.AddScoped<ICandidateApplicationService, CandidateApplicationService>();

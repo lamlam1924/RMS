@@ -33,4 +33,10 @@ public static class ResponseHelper
             Data = success ? new { Id = id } : null
         };
     }
+
+    public static ActionResponseDto Success(string message, object? data = null)
+        => new ActionResponseDto { Success = true, Message = message, Data = data };
+
+    public static ActionResponseDto Error(string message)
+        => new ActionResponseDto { Success = false, Message = message };
 }

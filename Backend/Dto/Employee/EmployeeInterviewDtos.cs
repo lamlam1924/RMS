@@ -89,19 +89,3 @@ public class EducationDto
     public DateOnly? EndDate { get; set; }
 }
 
-/// <summary>
-/// Submit interview feedback DTO (reuse from DepartmentManager)
-/// </summary>
-public class SubmitInterviewFeedbackDto
-{
-    public string Decision { get; set; } = string.Empty; // PASS or REJECT
-    public string? Comment { get; set; }
-    public List<InterviewScoreDto> Scores { get; set; } = new();
-}
-
-public class InterviewScoreDto
-{
-    public int CriteriaId { get; set; }
-    public decimal Score { get; set; }
-    public string? Comment { get; set; }
-}

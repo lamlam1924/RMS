@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f7fafc;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f7fafc; padding: 20px 0;">
+        <tr>
+            <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+                            <h1 style="color: #ffffff; margin: 0; font-size: 24px;">⏰ Nhắc nhở phỏng vấn</h1>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td style="padding: 40px 30px;">
+                            <p style="font-size: 16px; color: #2d3748; margin: 0 0 20px 0;">Chào <strong>{{CandidateName}}</strong>,</p>
+                            
+                            <p style="font-size: 14px; color: #4a5568; line-height: 1.6; margin: 0 0 20px 0;">
+                                Đây là email nhắc nhở về buổi phỏng vấn của bạn:
+                            </p>
+                            
+                            <div style="background-color: #fffaf0; border: 2px solid #ed8936; padding: 25px; margin: 20px 0; border-radius: 8px; text-align: center;">
+                                <p style="color: #c05621; font-size: 18px; font-weight: bold; margin: 0 0 10px 0;">
+                                    {{TimeUntil}}
+                                </p>
+                                <p style="color: #744210; font-size: 14px; margin: 0;">
+                                    {{InterviewDateTime}}
+                                </p>
+                            </div>
+                            
+                            <div style="background-color: #edf2f7; padding: 20px; margin: 20px 0; border-radius: 8px;">
+                                <h3 style="color: #2d3748; margin: 0 0 15px 0; font-size: 16px;">📋 Chi tiết:</h3>
+                                <table width="100%" cellpadding="5" cellspacing="0">
+                                    <tr>
+                                        <td style="color: #4a5568; font-size: 14px; padding: 5px 0;"><strong>Vị trí:</strong></td>
+                                        <td style="color: #2d3748; font-size: 14px; padding: 5px 0;">{{PositionTitle}}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="color: #4a5568; font-size: 14px; padding: 5px 0;"><strong>{{LocationLabel}}:</strong></td>
+                                        <td style="color: #2d3748; font-size: 14px; padding: 5px 0;">{{LocationOrLink}}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            
+                            <div style="background-color: #e6fffa; border-left: 4px solid #38b2ac; padding: 15px; margin: 20px 0; border-radius: 4px;">
+                                <p style="color: #234e52; font-size: 13px; margin: 0;">
+                                    💡 <strong>Gợi ý:</strong> Hãy chuẩn bị kỹ và đến đúng giờ. Chúc bạn thành công!
+                                </p>
+                            </div>
+                            
+                            <div style="text-align: center; margin: 30px 0;">
+                                <a href="{{InterviewDetailLink}}" style="display: inline-block; background-color: #667eea; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                                    📄 Xem chi tiết
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td style="background-color: #f7fafc; padding: 20px 30px; border-radius: 0 0 8px 8px; text-align: center;">
+                            <p style="color: #718096; font-size: 12px; margin: 0;">
+                                Chúc bạn thành công!<br>
+                                Đội ngũ tuyển dụng - RMS
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

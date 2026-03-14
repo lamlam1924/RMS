@@ -36,13 +36,13 @@ public class CandidateApplicationController : ControllerBase
     [Consumes("multipart/form-data")]
     public async Task<ActionResult<CandidateApplyResponseDto>> Apply(
         int jobPostingId,
-        IFormFile? cvFile)
+        [FromForm] CandidateApplyRequestDto request)
     {
         var candidateId = GetCandidateId();
         if (candidateId == null)
             return Unauthorized(new { message = "Vui lòng đăng nhập với tài khoản ứng viên." });
 
-        var (success, message, data) = await _service.ApplyAsync(candidateId.Value, jobPostingId, cvFile);
+        var (success, message, data) = await _service.ApplyAsync(candidateId.Value, jobPostingId, request.CvFile);
 
         if (!success)
             return BadRequest(new { message });

@@ -27,6 +27,8 @@ public partial class Application
 
     public int? DeletedBy { get; set; }
 
+    public int NoShowCount { get; set; }
+
     public virtual Cvprofile Cvprofile { get; set; } = null!;
 
     public virtual ICollection<Interview> Interviews { get; set; } = new List<Interview>();

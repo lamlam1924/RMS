@@ -44,6 +44,8 @@ public partial class RecruitmentDbContext : DbContext
 
     public virtual DbSet<InterviewRole> InterviewRoles { get; set; }
 
+    public virtual DbSet<InterviewRoundDecision> InterviewRoundDecisions { get; set; }
+
     public virtual DbSet<InterviewScore> InterviewScores { get; set; }
 
     public virtual DbSet<JobPosting> JobPostings { get; set; }
@@ -75,6 +77,10 @@ public partial class RecruitmentDbContext : DbContext
     public virtual DbSet<User> Users { get; set; }
 
     public virtual DbSet<UserDepartment> UserDepartments { get; set; }
+
+    public virtual DbSet<VwInterviewConflict> VwInterviewConflicts { get; set; }
+
+    public virtual DbSet<VwNoShowStatistic> VwNoShowStatistics { get; set; }
 
     public virtual DbSet<WorkflowTransition> WorkflowTransitions { get; set; }
 
@@ -284,6 +290,8 @@ public partial class RecruitmentDbContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PK__Evaluati__3214EC077F390799");
 
+            entity.HasIndex(e => new { e.PositionId, e.RoundNo }, "IX_EvaluationTemplates_Position_Round");
+
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
@@ -343,6 +351,8 @@ public partial class RecruitmentDbContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PK__Intervie__3214EC07F8C1E15A");
 
+            entity.HasIndex(e => new { e.StartTime, e.EndTime, e.StatusId, e.IsDeleted }, "IX_Interviews_Time_Status");
+
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
@@ -351,14 +361,16 @@ public partial class RecruitmentDbContext : DbContext
             entity.Property(e => e.IsDeleted).HasDefaultValue(false);
             entity.Property(e => e.Location).HasMaxLength(200);
             entity.Property(e => e.MeetingLink).HasMaxLength(300);
+            entity.Property(e => e.RequiresFeedbackBy).HasColumnType("datetime");
             entity.Property(e => e.StartTime).HasColumnType("datetime");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
 
             entity.HasOne(d => d.Application).WithMany(p => p.Interviews)
                 .HasForeignKey(d => d.ApplicationId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__Interview__Appli__09A971A2");
 
-            entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.Interviews)
+            entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.InterviewCreatedByNavigations)
                 .HasForeignKey(d => d.CreatedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__Interview__Creat__0B91BA14");
@@ -367,16 +379,25 @@ public partial class RecruitmentDbContext : DbContext
                 .HasForeignKey(d => d.StatusId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__Interview__Statu__0A9D95DB");
+
+            entity.HasOne(d => d.UpdatedByNavigation).WithMany(p => p.InterviewUpdatedByNavigations)
+                .HasForeignKey(d => d.UpdatedBy)
+                .HasConstraintName("FK_Interview_UpdatedBy");
         });
 
         modelBuilder.Entity<InterviewFeedback>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK__Intervie__3214EC07BC629B08");
 
+            entity.HasIndex(e => new { e.InterviewId, e.InterviewerId }, "IX_InterviewFeedbacks_Interview_Interviewer");
+
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
             entity.Property(e => e.Note).HasMaxLength(1000);
+            entity.Property(e => e.Recommendation)
+                .HasMaxLength(30)
+                .IsUnicode(false);
 
             entity.HasOne(d => d.Interview).WithMany(p => p.InterviewFeedbacks)
                 .HasForeignKey(d => d.InterviewId)
@@ -392,6 +413,8 @@ public partial class RecruitmentDbContext : DbContext
         modelBuilder.Entity<InterviewParticipant>(entity =>
         {
             entity.HasKey(e => new { e.InterviewId, e.UserId }).HasName("PK__Intervie__1804D49622F7F85D");
+
+            entity.HasIndex(e => new { e.UserId, e.InterviewId }, "IX_InterviewParticipants_User_Interview");
 
             entity.HasOne(d => d.Interview).WithMany(p => p.InterviewParticipants)
                 .HasForeignKey(d => d.InterviewId)
@@ -419,6 +442,30 @@ public partial class RecruitmentDbContext : DbContext
                 .HasMaxLength(50)
                 .IsUnicode(false);
             entity.Property(e => e.Name).HasMaxLength(100);
+        });
+
+        modelBuilder.Entity<InterviewRoundDecision>(entity =>
+        {
+            entity.HasKey(e => e.InterviewId).HasName("PK__Intervie__C97C58528A499B4D");
+
+            entity.Property(e => e.InterviewId).ValueGeneratedNever();
+            entity.Property(e => e.DecidedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.DecisionCode)
+                .HasMaxLength(30)
+                .IsUnicode(false);
+            entity.Property(e => e.Note).HasMaxLength(1000);
+
+            entity.HasOne(d => d.DecidedByNavigation).WithMany(p => p.InterviewRoundDecisions)
+                .HasForeignKey(d => d.DecidedBy)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_InterviewRoundDecisions_DecidedBy");
+
+            entity.HasOne(d => d.Interview).WithOne(p => p.InterviewRoundDecision)
+                .HasForeignKey<InterviewRoundDecision>(d => d.InterviewId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_InterviewRoundDecisions_Interview");
         });
 
         modelBuilder.Entity<InterviewScore>(entity =>
@@ -687,6 +734,8 @@ public partial class RecruitmentDbContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PK__StatusHi__3214EC070A07EF20");
 
+            entity.HasIndex(e => new { e.EntityTypeId, e.ToStatusId, e.ChangedAt }, "IX_StatusHistories_EntityType_Status");
+
             entity.Property(e => e.ChangedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
@@ -787,6 +836,37 @@ public partial class RecruitmentDbContext : DbContext
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__UserDepar__UserI__3E1D39E1");
+        });
+
+        modelBuilder.Entity<VwInterviewConflict>(entity =>
+        {
+            entity
+                .HasNoKey()
+                .ToView("vw_InterviewConflicts");
+
+            entity.Property(e => e.ConflictType)
+                .HasMaxLength(20)
+                .IsUnicode(false);
+            entity.Property(e => e.ConflictingUserName).HasMaxLength(200);
+            entity.Property(e => e.Interview1Candidate).HasMaxLength(200);
+            entity.Property(e => e.Interview1End).HasColumnType("datetime");
+            entity.Property(e => e.Interview1Start).HasColumnType("datetime");
+            entity.Property(e => e.Interview2Candidate).HasMaxLength(200);
+            entity.Property(e => e.Interview2End).HasColumnType("datetime");
+            entity.Property(e => e.Interview2Start).HasColumnType("datetime");
+        });
+
+        modelBuilder.Entity<VwNoShowStatistic>(entity =>
+        {
+            entity
+                .HasNoKey()
+                .ToView("vw_NoShowStatistics");
+
+            entity.Property(e => e.CandidateEmail)
+                .HasMaxLength(200)
+                .IsUnicode(false);
+            entity.Property(e => e.CandidateName).HasMaxLength(200);
+            entity.Property(e => e.LastNoShowDate).HasColumnType("datetime");
         });
 
         modelBuilder.Entity<WorkflowTransition>(entity =>

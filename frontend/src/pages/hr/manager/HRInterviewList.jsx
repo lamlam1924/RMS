@@ -1,25 +1,36 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import hrService from '../../../services/hrService';
-import { LoadingSpinner } from '../../../components/shared';
-import { getStatusBadge } from '../../../utils/helpers/badge';
 import notify from '../../../utils/notification';
-
-const formatDateTime = (dateStr) => {
-  if (!dateStr) return 'N/A';
-  return new Date(dateStr).toLocaleString('en-US', {
-    month: 'short', day: 'numeric', year: 'numeric',
-    hour: '2-digit', minute: '2-digit'
-  });
-};
+import SimpleInterviewListPage from '../../../components/shared/interviews/SimpleInterviewListPage';
+import { formatDateTime } from '../../../utils/formatters/display';
 
 export default function HRInterviewList() {
   const navigate = useNavigate();
   const [interviews, setInterviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('upcoming');
+  const [focusMode, setFocusMode] = useState('all');
+  const [positionFilter, setPositionFilter] = useState('all');
+  const [roundFilter, setRoundFilter] = useState('all');
 
   useEffect(() => { loadInterviews(); }, [filter]);
+
+  const isMissingInterviewer = (item) => {
+    const participantCount = item.participantCount || 0;
+    const openRequestCount = item.openParticipantRequestCount || 0;
+    const fulfilledRequestCount = item.fulfilledParticipantRequestCount || 0;
+    return participantCount === 0 && openRequestCount === 0 && fulfilledRequestCount === 0;
+  };
+
+  const isFinalStatus = (statusCode) => ['COMPLETED', 'CANCELLED', 'NO_SHOW', 'INTERVIEWER_ABSENT'].includes(statusCode);
+
+  const isReadyToFinalize = (item) => {
+    const participantCount = item.participantCount || 0;
+    const feedbackCount = item.feedbackCount || 0;
+    if (isFinalStatus(item.statusCode)) return false;
+    return participantCount > 0 && feedbackCount >= participantCount;
+  };
 
   const loadInterviews = async () => {
     try {
@@ -37,108 +48,167 @@ export default function HRInterviewList() {
     }
   };
 
+  const positionOptions = Array.from(new Set(interviews.map((item) => item.positionTitle).filter(Boolean)));
+  const roundOptions = Array.from(new Set(interviews.map((item) => item.roundNo).filter((value) => value != null))).sort((a, b) => a - b);
+
+  const displayedInterviews = interviews.filter((item) => {
+    if (focusMode === 'pending-feedback') {
+      return (item.participantCount || 0) > (item.feedbackCount || 0);
+    }
+
+    if (focusMode === 'missing-interviewer') {
+      return isMissingInterviewer(item);
+    }
+
+    if (focusMode === 'ready-finalize') {
+      return isReadyToFinalize(item);
+    }
+
+    return true;
+  }).filter((item) => {
+    if (positionFilter !== 'all' && item.positionTitle !== positionFilter) {
+      return false;
+    }
+
+    if (roundFilter !== 'all' && String(item.roundNo) !== roundFilter) {
+      return false;
+    }
+
+    return true;
+  });
+
+  const summary = {
+    total: interviews.length,
+    pendingFeedback: interviews.filter((item) => (item.participantCount || 0) > (item.feedbackCount || 0)).length,
+    missingInterviewer: interviews.filter((item) => isMissingInterviewer(item)).length,
+    readyFinalize: interviews.filter((item) => isReadyToFinalize(item)).length,
+  };
+
   return (
-    <div style={{ padding: 24, backgroundColor: '#f9fafb', minHeight: '100vh' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 24 }}>
-        <div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, color: '#111827', marginBottom: 4 }}>Interviews</h1>
-          <p style={{ color: '#6b7280' }}>Manage and track candidate interviews</p>
-        </div>
+    <SimpleInterviewListPage
+      title="Danh sách phỏng vấn"
+      description="Quản lý và theo dõi các buổi phỏng vấn ứng viên"
+      filters={[
+        { id: 'upcoming', label: 'Sắp diễn ra' },
+        { id: 'all', label: 'Tất cả' }
+      ]}
+      filter={filter}
+      onFilterChange={setFilter}
+      loading={loading}
+      items={displayedInterviews}
+      emptyTitle="Chưa có lịch phỏng vấn"
+      emptyDescription={filter === 'upcoming' ? 'Không có buổi phỏng vấn sắp diễn ra' : 'Không có dữ liệu phỏng vấn theo bộ lọc hiện tại'}
+      topRight={(
         <button
           onClick={() => navigate('/staff/hr-manager/interviews/create')}
           style={{
-            padding: '10px 20px', backgroundColor: '#3b82f6', color: 'white',
-            border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 500
+            padding: '9px 16px',
+            backgroundColor: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            borderRadius: 6,
+            cursor: 'pointer',
+            fontWeight: 600
           }}
         >
-          + Schedule Interview
+          + Tạo lịch phỏng vấn
         </button>
-      </div>
-
-      {/* Filter Tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-        {[
-          { id: 'upcoming', label: 'Upcoming' },
-          { id: 'all', label: 'All Interviews' },
-        ].map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setFilter(tab.id)}
-            style={{
-              padding: '8px 16px',
-              backgroundColor: filter === tab.id ? '#3b82f6' : 'white',
-              color: filter === tab.id ? 'white' : '#374151',
-              border: '1px solid #d1d5db', borderRadius: 6,
-              cursor: 'pointer', fontWeight: 500
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* List */}
-      {loading ? (
-        <LoadingSpinner />
-      ) : interviews.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 60, backgroundColor: 'white', borderRadius: 8, border: '1px solid #e5e7eb' }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>📅</div>
-          <h3 style={{ fontSize: 18, fontWeight: 600, color: '#111827', marginBottom: 8 }}>No interviews scheduled</h3>
-          <p style={{ color: '#6b7280' }}>{filter === 'upcoming' ? 'No upcoming interviews' : 'No interviews found'}</p>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {interviews.map((interview) => {
-            const badge = getStatusBadge(interview.statusCode);
-            return (
-              <div
-                key={interview.id}
-                onClick={() => navigate(`/staff/hr-manager/interviews/${interview.id}`)}
+      )}
+      extraTop={(
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            {[
+              { id: 'all', label: `Tất cả (${summary.total})` },
+              { id: 'pending-feedback', label: `Chờ feedback (${summary.pendingFeedback})` },
+              { id: 'missing-interviewer', label: `Thiếu interviewer (${summary.missingInterviewer})` },
+              { id: 'ready-finalize', label: `Đủ điều kiện chốt vòng (${summary.readyFinalize})` },
+            ].map((mode) => (
+              <button
+                key={mode.id}
+                onClick={() => setFocusMode(mode.id)}
                 style={{
-                  backgroundColor: 'white', padding: 20, borderRadius: 8,
-                  border: '1px solid #e5e7eb', cursor: 'pointer',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)', transition: 'all 0.2s'
+                  padding: '7px 12px',
+                  borderRadius: 999,
+                  border: `1px solid ${focusMode === mode.id ? '#2563eb' : '#d1d5db'}`,
+                  backgroundColor: focusMode === mode.id ? '#2563eb' : 'white',
+                  color: focusMode === mode.id ? 'white' : '#374151',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  fontWeight: 600,
                 }}
-                onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)'; e.currentTarget.style.borderColor = '#3b82f6'; }}
-                onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)'; e.currentTarget.style.borderColor = '#e5e7eb'; }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                  <div>
-                    <h3 style={{ fontSize: 18, fontWeight: 600, color: '#111827', marginBottom: 4 }}>
-                      {interview.candidateName}
-                    </h3>
-                    <div style={{ fontSize: 13, color: '#6b7280' }}>
-                      Round {interview.roundNo} • {interview.positionTitle} • {interview.departmentName}
-                    </div>
-                  </div>
-                  <span style={{ padding: '4px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600, backgroundColor: badge.bg, color: badge.color }}>
-                    {interview.statusName || badge.label}
-                  </span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
-                  <div>
-                    <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Start</div>
-                    <div style={{ fontWeight: 500 }}>{formatDateTime(interview.startTime)}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>End</div>
-                    <div style={{ fontWeight: 500 }}>{formatDateTime(interview.endTime)}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Location</div>
-                    <div style={{ fontWeight: 500 }}>{interview.location || '—'}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Participants / Feedbacks</div>
-                    <div style={{ fontWeight: 500 }}>{interview.participantCount} / {interview.feedbackCount}</div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+                {mode.label}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px', gap: 8, marginBottom: 10 }}>
+            <select
+              value={positionFilter}
+              onChange={(event) => setPositionFilter(event.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 10px',
+                borderRadius: 6,
+                border: '1px solid #d1d5db',
+                fontSize: 13,
+                boxSizing: 'border-box',
+                backgroundColor: 'white'
+              }}
+            >
+              <option value='all'>Tất cả vị trí</option>
+              {positionOptions.map((position) => (
+                <option key={position} value={position}>{position}</option>
+              ))}
+            </select>
+
+            <select
+              value={roundFilter}
+              onChange={(event) => setRoundFilter(event.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 10px',
+                borderRadius: 6,
+                border: '1px solid #d1d5db',
+                fontSize: 13,
+                boxSizing: 'border-box',
+                backgroundColor: 'white'
+              }}
+            >
+              <option value='all'>Mọi vòng</option>
+              {roundOptions.map((roundNo) => (
+                <option key={roundNo} value={String(roundNo)}>Vòng {roundNo}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ fontSize: 12, color: '#6b7280' }}>
+            Đang hiển thị {displayedInterviews.length} buổi phỏng vấn theo bộ lọc hiện tại.
+          </div>
         </div>
       )}
-    </div>
+      onItemClick={(interview) => navigate(`/staff/hr-manager/interviews/${interview.id}`)}
+      getCardData={(interview) => ({
+        title: interview.candidateName,
+        subtitle: `Vòng ${interview.roundNo} • ${interview.positionTitle} • ${interview.departmentName}`,
+        statusCode: interview.statusCode,
+        statusLabel: interview.statusName,
+        infoRows: [
+          { label: 'Bắt đầu', value: formatDateTime(interview.startTime, 'vi-VN') },
+          { label: 'Kết thúc', value: formatDateTime(interview.endTime, 'vi-VN') },
+          { label: 'Địa điểm', value: interview.location || '—' },
+          { label: 'Người tham gia / Đánh giá', value: `${interview.participantCount} / ${interview.feedbackCount}` }
+        ],
+        note: (interview.participantCount || 0) === 0
+          ? ((interview.fulfilledParticipantRequestCount || 0) > 0
+            ? '✅ Đã đề cử interviewer thành công, danh sách người tham gia sẽ được đồng bộ ngay.'
+            : ((interview.openParticipantRequestCount || 0) > 0
+              ? '⏳ Đang chờ phản hồi đề cử interviewer.'
+              : '⚠️ Buổi này chưa có interviewer, cần điều phối sớm.'))
+          : (interview.participantCount || 0) > (interview.feedbackCount || 0)
+            ? `📝 Còn thiếu ${(interview.participantCount || 0) - (interview.feedbackCount || 0)} feedback.`
+            : ''
+      })}
+    />
   );
 }

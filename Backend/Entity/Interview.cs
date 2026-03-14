@@ -31,6 +31,18 @@ public partial class Interview
 
     public int? DeletedBy { get; set; }
 
+    public DateTime? UpdatedAt { get; set; }
+
+    public int? UpdatedBy { get; set; }
+
+    public int RescheduledCount { get; set; }
+
+    public DateTime? RequiresFeedbackBy { get; set; }
+
+    public bool FeedbackReminderSent { get; set; }
+
+    public bool IsNextRoundScheduled { get; set; }
+
     public virtual Application Application { get; set; } = null!;
 
     public virtual User CreatedByNavigation { get; set; } = null!;
@@ -39,7 +51,11 @@ public partial class Interview
 
     public virtual ICollection<InterviewParticipant> InterviewParticipants { get; set; } = new List<InterviewParticipant>();
 
+    public virtual InterviewRoundDecision? InterviewRoundDecision { get; set; }
+
     public virtual ICollection<ParticipantRequest> ParticipantRequests { get; set; } = new List<ParticipantRequest>();
 
     public virtual Status Status { get; set; } = null!;
+
+    public virtual User? UpdatedByNavigation { get; set; }
 }

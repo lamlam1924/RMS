@@ -15,6 +15,8 @@ public partial class InterviewFeedback
 
     public string? Note { get; set; }
 
+    public string? Recommendation { get; set; }
+
     public virtual Interview Interview { get; set; } = null!;
 
     public virtual ICollection<InterviewScore> InterviewScores { get; set; } = new List<InterviewScore>();

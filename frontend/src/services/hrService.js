@@ -380,6 +380,26 @@ const hrService = {
       if (!response.ok) throw new Error('Failed to create interview');
       return response.json();
     },
+
+    checkConflicts: async (data) => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/check-conflicts`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw new Error('Failed to check interview conflicts');
+      return response.json();
+    },
+
+    findAvailableSlots: async (data) => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/find-available-slots`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw new Error('Failed to find available time slots');
+      return response.json();
+    },
     
     update: async (id, data) => {
       const response = await fetch(`${API_BASE_URL}/hr/interviews/${id}`, {
@@ -487,6 +507,112 @@ const hrService = {
         headers: getAuthHeaders()
       });
       if (!response.ok) throw new Error('Failed to fetch directors');
+      return response.json();
+    },
+
+    markNoShow: async (id, data) => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/${id}/mark-no-show`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || 'Failed to mark interview as no-show');
+      }
+      return response.json();
+    },
+
+    getCandidateNoShowStats: async (candidateId) => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/no-shows/candidate/${candidateId}`, {
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error('Failed to fetch candidate no-show stats');
+      return response.json();
+    },
+
+    getNoShowStatistics: async () => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/no-shows/statistics`, {
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error('Failed to fetch no-show statistics');
+      return response.json();
+    },
+
+    isCandidateBlacklisted: async (candidateId) => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/no-shows/candidate/${candidateId}/is-blacklisted`, {
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error('Failed to check blacklist status');
+      return response.json();
+    },
+
+    checkNextRound: async (id) => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/${id}/check-next-round`, {
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || 'Failed to check next round');
+      }
+      return response.json();
+    },
+
+    reviewRound: async (id, data) => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/${id}/review-round`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || 'Không thể chốt kết quả vòng');
+      }
+      return response.json();
+    },
+
+    scheduleNextRound: async (id, data) => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/${id}/schedule-next-round`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || 'Failed to schedule next round');
+      }
+      return response.json();
+    },
+
+    getRoundProgress: async (applicationId) => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/application/${applicationId}/round-progress`, {
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error('Failed to fetch round progress');
+      return response.json();
+    },
+
+    getPendingFeedbacks: async (params = {}) => {
+      const search = new URLSearchParams();
+      if (params.interviewerId) search.set('interviewerId', params.interviewerId);
+      if (params.overdueOnly) search.set('overdueOnly', 'true');
+      const suffix = search.toString() ? `?${search.toString()}` : '';
+      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/pending-feedbacks${suffix}`, {
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error('Failed to fetch pending feedbacks');
+      return response.json();
+    },
+
+    sendFeedbackReminder: async (id) => {
+      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/${id}/send-feedback-reminder`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || 'Failed to send feedback reminder');
+      }
       return response.json();
     }
   },

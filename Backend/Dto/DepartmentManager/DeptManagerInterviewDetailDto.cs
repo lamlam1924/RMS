@@ -20,4 +20,17 @@ public class DeptManagerInterviewDetailDto
     public CandidateProfileSummaryDto? CandidateProfile { get; set; }
     public List<EvaluationCriterionDto> EvaluationCriteria { get; set; } = new();
     public bool HasMyFeedback { get; set; }
+    public List<PreviousRoundSummaryDto> PreviousRounds { get; set; } = new();
+}
+
+public class PreviousRoundSummaryDto
+{
+    public int RoundNo { get; set; }
+    public int InterviewId { get; set; }
+    public DateTime StartTime { get; set; }
+    public string StatusCode { get; set; } = "";
+    public string StatusName { get; set; } = "";
+    public decimal? AverageScore { get; set; }
+    public string? DecisionCode { get; set; }
+    public string? DecisionNote { get; set; }
 }

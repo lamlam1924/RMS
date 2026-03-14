@@ -6,7 +6,9 @@ public class InterviewListDto
     public int ApplicationId { get; set; }
     public int RoundNo { get; set; }
     public string CandidateName { get; set; } = "";
+    public string? CandidateEmail { get; set; }
     public string PositionTitle { get; set; } = "";
+    public int PositionId { get; set; }
     public string DepartmentName { get; set; } = "";
     public DateTime StartTime { get; set; }
     public DateTime EndTime { get; set; }
@@ -16,12 +18,15 @@ public class InterviewListDto
     public string StatusName { get; set; } = "";
     public int ParticipantCount { get; set; }
     public int FeedbackCount { get; set; }
+    public int OpenParticipantRequestCount { get; set; }
+    public int FulfilledParticipantRequestCount { get; set; }
 }
 
 public class InterviewDetailDto : InterviewListDto
 {
     public List<InterviewParticipantItemDto> Participants { get; set; } = new();
     public List<InterviewFeedbackItemDto> Feedbacks { get; set; } = new();
+    public InterviewRoundDecisionDto? RoundDecision { get; set; }
 }
 
 public class InterviewParticipantItemDto
@@ -39,6 +44,7 @@ public class InterviewFeedbackItemDto
     public int Id { get; set; }
     public int InterviewerId { get; set; }
     public string InterviewerName { get; set; } = "";
+    public string? Recommendation { get; set; }
     public string? Note { get; set; }
     public DateTime? CreatedAt { get; set; }
     public List<InterviewScoreItemDto> Scores { get; set; } = new();
@@ -59,6 +65,8 @@ public class CreateInterviewDto
     public string? Location { get; set; }
     public string? MeetingLink { get; set; }
     public List<ParticipantInputDto> Participants { get; set; } = new();
+    public bool IgnoreConflicts { get; set; } = false; // HR Manager có thể override conflicts
+    public string? ConflictOverrideReason { get; set; }
 }
 
 public class ParticipantInputDto

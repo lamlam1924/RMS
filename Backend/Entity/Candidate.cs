@@ -23,13 +23,13 @@ public partial class Candidate
 
     public int? DeletedBy { get; set; }
 
-    public string? AvatarUrl { get; set; }
-
     public string? PasswordHash { get; set; }
 
     public string? GoogleId { get; set; }
 
     public string AuthProvider { get; set; } = null!;
+
+    public string? AvatarUrl { get; set; }
 
     public virtual ICollection<Cvprofile> Cvprofiles { get; set; } = new List<Cvprofile>();
 }

@@ -18,6 +18,9 @@ public class CandidateInterviewsService : ICandidateInterviewsService
     public Task<List<CandidateInterviewListDto>> GetInterviewsAsync(int candidateId)
         => _repository.GetInterviewsAsync(candidateId);
 
+    public Task<CandidateInterviewDetailDto?> GetInterviewDetailAsync(int interviewId, int candidateId)
+        => _repository.GetInterviewDetailAsync(interviewId, candidateId);
+
     public async Task<ActionResponseDto> RespondAsync(int interviewId, int candidateId, RespondInterviewDto dto)
     {
         var response = dto.Response?.Trim().ToUpper();
