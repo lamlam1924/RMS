@@ -49,6 +49,7 @@ import DeptManagerNominationList from "./pages/department-manager/DeptManagerNom
 
 // HR Manager Pages
 import HRManagerDashboard from "./pages/hr/dashboard/HRManagerDashboard";
+import HRStaffDashboard from "./pages/hr/dashboard/HRStaffDashboard";
 import HRJobRequestList from "./pages/hr/manager/HRJobRequestList";
 import HRJobRequestDetail from "./pages/hr/manager/HRJobRequestDetail";
 import HRManagerJobPostingList from "./pages/hr/manager/HRManagerJobPostingList";
@@ -76,6 +77,7 @@ import InterviewerInterviewDetail from "./pages/interviewer/InterviewerInterview
 import JobBoard from "./pages/candidate/JobBoard";
 import JobDetail from "./pages/candidate/JobDetail";
 import MyApplications from "./pages/candidate/MyApplications";
+import MyOffers from "./pages/candidate/MyOffers";
 import MyProfile from "./pages/candidate/MyProfile";
 import CandidateInterviewList from "./pages/candidate/CandidateInterviewList";
 import CandidateInterviewDetail from "./pages/candidate/CandidateInterviewDetail";
@@ -122,7 +124,7 @@ function RoleBasedRedirect() {
     return <Navigate to="/staff/hr-manager" replace />;
   }
   if (user.roles.includes(ROLES.HR_STAFF)) {
-    return <Navigate to="/staff/hr-staff/job-postings" replace />;
+    return <Navigate to="/staff/hr-staff" replace />;
   }
   if (user.roles.includes(ROLES.DEPARTMENT_MANAGER)) {
     return <Navigate to="/staff/dept-manager" replace />;
@@ -194,6 +196,7 @@ export default function App() {
           <Route path="jobs" element={<JobBoard />} />
           <Route path="jobs/:id" element={<JobDetail />} />
           <Route path="applications" element={<MyApplications />} />
+          <Route path="offers" element={<MyOffers />} />
           <Route path="interviews" element={<CandidateInterviewList />} />
           <Route path="interviews/:id" element={<CandidateInterviewDetail />} />
           <Route path="profile" element={<MyProfile />} />
@@ -505,7 +508,7 @@ export default function App() {
           <Route
             path="hr-manager/job-requests"
             element={
-              <PrivateRoute roles={[ROLES.HR_MANAGER]}>
+              <PrivateRoute roles={[ROLES.HR_MANAGER, ROLES.HR_STAFF]}>
                 <HRJobRequestList />
               </PrivateRoute>
             }
@@ -513,7 +516,7 @@ export default function App() {
           <Route
             path="hr-manager/job-requests/:id"
             element={
-              <PrivateRoute roles={[ROLES.HR_MANAGER]}>
+              <PrivateRoute roles={[ROLES.HR_MANAGER, ROLES.HR_STAFF]}>
                 <HRJobRequestDetail />
               </PrivateRoute>
             }
@@ -528,6 +531,14 @@ export default function App() {
           />
 
           {/* HR Staff Routes (Staff Only) */}
+          <Route
+            path="hr-staff"
+            element={
+              <PrivateRoute roles={[ROLES.HR_STAFF]}>
+                <HRStaffDashboard />
+              </PrivateRoute>
+            }
+          />
           <Route
             path="hr-staff/job-postings"
             element={
@@ -599,6 +610,22 @@ export default function App() {
             element={
               <PrivateRoute roles={[ROLES.HR_MANAGER, ROLES.HR_STAFF]}>
                 <HROfferList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="hr-manager/offers/create"
+            element={
+              <PrivateRoute roles={[ROLES.HR_MANAGER, ROLES.HR_STAFF]}>
+                <HROfferCreate />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="hr-manager/offers/:id"
+            element={
+              <PrivateRoute roles={[ROLES.HR_MANAGER, ROLES.HR_STAFF]}>
+                <HROfferDetail />
               </PrivateRoute>
             }
           />

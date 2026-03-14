@@ -1,5 +1,7 @@
 // HR Service - API calls for HR Manager and HR Staff operations
-const API_BASE_URL = '';
+import { authFetch } from './authService';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
@@ -12,7 +14,7 @@ const hrService = {
   // ===== JOB REQUESTS =====
   jobRequests: {
     getAll: async () => {
-      const response = await fetch(`${API_BASE_URL}/hr/job-requests`, {
+      const response = await authFetch(`${API_BASE_URL}/hr/job-requests`, {
         headers: getAuthHeaders()
       });
       if (!response.ok) throw new Error('Failed to fetch job requests');
@@ -20,7 +22,7 @@ const hrService = {
     },
     
     getPending: async () => {
-      const response = await fetch(`${API_BASE_URL}/hr/job-requests/pending`, {
+      const response = await authFetch(`${API_BASE_URL}/hr/job-requests/pending`, {
         headers: getAuthHeaders()
       });
       if (!response.ok) throw new Error('Failed to fetch pending job requests');
@@ -126,7 +128,7 @@ const hrService = {
 
     // HR Staff lấy các Job Request APPROVED được gán cho mình
     getApprovedForMe: async () => {
-      const response = await fetch(`${API_BASE_URL}/hr/job-requests/approved-for-me`, {
+      const response = await authFetch(`${API_BASE_URL}/hr/job-requests/approved-for-me`, {
         headers: getAuthHeaders()
       });
       if (!response.ok) throw new Error('Không thể lấy danh sách yêu cầu tuyển dụng');
@@ -303,7 +305,7 @@ const hrService = {
 
     // HR Staff: get only postings assigned to me
     getMy: async () => {
-      const response = await fetch(`${API_BASE_URL}/hr/job-postings/my`, {
+      const response = await authFetch(`${API_BASE_URL}/hr/job-postings/my`, {
         headers: getAuthHeaders()
       });
       if (!response.ok) throw new Error('Failed to fetch my job postings');
@@ -323,8 +325,8 @@ const hrService = {
     
     getByStatus: async (statusId) => {
       const url = statusId !== null && statusId !== undefined 
-        ? `${API_BASE_URL}/api/hr/applications?statusId=${statusId}`
-        : `${API_BASE_URL}/api/hr/applications`;
+        ? `${API_BASE_URL}/hr/applications?statusId=${statusId}`
+        : `${API_BASE_URL}/hr/applications`;
       const response = await fetch(url, {
         headers: getAuthHeaders()
       });
@@ -364,7 +366,7 @@ const hrService = {
     },
     
     getUpcoming: async () => {
-      const response = await fetch(`${API_BASE_URL}/hr/interviews/upcoming`, {
+      const response = await authFetch(`${API_BASE_URL}/hr/interviews/upcoming`, {
         headers: getAuthHeaders()
       });
       if (!response.ok) throw new Error('Failed to fetch upcoming interviews');
@@ -382,7 +384,7 @@ const hrService = {
     },
 
     checkConflicts: async (data) => {
-      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/check-conflicts`, {
+      const response = await fetch(`${API_BASE_URL}/hr/interviews/check-conflicts`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(data)
@@ -392,7 +394,7 @@ const hrService = {
     },
 
     findAvailableSlots: async (data) => {
-      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/find-available-slots`, {
+      const response = await fetch(`${API_BASE_URL}/hr/interviews/find-available-slots`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(data)
@@ -412,7 +414,7 @@ const hrService = {
     },
 
     getById: async (id) => {
-      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/hr/interviews/${id}`, {
         headers: getAuthHeaders()
       });
       if (!response.ok) throw new Error('Failed to fetch interview');
@@ -420,7 +422,7 @@ const hrService = {
     },
 
     finalize: async (id, data) => {
-      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/${id}/finalize`, {
+      const response = await fetch(`${API_BASE_URL}/hr/interviews/${id}/finalize`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(data)
@@ -430,7 +432,7 @@ const hrService = {
     },
 
     cancel: async (id) => {
-      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/${id}/cancel`, {
+      const response = await fetch(`${API_BASE_URL}/hr/interviews/${id}/cancel`, {
         method: 'POST',
         headers: getAuthHeaders()
       });
@@ -439,7 +441,7 @@ const hrService = {
     },
 
     submitFeedback: async (id, data) => {
-      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/${id}/feedback`, {
+      const response = await fetch(`${API_BASE_URL}/hr/interviews/${id}/feedback`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(data)
@@ -449,7 +451,7 @@ const hrService = {
     },
 
     getParticipantRequests: async (interviewId) => {
-      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/${interviewId}/participant-requests`, {
+      const response = await fetch(`${API_BASE_URL}/hr/interviews/${interviewId}/participant-requests`, {
         headers: getAuthHeaders()
       });
       if (!response.ok) throw new Error('Failed to fetch participant requests');
@@ -457,7 +459,7 @@ const hrService = {
     },
 
     createParticipantRequest: async (interviewId, data) => {
-      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/${interviewId}/participant-requests`, {
+      const response = await fetch(`${API_BASE_URL}/hr/interviews/${interviewId}/participant-requests`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(data)
@@ -467,7 +469,7 @@ const hrService = {
     },
 
     getAssignedParticipantRequests: async () => {
-      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/participant-requests/assigned`, {
+      const response = await fetch(`${API_BASE_URL}/hr/interviews/participant-requests/assigned`, {
         headers: getAuthHeaders()
       });
       if (!response.ok) throw new Error('Failed to fetch assigned participant requests');
@@ -475,7 +477,7 @@ const hrService = {
     },
 
     forwardParticipantRequest: async (reqId, data) => {
-      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/participant-requests/${reqId}/forward`, {
+      const response = await fetch(`${API_BASE_URL}/hr/interviews/participant-requests/${reqId}/forward`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(data)
@@ -485,7 +487,7 @@ const hrService = {
     },
 
     nominateParticipants: async (reqId, data) => {
-      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/participant-requests/${reqId}/nominate`, {
+      const response = await fetch(`${API_BASE_URL}/hr/interviews/participant-requests/${reqId}/nominate`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(data)
@@ -495,7 +497,7 @@ const hrService = {
     },
 
     getDeptManagers: async () => {
-      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/utilities/dept-managers`, {
+      const response = await fetch(`${API_BASE_URL}/hr/interviews/utilities/dept-managers`, {
         headers: getAuthHeaders()
       });
       if (!response.ok) throw new Error('Failed to fetch dept managers');
@@ -503,7 +505,7 @@ const hrService = {
     },
 
     getDirectors: async () => {
-      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/utilities/directors`, {
+      const response = await fetch(`${API_BASE_URL}/hr/interviews/utilities/directors`, {
         headers: getAuthHeaders()
       });
       if (!response.ok) throw new Error('Failed to fetch directors');
@@ -511,7 +513,7 @@ const hrService = {
     },
 
     markNoShow: async (id, data) => {
-      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/${id}/mark-no-show`, {
+      const response = await fetch(`${API_BASE_URL}/hr/interviews/${id}/mark-no-show`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(data)
@@ -524,7 +526,7 @@ const hrService = {
     },
 
     getCandidateNoShowStats: async (candidateId) => {
-      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/no-shows/candidate/${candidateId}`, {
+      const response = await fetch(`${API_BASE_URL}/hr/interviews/no-shows/candidate/${candidateId}`, {
         headers: getAuthHeaders()
       });
       if (!response.ok) throw new Error('Failed to fetch candidate no-show stats');
@@ -532,7 +534,7 @@ const hrService = {
     },
 
     getNoShowStatistics: async () => {
-      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/no-shows/statistics`, {
+      const response = await fetch(`${API_BASE_URL}/hr/interviews/no-shows/statistics`, {
         headers: getAuthHeaders()
       });
       if (!response.ok) throw new Error('Failed to fetch no-show statistics');
@@ -540,7 +542,7 @@ const hrService = {
     },
 
     isCandidateBlacklisted: async (candidateId) => {
-      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/no-shows/candidate/${candidateId}/is-blacklisted`, {
+      const response = await fetch(`${API_BASE_URL}/hr/interviews/no-shows/candidate/${candidateId}/is-blacklisted`, {
         headers: getAuthHeaders()
       });
       if (!response.ok) throw new Error('Failed to check blacklist status');
@@ -548,7 +550,7 @@ const hrService = {
     },
 
     checkNextRound: async (id) => {
-      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/${id}/check-next-round`, {
+      const response = await fetch(`${API_BASE_URL}/hr/interviews/${id}/check-next-round`, {
         headers: getAuthHeaders()
       });
       if (!response.ok) {
@@ -559,7 +561,7 @@ const hrService = {
     },
 
     reviewRound: async (id, data) => {
-      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/${id}/review-round`, {
+      const response = await fetch(`${API_BASE_URL}/hr/interviews/${id}/review-round`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(data)
@@ -572,7 +574,7 @@ const hrService = {
     },
 
     scheduleNextRound: async (id, data) => {
-      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/${id}/schedule-next-round`, {
+      const response = await fetch(`${API_BASE_URL}/hr/interviews/${id}/schedule-next-round`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(data)
@@ -585,7 +587,7 @@ const hrService = {
     },
 
     getRoundProgress: async (applicationId) => {
-      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/application/${applicationId}/round-progress`, {
+      const response = await fetch(`${API_BASE_URL}/hr/interviews/application/${applicationId}/round-progress`, {
         headers: getAuthHeaders()
       });
       if (!response.ok) throw new Error('Failed to fetch round progress');
@@ -597,7 +599,7 @@ const hrService = {
       if (params.interviewerId) search.set('interviewerId', params.interviewerId);
       if (params.overdueOnly) search.set('overdueOnly', 'true');
       const suffix = search.toString() ? `?${search.toString()}` : '';
-      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/pending-feedbacks${suffix}`, {
+      const response = await fetch(`${API_BASE_URL}/hr/interviews/pending-feedbacks${suffix}`, {
         headers: getAuthHeaders()
       });
       if (!response.ok) throw new Error('Failed to fetch pending feedbacks');
@@ -605,7 +607,7 @@ const hrService = {
     },
 
     sendFeedbackReminder: async (id) => {
-      const response = await fetch(`${API_BASE_URL}/api/hr/interviews/${id}/send-feedback-reminder`, {
+      const response = await fetch(`${API_BASE_URL}/hr/interviews/${id}/send-feedback-reminder`, {
         method: 'POST',
         headers: getAuthHeaders()
       });
@@ -631,14 +633,14 @@ const hrService = {
   // ===== OFFERS =====
   offers: {
     getById: async (id) => {
-      const response = await fetch(`${API_BASE_URL}/hr/offers/${id}`, {
+      const response = await authFetch(`${API_BASE_URL}/hr/offers/${id}`, {
         headers: getAuthHeaders()
       });
       if (!response.ok) throw new Error('Failed to fetch offer');
       return response.json();
     },
     getAll: async () => {
-      const response = await fetch(`${API_BASE_URL}/hr/offers`, {
+      const response = await authFetch(`${API_BASE_URL}/hr/offers`, {
         headers: getAuthHeaders()
       });
       if (!response.ok) throw new Error('Failed to fetch offers');
@@ -646,7 +648,7 @@ const hrService = {
     },
     
     getPending: async () => {
-      const response = await fetch(`${API_BASE_URL}/hr/offers/pending`, {
+      const response = await authFetch(`${API_BASE_URL}/hr/offers/pending`, {
         headers: getAuthHeaders()
       });
       if (!response.ok) throw new Error('Failed to fetch pending offers');
@@ -654,7 +656,7 @@ const hrService = {
     },
     
     getApproved: async () => {
-      const response = await fetch(`${API_BASE_URL}/hr/offers/approved`, {
+      const response = await authFetch(`${API_BASE_URL}/hr/offers/approved`, {
         headers: getAuthHeaders()
       });
       if (!response.ok) throw new Error('Failed to fetch approved offers');
@@ -662,7 +664,7 @@ const hrService = {
     },
     
     create: async (data) => {
-      const response = await fetch(`${API_BASE_URL}/hr/offers`, {
+      const response = await authFetch(`${API_BASE_URL}/hr/offers`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(data)
@@ -673,7 +675,7 @@ const hrService = {
     
     // HR Staff: DRAFT → IN_REVIEW
     submitForReview: async (id) => {
-      const response = await fetch(`${API_BASE_URL}/hr/offers/${id}/submit`, {
+      const response = await authFetch(`${API_BASE_URL}/hr/offers/${id}/submit`, {
         method: 'PUT',
         headers: getAuthHeaders()
       });
@@ -683,7 +685,7 @@ const hrService = {
     
     // HR Manager/Staff: Chỉnh sửa offer (DRAFT hoặc IN_REVIEW)
     update: async (id, data) => {
-      const response = await fetch(`${API_BASE_URL}/hr/offers/${id}`, {
+      const response = await authFetch(`${API_BASE_URL}/hr/offers/${id}`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -701,7 +703,7 @@ const hrService = {
 
     // HR Manager: IN_REVIEW → IN_REVIEW (intermediate), IN_REVIEW → REJECTED
     updateStatus: async (id, toStatusId, note = '') => {
-      const response = await fetch(`${API_BASE_URL}/hr/offers/${id}/status`, {
+      const response = await authFetch(`${API_BASE_URL}/hr/offers/${id}/status`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify({ toStatusId, note })
@@ -712,7 +714,7 @@ const hrService = {
     
     // HR Staff: APPROVED → SENT
     send: async (id) => {
-      const response = await fetch(`${API_BASE_URL}/hr/offers/${id}/send`, {
+      const response = await authFetch(`${API_BASE_URL}/hr/offers/${id}/send`, {
         method: 'PUT',
         headers: getAuthHeaders()
       });
@@ -722,7 +724,7 @@ const hrService = {
 
     // HR: Cập nhật offer sau khi ứng viên thương lượng, rồi gửi lại (status phải là NEGOTIATING)
     updateAfterNegotiation: async (id, data) => {
-      const response = await fetch(`${API_BASE_URL}/hr/offers/${id}/negotiation`, {
+      const response = await authFetch(`${API_BASE_URL}/hr/offers/${id}/negotiation`, {
         method: 'PUT',
         headers: getAuthHeaders(),
         body: JSON.stringify({
@@ -742,7 +744,7 @@ const hrService = {
   // ===== STATISTICS (HR Manager only) =====
   statistics: {
     getDashboard: async () => {
-      const response = await fetch(`${API_BASE_URL}/hr/statistics/dashboard`, {
+      const response = await authFetch(`${API_BASE_URL}/hr/statistics/dashboard`, {
         headers: getAuthHeaders()
       });
       if (!response.ok) throw new Error('Failed to fetch dashboard statistics');
@@ -750,7 +752,7 @@ const hrService = {
     },
     
     getRecruitmentFunnel: async () => {
-      const response = await fetch(`${API_BASE_URL}/hr/statistics/funnel`, {
+      const response = await authFetch(`${API_BASE_URL}/hr/statistics/funnel`, {
         headers: getAuthHeaders()
       });
       if (!response.ok) throw new Error('Failed to fetch recruitment funnel');

@@ -3,6 +3,7 @@
  */
 
 import { API_BASE_URL } from "./api";
+import { authFetch } from "./authService";
 
 const getAuthHeader = () => {
   const token =
@@ -14,108 +15,86 @@ const getAuthHeader = () => {
   };
 };
 
+const parseError = async (res) => {
+  const text = await res.text();
+  try {
+    const json = JSON.parse(text);
+    return json.message || text || `Request failed (${res.status})`;
+  } catch {
+    return text || `Request failed (${res.status})`;
+  }
+};
+
+const requestJson = async (url, options = {}) => {
+  const res = await authFetch(url, {
+    ...options,
+    headers: {
+      ...getAuthHeader(),
+      ...(options.headers || {}),
+    },
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+};
+
 // ==================== JOB REQUEST APPROVALS ====================
 export const jobRequestService = {
   async getPending() {
-    const res = await fetch(`${API_BASE_URL}/director/job-requests/pending`, {
-      headers: getAuthHeader(),
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    return requestJson(`${API_BASE_URL}/director/job-requests/pending`);
   },
 
   async getProcessed() {
-    const res = await fetch(`${API_BASE_URL}/director/job-requests/processed`, {
-      headers: getAuthHeader(),
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    return requestJson(`${API_BASE_URL}/director/job-requests/processed`);
   },
 
   async getDetail(id) {
-    const res = await fetch(`${API_BASE_URL}/director/job-requests/${id}`, {
-      headers: getAuthHeader(),
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    return requestJson(`${API_BASE_URL}/director/job-requests/${id}`);
   },
 
   async approve(id, comment = "") {
-    const res = await fetch(
-      `${API_BASE_URL}/director/job-requests/${id}/approve`,
-      {
-        method: "POST",
-        headers: getAuthHeader(),
-        body: JSON.stringify({ comment }),
-      },
-    );
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    return requestJson(`${API_BASE_URL}/director/job-requests/${id}/approve`, {
+      method: "POST",
+      body: JSON.stringify({ comment }),
+    });
   },
 
   async reject(id, comment = "") {
-    const res = await fetch(
-      `${API_BASE_URL}/director/job-requests/${id}/reject`,
-      {
-        method: "POST",
-        headers: getAuthHeader(),
-        body: JSON.stringify({ comment }),
-      },
-    );
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    return requestJson(`${API_BASE_URL}/director/job-requests/${id}/reject`, {
+      method: "POST",
+      body: JSON.stringify({ comment }),
+    });
   },
 
   async returnJobRequest(id, comment = "") {
-    const res = await fetch(
-      `${API_BASE_URL}/director/job-requests/${id}/return`,
-      {
-        method: "POST",
-        headers: getAuthHeader(),
-        body: JSON.stringify({ comment }),
-      },
-    );
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    return requestJson(`${API_BASE_URL}/director/job-requests/${id}/return`, {
+      method: "POST",
+      body: JSON.stringify({ comment }),
+    });
   },
 };
 
 // ==================== OFFER APPROVALS ====================
 export const offerService = {
   async getPending() {
-    const res = await fetch(`${API_BASE_URL}/director/offers/pending`, {
-      headers: getAuthHeader(),
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    return requestJson(`${API_BASE_URL}/director/offers/pending`);
   },
 
   async getDetail(id) {
-    const res = await fetch(`${API_BASE_URL}/director/offers/${id}`, {
-      headers: getAuthHeader(),
-    });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    return requestJson(`${API_BASE_URL}/director/offers/${id}`);
   },
 
   async approve(id, comment = "") {
-    const res = await fetch(`${API_BASE_URL}/director/offers/${id}/approve`, {
+    return requestJson(`${API_BASE_URL}/director/offers/${id}/approve`, {
       method: "POST",
-      headers: getAuthHeader(),
       body: JSON.stringify({ comment }),
     });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
   },
 
   async reject(id, comment = "") {
-    const res = await fetch(`${API_BASE_URL}/director/offers/${id}/reject`, {
+    return requestJson(`${API_BASE_URL}/director/offers/${id}/reject`, {
       method: "POST",
-      headers: getAuthHeader(),
       body: JSON.stringify({ comment }),
     });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
   },
 };
 
@@ -123,62 +102,45 @@ const directorService = {
   jobRequests: jobRequestService,
   offers: offerService,
 
+  statistics: {
+    async getRecruitmentOverview() {
+      return requestJson(`${API_BASE_URL}/director/statistics/overview`);
+    },
+    async getRecruitmentFunnel() {
+      return requestJson(`${API_BASE_URL}/director/statistics/funnel`);
+    },
+  },
+
   interviews: {
     async getAll() {
-      const res = await fetch(`${API_BASE_URL}/director/interviews`, {
-        headers: getAuthHeader(),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
+      return requestJson(`${API_BASE_URL}/director/interviews`);
     },
     async getUpcoming() {
-      const res = await fetch(`${API_BASE_URL}/director/interviews/upcoming`, {
-        headers: getAuthHeader(),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
+      return requestJson(`${API_BASE_URL}/director/interviews/upcoming`);
     },
     async getById(id) {
-      const res = await fetch(`${API_BASE_URL}/director/interviews/${id}`, {
-        headers: getAuthHeader(),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
+      return requestJson(`${API_BASE_URL}/director/interviews/${id}`);
     },
     async submitFeedback(id, data) {
-      const res = await fetch(`${API_BASE_URL}/director/interviews/${id}/feedback`, {
+      return requestJson(`${API_BASE_URL}/director/interviews/${id}/feedback`, {
         method: 'POST',
-        headers: getAuthHeader(),
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
     },
   },
 
   participantRequests: {
     async getForwarded() {
-      const res = await fetch(`${API_BASE_URL}/director/interviews/participant-requests`, {
-        headers: getAuthHeader(),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
+      return requestJson(`${API_BASE_URL}/director/interviews/participant-requests`);
     },
     async getById(reqId) {
-      const res = await fetch(`${API_BASE_URL}/director/interviews/participant-requests/${reqId}`, {
-        headers: getAuthHeader(),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
+      return requestJson(`${API_BASE_URL}/director/interviews/participant-requests/${reqId}`);
     },
     async nominate(reqId, userIds) {
-      const res = await fetch(`${API_BASE_URL}/director/interviews/participant-requests/${reqId}/nominate`, {
+      return requestJson(`${API_BASE_URL}/director/interviews/participant-requests/${reqId}/nominate`, {
         method: 'POST',
-        headers: getAuthHeader(),
         body: JSON.stringify({ userIds }),
       });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
     },
   },
 };

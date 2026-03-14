@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import hrService from '../../../services/hrService';
 import WorkflowOverviewWidget from '../../../components/hr/WorkflowOverviewWidget';
-import { formatCurrency, formatDate, formatDateRelative, formatTime } from '../../../utils/formatters/display';
-import { PriorityBadge } from '../../../components/shared/Badge';
 
 export default function HRManagerDashboard() {
   const navigate = useNavigate();
@@ -14,7 +12,8 @@ export default function HRManagerDashboard() {
     pendingOffers: 0,
     screeningApplications: 0,
     interviewingApplications: 0,
-    activeJobPostings: 0
+    activeJobPostings: 0,
+    returnedJobRequestsCount: 0
   });
   const [funnelData, setFunnelData] = useState([]);
   const [recentJobRequests, setRecentJobRequests] = useState([]);
@@ -71,6 +70,8 @@ export default function HRManagerDashboard() {
     if (diff < 7) return `${diff} days ago`;
     return d.toLocaleDateString('vi-VN');
   };
+
+  const safeDate = (value) => (value ? new Date(value).toLocaleDateString('vi-VN') : 'N/A');
 
   const getPriorityBadge = (priority) => {
     const styles = {
@@ -172,7 +173,7 @@ export default function HRManagerDashboard() {
             {stats.upcomingInterviews}
           </div>
           <div style={{ fontSize: 12, color: '#f59e0b', marginTop: 8, cursor: 'pointer' }}
-               onClick={() => navigate('/staff/interviews')}>
+               onClick={() => navigate('/staff/hr-manager/interviews')}>
             Manage →
           </div>
         </div>
@@ -193,6 +194,24 @@ export default function HRManagerDashboard() {
           <div style={{ fontSize: 12, color: '#8b5cf6', marginTop: 8, cursor: 'pointer' }}
                onClick={() => navigate('/staff/hr-manager/offers')}>
             Review →
+          </div>
+        </div>
+
+        <div style={{ 
+          background: 'white', 
+          padding: 20, 
+          borderRadius: 8,
+          border: '1px solid #e5e7eb',
+          borderLeft: '4px solid #ef4444'
+        }}>
+          <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 8 }}>
+            Returned Job Requests
+          </div>
+          <div style={{ fontSize: 32, fontWeight: 700, color: '#111827' }}>
+            {stats.returnedJobRequestsCount}
+          </div>
+          <div style={{ fontSize: 12, color: '#ef4444', marginTop: 8 }}>
+            Needs Dept Manager revision
           </div>
         </div>
       </div>
@@ -319,7 +338,7 @@ export default function HRManagerDashboard() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <h2 style={{ fontSize: 18, fontWeight: 600 }}>Upcoming Interviews</h2>
             <button 
-              onClick={() => navigate('/staff/interviews')}
+              onClick={() => navigate('/staff/hr-manager/interviews')}
               style={{ 
                 fontSize: 12, 
                 color: '#3b82f6', 
@@ -345,7 +364,7 @@ export default function HRManagerDashboard() {
                     borderRadius: 6,
                     cursor: 'pointer'
                   }}
-                  onClick={() => navigate(`/staff/interviews/${interview.id}`)}
+                  onClick={() => navigate(`/staff/hr-manager/interviews/${interview.id}`)}
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
                 >
@@ -420,7 +439,7 @@ export default function HRManagerDashboard() {
                   {formatCurrency(offer.salary)}
                 </div>
                 <div style={{ fontSize: 11, color: '#9ca3af' }}>
-                  Start: {new Date(offer.startDate).toLocaleDateString('vi-VN')}
+                  Start: {safeDate(offer.startDate)}
                 </div>
               </div>
             ))
@@ -444,7 +463,7 @@ export default function HRManagerDashboard() {
               📋 Job Request Approval
             </div>
             <div style={{ fontSize: 13, color: '#475569' }}>
-              Review and approve recruitment requests from departments (SUBMITTED → IN_REVIEW)
+              Review requests submitted by departments and route them correctly in workflow.
             </div>
           </div>
           <div style={{ padding: 16, backgroundColor: '#f0fdf4', borderRadius: 6 }}>
@@ -452,7 +471,7 @@ export default function HRManagerDashboard() {
               📄 Offer Management
             </div>
             <div style={{ fontSize: 13, color: '#475569' }}>
-              Review offer packages before director approval (IN_REVIEW → IN_REVIEW)
+              Oversee offer quality, monitor Director approvals, and handle exceptions.
             </div>
           </div>
           <div style={{ padding: 16, backgroundColor: '#fef3c7', borderRadius: 6 }}>
@@ -460,7 +479,7 @@ export default function HRManagerDashboard() {
               🎯 Job Posting Control
             </div>
             <div style={{ fontSize: 13, color: '#475569' }}>
-              Close job postings when recruitment is complete (PUBLISHED → CLOSED)
+              Supervise active postings and ensure closure when staffing targets are met.
             </div>
           </div>
           <div style={{ padding: 16, backgroundColor: '#fef2f2', borderRadius: 6 }}>
@@ -468,7 +487,7 @@ export default function HRManagerDashboard() {
               ❌ Rejection Authority
             </div>
             <div style={{ fontSize: 13, color: '#475569' }}>
-              Reject unsuitable applications or offers (INTERVIEWING/IN_REVIEW → REJECTED)
+              Apply final HR governance decisions for unsuitable cases and returned items.
             </div>
           </div>
         </div>

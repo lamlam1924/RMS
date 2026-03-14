@@ -115,6 +115,11 @@ const MENU_CONFIG = [
     roles: [ROLES.HR_STAFF],
     children: [
       {
+        key: "hrStaffDashboard",
+        label: "Tổng quan",
+        to: "/staff/hr-staff",
+      },
+      {
         key: "hrStaffMyInterviews",
         label: "Phỏng vấn của tôi",
         to: "/staff/interviews",
@@ -149,6 +154,12 @@ const MENU_CONFIG = [
   },
 
   // Shared Operations (HR Manager + HR Staff)
+  {
+    key: "sharedJobRequests",
+    label: "Yêu cầu Tuyển dụng",
+    to: "/staff/hr-manager/job-requests",
+    roles: [ROLES.HR_MANAGER, ROLES.HR_STAFF],
+  },
   {
     key: "sharedApplications",
     label: "Hồ sơ Ứng tuyển",

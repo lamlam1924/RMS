@@ -14,6 +14,7 @@ const DeptManagerDashboard = () => {
   });
   const [recentJobRequests, setRecentJobRequests] = useState([]);
   const [upcomingInterviews, setUpcomingInterviews] = useState([]);
+  const [loadWarning, setLoadWarning] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,26 +24,46 @@ const DeptManagerDashboard = () => {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      const [jobRequests, interviews] = await Promise.all([
+      setLoadWarning("");
+      const [statsResult, requestsResult, interviewsResult] = await Promise.allSettled([
+        deptManagerService.dashboard.getStats(),
         deptManagerService.jobRequests.getAll(),
         deptManagerService.interviews.getUpcoming(),
       ]);
 
-      const pendingApprovalCount = jobRequests.filter(
-        jr => jr.statusCode === 'DRAFT' || jr.statusCode === 'SUBMITTED'
-      ).length;
+      const errors = [];
+      const statsData = statsResult.status === "fulfilled" ? statsResult.value : {};
+      if (statsResult.status === "rejected") {
+        errors.push("Không tải được thống kê phòng ban");
+      }
+
+      const jobRequests =
+        requestsResult.status === "fulfilled" ? requestsResult.value : [];
+      if (requestsResult.status === "rejected") {
+        errors.push("Không tải được danh sách yêu cầu tuyển dụng");
+      }
+
+      const interviews =
+        interviewsResult.status === "fulfilled" ? interviewsResult.value : [];
+      if (interviewsResult.status === "rejected") {
+        errors.push("Không tải được lịch phỏng vấn");
+      }
 
       setStats({
-        myJobRequests: jobRequests.length,
-        pendingApproval: pendingApprovalCount,
-        upcomingInterviews: interviews.length,
-        activeCandidates: interviews.length, // Simplified
+        myJobRequests: statsData.myJobRequests || 0,
+        pendingApproval: statsData.pendingApproval || 0,
+        upcomingInterviews: statsData.upcomingInterviews || 0,
+        activeCandidates: statsData.activeCandidates || 0,
       });
 
       setRecentJobRequests(jobRequests.slice(0, 5));
       setUpcomingInterviews(interviews.slice(0, 5));
+      if (errors.length > 0) {
+        setLoadWarning(`${errors.join(" • ")}. Các phần còn lại vẫn được hiển thị.`);
+      }
     } catch (err) {
       console.error("Failed to load dashboard data:", err);
+      setLoadWarning("Có lỗi khi tải dữ liệu dashboard. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
@@ -51,8 +72,8 @@ const DeptManagerDashboard = () => {
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
+    return date.toLocaleDateString('vi-VN', {
+      month: 'short',
       day: 'numeric',
       year: 'numeric'
     });
@@ -61,16 +82,18 @@ const DeptManagerDashboard = () => {
   const formatDateTime = (dateString) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
-    return date.toLocaleString('en-US', { 
-      month: 'short', 
-      day: 'numeric',
+    return date.toLocaleString('vi-VN', {
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      hour12: false,
     });
   };
 
   if (loading) {
-    return <LoadingSpinner message="Loading dashboard..." />;
+    return <LoadingSpinner message="Đang tải dashboard..." />;
   }
 
   return (
@@ -78,56 +101,56 @@ const DeptManagerDashboard = () => {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Department Manager Dashboard
+          Dashboard Trưởng Bộ Phận
         </h1>
         <p className="text-gray-600">
-          Manage recruitment requests and interviews for your department
+          Quản lý yêu cầu tuyển dụng và lịch phỏng vấn của bộ phận
         </p>
       </div>
 
+      {loadWarning && (
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+          {loadWarning}
+        </div>
+      )}
+
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-6 text-white shadow-lg">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-4xl">📋</span>
-            <span className="text-3xl font-bold">{stats.myJobRequests}</span>
-          </div>
-          <div className="text-emerald-100 text-sm font-medium">My Job Requests</div>
-          <div className="text-emerald-50 text-xs mt-1">Total requests</div>
-        </div>
-
-        <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl p-6 text-white shadow-lg">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-4xl">⏳</span>
-            <span className="text-3xl font-bold">{stats.pendingApproval}</span>
-          </div>
-          <div className="text-amber-100 text-sm font-medium">Pending Approval</div>
-          <div className="text-amber-50 text-xs mt-1">Awaiting review</div>
-        </div>
-
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-4xl">📅</span>
-            <span className="text-3xl font-bold">{stats.upcomingInterviews}</span>
-          </div>
-          <div className="text-blue-100 text-sm font-medium">Upcoming Interviews</div>
-          <div className="text-blue-50 text-xs mt-1">This week</div>
-        </div>
-
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white shadow-lg">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-4xl">👥</span>
-            <span className="text-3xl font-bold">{stats.activeCandidates}</span>
-          </div>
-          <div className="text-purple-100 text-sm font-medium">Active Candidates</div>
-          <div className="text-purple-50 text-xs mt-1">In process</div>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+        <StatCard 
+          label="Yêu cầu của tôi" 
+          value={stats.myJobRequests} 
+          icon="📋" 
+          description="Tổng số yêu cầu đã tạo"
+          color="emerald"
+        />
+        <StatCard 
+          label="Đang chờ duyệt" 
+          value={stats.pendingApproval} 
+          icon="⏳" 
+          description="Đang chờ xem xét"
+          color="amber"
+          highlight={stats.pendingApproval > 0}
+        />
+        <StatCard 
+          label="Phỏng vấn sắp tới" 
+          value={stats.upcomingInterviews} 
+          icon="📅" 
+          description="Lịch trong tuần này"
+          color="blue"
+        />
+        <StatCard 
+          label="Ứng viên đang xử lý" 
+          value={stats.activeCandidates} 
+          icon="👥" 
+          description="Đang trong quy trình"
+          color="violet"
+        />
       </div>
 
       {/* Quick Actions */}
       <div className="mb-8">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">
-          Quick Actions
+          Thao tác nhanh
         </h2>
         <div className="flex flex-wrap gap-3">
           <button
@@ -137,19 +160,19 @@ const DeptManagerDashboard = () => {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            Create Job Request
+            Tạo yêu cầu tuyển dụng
           </button>
           <button
             onClick={() => navigate('/staff/dept-manager/job-requests')}
             className="inline-flex items-center gap-2 px-6 py-3 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-all border border-gray-300 font-medium"
           >
-            📋 View All Requests
+            📋 Xem tất cả yêu cầu
           </button>
           <button
             onClick={() => navigate('/staff/dept-manager/interviews')}
             className="inline-flex items-center gap-2 px-6 py-3 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-all border border-gray-300 font-medium"
           >
-            📅 My Interviews
+            📅 Lịch phỏng vấn của tôi
           </button>
         </div>
       </div>
@@ -160,13 +183,13 @@ const DeptManagerDashboard = () => {
           <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold text-gray-900">
-                Recent Job Requests
+                Yêu cầu tuyển dụng gần đây
               </h2>
               <button
                 onClick={() => navigate('/staff/dept-manager/job-requests')}
                 className="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors"
               >
-                View All →
+                Xem tất cả →
               </button>
             </div>
           </div>
@@ -174,7 +197,8 @@ const DeptManagerDashboard = () => {
           {recentJobRequests.length === 0 ? (
             <div className="p-12 text-center text-gray-500">
               <div className="text-5xl mb-3">📋</div>
-              <div className="text-sm">No job requests yet</div>
+              <div className="text-sm">Chưa có yêu cầu tuyển dụng</div>
+              <div className="text-xs text-gray-400 mt-1">Dữ liệu sẽ hiển thị khi bộ phận tạo yêu cầu mới</div>
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
@@ -198,7 +222,7 @@ const DeptManagerDashboard = () => {
                     })()}
                   </div>
                   <div className="text-xs text-gray-500 mb-2">
-                    Quantity: {request.quantity} • Budget: {request.budget ? `${(request.budget / 1000000).toFixed(0)}M VNĐ` : 'N/A'}
+                    Số lượng: {request.quantity} • Ngân sách: {request.budget ? `${(request.budget / 1000000).toFixed(0)}M VNĐ` : 'N/A'}
                   </div>
                   <div className="flex items-center justify-between">
                     {(() => {
@@ -224,13 +248,13 @@ const DeptManagerDashboard = () => {
           <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-white">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold text-gray-900">
-                Upcoming Interviews
+                Lịch phỏng vấn sắp tới
               </h2>
               <button
                 onClick={() => navigate('/staff/dept-manager/interviews')}
                 className="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors"
               >
-                View All →
+                Xem tất cả →
               </button>
             </div>
           </div>
@@ -238,7 +262,8 @@ const DeptManagerDashboard = () => {
           {upcomingInterviews.length === 0 ? (
             <div className="p-12 text-center text-gray-500">
               <div className="text-5xl mb-3">📅</div>
-              <div className="text-sm">No upcoming interviews</div>
+              <div className="text-sm">Chưa có lịch phỏng vấn sắp tới</div>
+              <div className="text-xs text-gray-400 mt-1">Khi có lịch mới, thông tin sẽ xuất hiện tại đây</div>
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
@@ -252,7 +277,7 @@ const DeptManagerDashboard = () => {
                     {interview.candidateName}
                   </div>
                   <div className="text-xs text-gray-500 mb-2">
-                    Position: {interview.positionTitle}
+                    Vị trí: {interview.positionTitle}
                   </div>
                   <div className="text-xs text-gray-600 mb-1 flex items-center gap-1">
                     <span>📅</span>
@@ -260,7 +285,7 @@ const DeptManagerDashboard = () => {
                   </div>
                   <div className="text-xs text-gray-400 flex items-center gap-1">
                     <span>📍</span>
-                    <span className="truncate">{interview.location || interview.meetingLink || 'TBA'}</span>
+                    <span className="truncate">{interview.location || interview.meetingLink || 'Chưa cập nhật'}</span>
                   </div>
                 </div>
               ))}
@@ -268,6 +293,32 @@ const DeptManagerDashboard = () => {
           )}
         </div>
       </div>
+    </div>
+  );
+};
+
+const StatCard = ({ label, value, icon, description, color, highlight }) => {
+  const themes = {
+    emerald: "from-emerald-500 to-emerald-600 text-emerald-50",
+    amber: "from-amber-500 to-amber-600 text-amber-50",
+    blue: "from-blue-500 to-blue-600 text-blue-50",
+    violet: "from-violet-500 to-violet-600 text-violet-50",
+  };
+  
+  return (
+    <div className={`bg-gradient-to-br ${themes[color]} rounded-2xl p-6 text-white shadow-lg shadow-${color}-100/50 hover:-translate-y-1 transition-all duration-300 group relative overflow-hidden`}>
+      <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-700"></div>
+      <div className="relative z-10">
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-4xl drop-shadow-md">{icon}</span>
+          <span className="text-3xl font-black">{value}</span>
+        </div>
+        <div className="text-white text-sm font-bold tracking-tight">{label}</div>
+        <div className="text-white/70 text-[11px] mt-1 font-medium">{description}</div>
+      </div>
+      {highlight && (
+        <div className="absolute top-3 right-3 w-2 h-2 bg-white rounded-full animate-ping"></div>
+      )}
     </div>
   );
 };

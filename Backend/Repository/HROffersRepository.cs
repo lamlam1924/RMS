@@ -12,6 +12,12 @@ public class HROffersRepository : IHROffersRepository
 {
     private readonly RecruitmentDbContext _context;
 
+    private static bool IsAllowedHrTransition(int fromStatusId, int toStatusId)
+    {
+        // HR side only submits DRAFT offers for Director review.
+        return fromStatusId == 14 && toStatusId == 15;
+    }
+
     public HROffersRepository(RecruitmentDbContext context)
     {
         _context = context;
@@ -150,6 +156,8 @@ public class HROffersRepository : IHROffersRepository
         if (offer == null) return false;
 
         var oldStatusId = offer.StatusId;
+        if (!IsAllowedHrTransition(oldStatusId, statusId)) return false;
+
         offer.StatusId = statusId;
         offer.UpdatedAt = DateTimeHelper.Now;
         offer.UpdatedBy = userId;
@@ -235,10 +243,13 @@ public class HROffersRepository : IHROffersRepository
     {
         var offer = await _context.Offers.FirstOrDefaultAsync(o => o.Id == offerId && o.IsDeleted == false);
         if (offer == null) return false;
+        if (offer.StatusId != 16) return false; // Only APPROVED can be sent
 
         var oldStatusId = offer.StatusId;
         offer.StatusId = 18; // SENT
         offer.SentAt = DateTimeHelper.Now;
+        offer.UpdatedAt = DateTimeHelper.Now;
+        offer.UpdatedBy = userId;
 
         var offerEntityType = await _context.EntityTypes.FirstOrDefaultAsync(et => et.Code == "Offer");
         var statusHistory = new StatusHistory

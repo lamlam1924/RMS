@@ -161,6 +161,34 @@ public class HROffersController : ControllerBase
     }
 
     /// <summary>
+    /// Submit offer for review (DRAFT -> IN_REVIEW)
+    /// </summary>
+    [HttpPut("{id}/submit")]
+    [Authorize(Roles = "HR_MANAGER,HR_STAFF")]
+    public async Task<ActionResult<ActionResponseDto>> SubmitOfferForReview(int id)
+    {
+        try
+        {
+            var userId = CurrentUserHelper.GetCurrentUserId(this);
+            var dto = new UpdateOfferStatusDto
+            {
+                OfferId = id,
+                ToStatusId = 15,
+                Note = "Submitted for review"
+            };
+
+            var result = await _hrOffersService.UpdateOfferStatusAsync(dto, userId);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Failed to submit offer for review", error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Send offer to candidate (HR Staff/Manager)
     /// </summary>
     [HttpPut("{id}/send")]

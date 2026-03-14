@@ -17,9 +17,17 @@ const DirectorDashboard = () => {
     urgentItems: 0,
     totalPending: 0,
   });
+  const [recruitmentStats, setRecruitmentStats] = useState({
+    totalApplications: 0,
+    upcomingInterviews: 0,
+    activeJobPostings: 0,
+    returnedJobRequestsCount: 0,
+  });
   const [departmentBreakdown, setDepartmentBreakdown] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
   const [urgentRequests, setUrgentRequests] = useState([]);
+  const [funnelData, setFunnelData] = useState([]);
+  const [loadWarning, setLoadWarning] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,10 +37,37 @@ const DirectorDashboard = () => {
   const loadDashboardStats = async () => {
     try {
       setLoading(true);
-      const [jobRequests, offers] = await Promise.all([
+      setLoadWarning("");
+      const [jobRequestsResult, offersResult, overviewResult, funnelResult] =
+        await Promise.allSettled([
         directorService.jobRequests.getPending(),
         directorService.offers.getPending(),
-      ]);
+        directorService.statistics.getRecruitmentOverview(),
+        directorService.statistics.getRecruitmentFunnel(),
+        ]);
+
+      const errors = [];
+      const jobRequests =
+        jobRequestsResult.status === "fulfilled" ? jobRequestsResult.value : [];
+      if (jobRequestsResult.status === "rejected") {
+        errors.push("Không tải được yêu cầu tuyển dụng");
+      }
+
+      const offers = offersResult.status === "fulfilled" ? offersResult.value : [];
+      if (offersResult.status === "rejected") {
+        errors.push("Không tải được danh sách offer");
+      }
+
+      const overview =
+        overviewResult.status === "fulfilled" ? overviewResult.value : {};
+      if (overviewResult.status === "rejected") {
+        errors.push("Không tải được báo cáo tổng quan");
+      }
+
+      const funnel = funnelResult.status === "fulfilled" ? funnelResult.value : [];
+      if (funnelResult.status === "rejected") {
+        errors.push("Không tải được dữ liệu funnel");
+      }
 
       const urgentJobs = jobRequests.filter((jr) => jr.priority === 1);
       const urgentOffers = offers.filter((o) => o.priority === 1);
@@ -81,8 +116,19 @@ const DirectorDashboard = () => {
       setDepartmentBreakdown(Object.values(deptMap));
       setRecentActivity(recentItems);
       setUrgentRequests([...urgentJobs, ...urgentOffers]);
+      setRecruitmentStats({
+        totalApplications: overview.totalApplications || 0,
+        upcomingInterviews: overview.upcomingInterviews || 0,
+        activeJobPostings: overview.activeJobPostings || 0,
+        returnedJobRequestsCount: overview.returnedJobRequestsCount || 0,
+      });
+      setFunnelData(Array.isArray(funnel) ? funnel : []);
+      if (errors.length > 0) {
+        setLoadWarning(`${errors.join(" • ")}. Các dữ liệu còn lại vẫn được hiển thị.`);
+      }
     } catch (err) {
       console.error("Dashboard error:", err);
+      setLoadWarning("Có lỗi khi tải dữ liệu bảng điều khiển. Vui lòng thử lại.");
     } finally {
       setLoading(false);
     }
@@ -113,19 +159,25 @@ const DirectorDashboard = () => {
           </div>
           <div className="flex gap-3">
             <button
-              onClick={() => navigate("/director/job-requests")}
+              onClick={() => navigate("/staff/director/job-requests")}
               className="px-6 py-3 bg-white border border-slate-100 rounded-2xl text-xs font-bold uppercase tracking-widest text-slate-600 hover:text-blue-600 hover:border-blue-100 transition-all shadow-sm active:scale-95"
             >
               Yêu cầu
             </button>
             <button
-              onClick={() => navigate("/director/offers")}
+              onClick={() => navigate("/staff/director/offers")}
               className="px-6 py-3 bg-white border border-slate-100 rounded-2xl text-xs font-bold uppercase tracking-widest text-slate-600 hover:text-indigo-600 hover:border-indigo-100 transition-all shadow-sm active:scale-95"
             >
               Offer
             </button>
           </div>
         </div>
+
+        {loadWarning && (
+          <div className="mb-8 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+            {loadWarning}
+          </div>
+        )}
 
         {/* Highlight Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-16 animate-in fade-in duration-700 delay-100">
@@ -156,6 +208,62 @@ const DirectorDashboard = () => {
           />
         </div>
 
+        {/* Recruitment Report Snapshot */}
+        <section className="bg-white rounded-[2.5rem] p-10 border border-slate-100 shadow-sm mb-12 animate-in fade-in duration-700 delay-150">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
+              <span className="w-1.5 h-6 bg-blue-600 rounded-full"></span>
+              Báo cáo tuyển dụng tổng quan
+            </h2>
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+              Chỉ xem cho Giám đốc
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <MiniStat label="Hồ sơ ứng tuyển" value={recruitmentStats.totalApplications} />
+            <MiniStat label="Phỏng vấn sắp tới" value={recruitmentStats.upcomingInterviews} />
+            <MiniStat label="Tin tuyển dụng đang mở" value={recruitmentStats.activeJobPostings} />
+            <MiniStat label="Yêu cầu bị trả lại" value={recruitmentStats.returnedJobRequestsCount} />
+          </div>
+
+          {funnelData.length > 0 && (
+            <div className="mt-10 space-y-6">
+              {funnelData.map((stage, idx) => {
+                const maxCount = Math.max(...funnelData.map(d => d.count || 0), 1);
+                const width = ((stage.count || 0) / maxCount) * 100;
+                return (
+                  <div key={idx} className="relative group/bar">
+                    <div className="flex justify-between items-center mb-2 px-1">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                        <span className="text-xs font-bold uppercase tracking-widest text-slate-500 group-hover/bar:text-blue-600 transition-colors">
+                          {stage.stage || "N/A"}
+                        </span>
+                      </div>
+                      <span className="text-sm font-black text-slate-900 bg-slate-50 px-3 py-1 rounded-lg">
+                        {stage.count || 0}
+                      </span>
+                    </div>
+                    <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden p-0.5">
+                      <div 
+                        className="h-full bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 rounded-full transition-all duration-1000 ease-out shadow-sm"
+                        style={{ width: `${width}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {funnelData.length === 0 && (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-4 text-sm text-slate-500">
+              Chưa có dữ liệu funnel trong thời điểm hiện tại.
+            </div>
+          )}
+        </section>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           {/* Left/Middle: Core Insights */}
           <div className="lg:col-span-2 space-y-10 animate-in fade-in slide-in-from-left-4 duration-700 delay-200">
@@ -178,8 +286,8 @@ const DirectorDashboard = () => {
                       onClick={() =>
                         navigate(
                           item.positionTitle
-                            ? `/director/job-requests/${item.id}`
-                            : `/director/offers/${item.id}`,
+                              ? "/staff/director/job-requests"
+                              : "/staff/director/offers",
                         )
                       }
                     />
@@ -194,15 +302,21 @@ const DirectorDashboard = () => {
                 <span className="w-1.5 h-6 bg-slate-900 rounded-full"></span>
                 Phân bổ theo Phòng ban
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {departmentBreakdown.map((dept, idx) => (
-                  <DeptProgress
-                    key={idx}
-                    dept={dept}
-                    maxPending={stats.pendingJobRequests}
-                  />
-                ))}
-              </div>
+              {departmentBreakdown.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-4 text-sm text-slate-500">
+                  Chưa có yêu cầu nào đang chờ duyệt theo phòng ban.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {departmentBreakdown.map((dept, idx) => (
+                    <DeptProgress
+                      key={idx}
+                      dept={dept}
+                      maxPending={stats.pendingJobRequests}
+                    />
+                  ))}
+                </div>
+              )}
             </section>
           </div>
 
@@ -214,20 +328,26 @@ const DirectorDashboard = () => {
               </h2>
               <div className="space-y-10 relative">
                 <div className="absolute left-3 top-0 bottom-0 w-px bg-white/5"></div>
-                {recentActivity.map((activity, idx) => (
-                  <ActivityItem
-                    key={idx}
-                    activity={activity}
-                    isLast={idx === recentActivity.length - 1}
-                    onClick={() =>
-                      navigate(
-                        activity.type === "Job Request"
-                          ? `/director/job-requests/${activity.id}`
-                          : `/director/offers/${activity.id}`,
-                      )
-                    }
-                  />
-                ))}
+                {recentActivity.length === 0 ? (
+                  <div className="pl-10 text-sm text-slate-400">
+                    Chưa có hoạt động gần đây để hiển thị.
+                  </div>
+                ) : (
+                  recentActivity.map((activity, idx) => (
+                    <ActivityItem
+                      key={idx}
+                      activity={activity}
+                      isLast={idx === recentActivity.length - 1}
+                      onClick={() =>
+                        navigate(
+                          activity.type === "Job Request"
+                              ? "/staff/director/job-requests"
+                              : "/staff/director/offers",
+                        )
+                      }
+                    />
+                  ))
+                )}
               </div>
             </section>
 
@@ -267,30 +387,34 @@ const DirectorDashboard = () => {
 // Sub-components
 const StatCard = ({ label, value, icon, color, isUrgent }) => {
   const colors = {
-    blue: "bg-blue-600 shadow-blue-100",
-    indigo: "bg-[#1e293b] shadow-slate-200",
-    red: "bg-red-600 shadow-red-100",
-    slate: "bg-white border border-slate-100 shadow-slate-50 text-slate-900",
+    blue: "bg-gradient-to-br from-blue-600 to-blue-700 shadow-blue-200/50 text-white",
+    indigo: "bg-gradient-to-br from-slate-800 to-slate-900 shadow-slate-300/50 text-white",
+    red: "bg-gradient-to-br from-rose-500 to-rose-600 shadow-rose-200/50 text-white",
+    slate: "bg-white border border-slate-100 shadow-slate-100 text-slate-900",
   };
 
   return (
     <div
-      className={`group rounded-[2rem] p-8 transition-all hover:-translate-y-1.5 cursor-default relative overflow-hidden ${colors[color]}`}
+      className={`group rounded-[2.5rem] p-8 transition-all duration-500 hover:-translate-y-2 cursor-default relative overflow-hidden shadow-2xl ${colors[color]}`}
     >
-      {color !== "slate" && (
-        <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-125 duration-700"></div>
-      )}
+      <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-1000"></div>
       <div className="relative z-10 flex flex-col justify-between h-full">
-        <div className="text-3xl mb-6">{icon}</div>
+        <div className="flex items-center justify-between mb-8">
+          <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-2xl shadow-inner">
+            {icon}
+          </div>
+          {isUrgent && (
+            <span className="flex h-3 w-3 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
+            </span>
+          )}
+        </div>
         <div>
-          <p
-            className={`text-4xl font-bold mb-1 ${color === "slate" ? "text-slate-900" : "text-white"}`}
-          >
+          <p className="text-5xl font-black mb-1 tracking-tighter tabular-nums">
             {value}
           </p>
-          <p
-            className={`text-[10px] font-bold uppercase tracking-widest ${color === "slate" ? "text-slate-400" : "text-white/60"}`}
-          >
+          <p className={`text-[11px] font-bold uppercase tracking-[0.15em] ${color === "slate" ? "text-slate-400" : "text-white/70"}`}>
             {label}
           </p>
         </div>
@@ -320,6 +444,15 @@ const UrgentRow = ({ item, onClick }) => (
     <span className="text-blue-500 font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">
       XEM NGAY →
     </span>
+  </div>
+);
+
+const MiniStat = ({ label, value }) => (
+  <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4">
+    <div className="text-2xl font-bold text-slate-900">{value}</div>
+    <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mt-1">
+      {label}
+    </div>
   </div>
 );
 

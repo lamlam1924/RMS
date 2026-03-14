@@ -136,4 +136,32 @@ export const candidateService = {
     }
     return res.json();
   },
+
+  async getMyOffers() {
+    const res = await authFetch(`${API_BASE_URL}/candidate/offers`);
+    if (!res.ok) throw new Error("Không thể tải danh sách thư mời");
+    return res.json();
+  },
+
+  async getOfferById(id) {
+    const res = await authFetch(`${API_BASE_URL}/candidate/offers/${id}`);
+    if (!res.ok) {
+      if (res.status === 404) throw new Error("Không tìm thấy thư mời");
+      throw new Error("Không thể tải chi tiết thư mời");
+    }
+    return res.json();
+  },
+
+  async respondToOffer(id, response, comment = "") {
+    const res = await authFetch(`${API_BASE_URL}/candidate/offers/${id}/respond`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ response, comment }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || "Không thể phản hồi thư mời");
+    }
+    return res.json();
+  },
 };

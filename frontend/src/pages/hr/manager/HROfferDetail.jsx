@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import hrService from '../../../services/hrService';
+import { authService } from '../../../services/authService';
 import notify from '../../../utils/notification';
 
 export default function HROfferDetail() {
@@ -9,11 +10,13 @@ export default function HROfferDetail() {
   const [offer, setOffer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  const [showStatusModal, setShowStatusModal] = useState(false);
-  const [toStatusId, setToStatusId] = useState(null);
-  const [note, setNote] = useState('');
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState({ salary: '', benefits: '', startDate: '' });
+
+  const userInfo = authService.getUserInfo();
+  const roles = userInfo?.roles || [];
+  const isHRManager = roles.includes('HR_MANAGER');
+  const isHRStaff = roles.includes('HR_STAFF');
 
   useEffect(() => {
     loadOffer();
@@ -32,18 +35,14 @@ export default function HROfferDetail() {
     }
   };
 
-  const handleUpdateStatus = async () => {
-    if (!toStatusId) return;
+  const handleSubmitForReview = async () => {
     try {
       setActionLoading(true);
-      await hrService.offers.updateStatus(id, toStatusId, note);
-      notify.success('Cập nhật trạng thái thành công');
-      setShowStatusModal(false);
-      setNote('');
-      setToStatusId(null);
+      await hrService.offers.submitForReview(id);
+      notify.success('Đã chuyển thư mời sang trạng thái chờ Director duyệt');
       loadOffer();
     } catch (err) {
-      notify.error(err.message || 'Cập nhật thất bại');
+      notify.error(err.message || 'Không thể gửi duyệt');
     } finally {
       setActionLoading(false);
     }
@@ -104,9 +103,6 @@ export default function HROfferDetail() {
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
   const formatDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN') : '—');
 
-  const isHRManager = true; // Có thể lấy từ user context
-  const isHRStaff = true;
-
   if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>Đang tải...</div>;
   if (!offer) return null;
 
@@ -141,7 +137,7 @@ export default function HROfferDetail() {
             <p style={{ color: '#6b7280' }}>{offer.departmentName}</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {(offer.statusId === 14 || offer.statusId === 15 || offer.statusId === 21) && (
+            {(offer.statusId === 14 || offer.statusId === 15 || offer.statusId === 21) && (isHRManager || isHRStaff) && (
               <button
                 onClick={handleEditClick}
                 disabled={actionLoading}
@@ -219,60 +215,43 @@ export default function HROfferDetail() {
           </div>
         )}
 
-        {/* Actions - HR Manager: DRAFT hoặc IN_REVIEW có thể duyệt/từ chối */}
+        {/* Actions - HR creates/submits/sends. Director handles approve/reject at Director portal. */}
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 24 }}>
-          {(offer.statusId === 14 || offer.statusId === 15) && (
-            <>
-              <button
-                onClick={() => { setToStatusId(16); setShowStatusModal(true); }}
-                disabled={actionLoading}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: '#10b981',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  fontWeight: 500
-                }}
-              >
-                Duyệt (Approve)
-              </button>
-              <button
-                onClick={() => { setToStatusId(17); setShowStatusModal(true); }}
-                disabled={actionLoading}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: '#ef4444',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  fontWeight: 500
-                }}
-              >
-                Từ chối (Reject)
-              </button>
-              {offer.statusId === 14 && (
-                <button
-                  onClick={() => { setToStatusId(15); setShowStatusModal(true); }}
-                  disabled={actionLoading}
-                  style={{
-                    padding: '10px 20px',
-                    backgroundColor: '#f59e0b',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 6,
-                    cursor: 'pointer',
-                    fontWeight: 500
-                  }}
-                >
-                  Gửi duyệt (IN_REVIEW)
-                </button>
-              )}
-            </>
+          {offer.statusId === 14 && (isHRManager || isHRStaff) && (
+            <button
+              onClick={handleSubmitForReview}
+              disabled={actionLoading}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#f59e0b',
+                color: 'white',
+                border: 'none',
+                borderRadius: 6,
+                cursor: 'pointer',
+                fontWeight: 500
+              }}
+            >
+              Gửi Director duyệt (IN_REVIEW)
+            </button>
           )}
-          {offer.statusId === 16 && (
+
+          {offer.statusId === 15 && (
+            <div
+              style={{
+                padding: '10px 14px',
+                backgroundColor: '#fff7ed',
+                border: '1px solid #fed7aa',
+                borderRadius: 6,
+                color: '#9a3412',
+                fontWeight: 500,
+                fontSize: 14
+              }}
+            >
+              Offer đang chờ Director duyệt
+            </div>
+          )}
+
+          {offer.statusId === 16 && (isHRManager || isHRStaff) && (
             <button
               onClick={handleSend}
               disabled={actionLoading}
@@ -291,72 +270,6 @@ export default function HROfferDetail() {
           )}
         </div>
       </div>
-
-      {/* Status Modal */}
-      {showStatusModal && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000
-          }}
-          onClick={() => setShowStatusModal(false)}
-        >
-          <div
-            style={{
-              backgroundColor: 'white',
-              padding: 24,
-              borderRadius: 8,
-              width: 400,
-              maxWidth: '90%'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ marginBottom: 16 }}>Cập nhật trạng thái</h3>
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', marginBottom: 8 }}>Ghi chú (tuỳ chọn)</label>
-              <textarea
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                rows={3}
-                style={{ width: '100%', padding: 8, border: '1px solid #d1d5db', borderRadius: 6 }}
-              />
-            </div>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => setShowStatusModal(false)}
-                style={{
-                  padding: '8px 16px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: 6,
-                  background: 'white',
-                  cursor: 'pointer'
-                }}
-              >
-                Huỷ
-              </button>
-              <button
-                onClick={handleUpdateStatus}
-                disabled={actionLoading}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#10b981',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 6,
-                  cursor: 'pointer'
-                }}
-              >
-                {actionLoading ? 'Đang xử lý...' : 'Xác nhận'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Edit Modal */}
       {showEditModal && (
@@ -418,14 +331,14 @@ export default function HROfferDetail() {
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
               <button
                 onClick={() => setShowEditModal(false)}
-                style={{
+              style={{
                   padding: '8px 16px',
                   border: '1px solid #d1d5db',
-                  borderRadius: 6,
+                borderRadius: 6,
                   background: 'white',
                   cursor: 'pointer'
-                }}
-              >
+              }}
+            >
                 Huỷ
               </button>
               <button

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { candidateService } from '../../services/candidateService';
+import { authService } from '../../services/authService';
 
 const emptyExperience = () => ({ id: null, companyName: '', jobTitle: '', startDate: '', endDate: '', description: '' });
 const emptyEducation = () => ({ id: null, schoolName: '', degree: '', major: '', startYear: '', endYear: '', gpa: '' });
@@ -31,6 +32,7 @@ export default function MyProfile() {
   const [user, setUser] = useState(authService.getUserInfo());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [cv, setCv] = useState(null);
   const [editingSection, setEditingSection] = useState(null); // null | 'header' | 'contact' | 'summary' | 'experience' | 'education' | 'certificates'
 

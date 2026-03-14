@@ -1,14 +1,43 @@
 import api from './api';
+import { API_BASE_URL } from './api';
+import { authFetch } from './authService';
+
+const getAuthHeader = () => {
+  const token = localStorage.getItem("accessToken") || sessionStorage.getItem("accessToken");
+  const headers = { "Content-Type": "application/json" };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  return headers;
+};
+
+const parseError = async (res) => {
+  const text = await res.text();
+  try {
+    const json = JSON.parse(text);
+    return json.message || text || `Request failed (${res.status})`;
+  } catch {
+    return text || `Request failed (${res.status})`;
+  }
+};
+
+const authGet = async (path) => {
+  const res = await authFetch(`${API_BASE_URL}${path}`, {
+    headers: getAuthHeader(),
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+};
 
 const deptManagerService = {
   // Dashboard
   dashboard: {
-    getStats: () => api.get('/dept-manager/dashboard/stats'),
+    getStats: () => authGet('/dept-manager/dashboard/stats'),
   },
 
   // Job Requests
   jobRequests: {
-    getAll: () => api.get('/dept-manager/job-requests'),
+    getAll: () => authGet('/dept-manager/job-requests'),
     getById: (id) => api.get(`/dept-manager/job-requests/${id}`),
     create: (data) => api.post('/dept-manager/job-requests', data),
     update: (id, data) => api.put(`/dept-manager/job-requests/${id}`, data),
@@ -28,7 +57,7 @@ const deptManagerService = {
   // Interviews
   interviews: {
     getAll: () => api.get('/dept-manager/interviews'),
-    getUpcoming: () => api.get('/dept-manager/interviews/upcoming'),
+    getUpcoming: () => authGet('/dept-manager/interviews/upcoming'),
     getById: (id) => api.get(`/dept-manager/interviews/${id}`),
     submitFeedback: (id, feedback) => 
       api.post(`/dept-manager/interviews/${id}/feedback`, feedback),

@@ -193,6 +193,10 @@ public class DirectorRepository : IDirectorRepository
                 .ThenInclude(a => a.JobRequest)
                     .ThenInclude(jr => jr.Position)
                         .ThenInclude(p => p.Department)
+            .Include(o => o.Candidate)
+            .Include(o => o.JobRequest)
+                .ThenInclude(jr => jr.Position)
+                    .ThenInclude(p => p.Department)
             .Include(o => o.Status)
             .Where(o => o.StatusId == 15 && o.IsDeleted == false) // IN_REVIEW
             .OrderBy(o => o.CreatedAt)
@@ -209,6 +213,10 @@ public class DirectorRepository : IDirectorRepository
                 .ThenInclude(a => a.JobRequest)
                     .ThenInclude(jr => jr.Position)
                         .ThenInclude(p => p.Department)
+            .Include(o => o.Candidate)
+            .Include(o => o.JobRequest)
+                .ThenInclude(jr => jr.Position)
+                    .ThenInclude(p => p.Department)
             .Include(o => o.Status)
             .Where(o => o.Id == id && o.IsDeleted == false)
             .FirstOrDefaultAsync();
@@ -230,9 +238,12 @@ public class DirectorRepository : IDirectorRepository
         if (offer == null || offer.StatusId != 15) return false; // Must be IN_REVIEW
 
         var approvedStatusId = 16; // APPROVED status
+        var oldStatusId = offer.StatusId;
 
         // Update offer status
         offer.StatusId = approvedStatusId;
+        offer.UpdatedAt = DateTimeHelper.Now;
+        offer.UpdatedBy = directorId;
 
         // Add approval record
         var approval = new OfferApproval
@@ -245,6 +256,19 @@ public class DirectorRepository : IDirectorRepository
         };
 
         _context.OfferApprovals.Add(approval);
+
+        var statusHistory = new StatusHistory
+        {
+            EntityTypeId = 4, // OFFER
+            EntityId = offerId,
+            FromStatusId = oldStatusId,
+            ToStatusId = approvedStatusId,
+            ChangedBy = directorId,
+            ChangedAt = DateTimeHelper.Now,
+            Note = comment
+        };
+
+        _context.StatusHistories.Add(statusHistory);
         await _context.SaveChangesAsync();
 
         return true;
@@ -256,9 +280,12 @@ public class DirectorRepository : IDirectorRepository
         if (offer == null || offer.StatusId != 15) return false; // Must be IN_REVIEW
 
         var rejectedStatusId = 17; // REJECTED status
+        var oldStatusId = offer.StatusId;
 
         // Update offer status
         offer.StatusId = rejectedStatusId;
+        offer.UpdatedAt = DateTimeHelper.Now;
+        offer.UpdatedBy = directorId;
 
         // Add approval record
         var approval = new OfferApproval
@@ -271,6 +298,19 @@ public class DirectorRepository : IDirectorRepository
         };
 
         _context.OfferApprovals.Add(approval);
+
+        var statusHistory = new StatusHistory
+        {
+            EntityTypeId = 4, // OFFER
+            EntityId = offerId,
+            FromStatusId = oldStatusId,
+            ToStatusId = rejectedStatusId,
+            ChangedBy = directorId,
+            ChangedAt = DateTimeHelper.Now,
+            Note = comment
+        };
+
+        _context.StatusHistories.Add(statusHistory);
         await _context.SaveChangesAsync();
 
         return true;

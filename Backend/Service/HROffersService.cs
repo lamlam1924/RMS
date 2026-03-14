@@ -58,8 +58,8 @@ public class HROffersService : IHROffersService
 
         return ResponseHelper.CreateActionResponse(
             success, 
-            "Offer status updated successfully", 
-            "Failed to update offer status"
+            "Offer submitted for Director review successfully", 
+            "Invalid status transition. HR can only submit DRAFT offers to IN_REVIEW."
         );
     }
 
@@ -70,7 +70,7 @@ public class HROffersService : IHROffersService
         return ResponseHelper.CreateActionResponse(
             success, 
             "Offer sent successfully", 
-            "Failed to send offer"
+            "Failed to send offer. Only APPROVED offers can be sent to candidate."
         );
     }
 
