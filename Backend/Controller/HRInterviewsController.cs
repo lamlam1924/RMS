@@ -33,22 +33,89 @@ public class HRInterviewsController : ControllerBase
         _multiRoundService = multiRoundService;
     }
 
+    /// <summary>HR Manager: toàn bộ. HR Staff: chỉ interview thuộc job được gán.</summary>
+    private static int? GetScopeByStaffId(System.Security.Claims.ClaimsPrincipal user, int userId)
+        => user.IsInRole("HR_MANAGER") ? null : userId;
+
+    /// <summary>Nếu là HR Staff và interview không thuộc job được gán thì trả về NotFound; ngược lại trả về null (tiếp tục).</summary>
+    private async Task<ActionResult?> EnsureInterviewInScopeForStaffAsync(int interviewId)
+    {
+        var userId = CurrentUserHelper.GetCurrentUserId(this);
+        var scope = GetScopeByStaffId(User, userId);
+        if (!scope.HasValue) return null;
+        var detail = await _service.GetInterviewDetailAsync(interviewId, scope);
+        return detail == null ? NotFound() : null;
+    }
+
+    /// <summary>Nếu là HR Staff và application không thuộc job được gán thì trả về NotFound; ngược lại trả về null.</summary>
+    private async Task<ActionResult?> EnsureApplicationInScopeForStaffAsync(int applicationId)
+    {
+        var userId = CurrentUserHelper.GetCurrentUserId(this);
+        var scope = GetScopeByStaffId(User, userId);
+        if (!scope.HasValue) return null;
+        var inScope = await _service.IsApplicationInStaffScopeAsync(applicationId, userId);
+        return !inScope ? NotFound() : null;
+    }
+
     [HttpGet]
     /// <summary>Lấy toàn bộ danh sách phỏng vấn</summary>
     public async Task<ActionResult<List<InterviewListDto>>> GetInterviews()
-        => Ok(await _service.GetInterviewsAsync());
+    {
+        var userId = CurrentUserHelper.GetCurrentUserId(this);
+        var scope = GetScopeByStaffId(User, userId);
+        return Ok(await _service.GetInterviewsAsync(scope));
+    }
 
     /// <summary>Lấy danh sách phỏng vấn sắp diễn ra</summary>
     [HttpGet("upcoming")]
     public async Task<ActionResult<List<InterviewListDto>>> GetUpcomingInterviews()
-        => Ok(await _service.GetUpcomingInterviewsAsync());
+    {
+        var userId = CurrentUserHelper.GetCurrentUserId(this);
+        var scope = GetScopeByStaffId(User, userId);
+        return Ok(await _service.GetUpcomingInterviewsAsync(scope));
+    }
+
+    /// <summary>Danh sách phỏng vấn có ghi chú từ chối (ứng viên hoặc interviewer) cần HR xử lý — dùng cho PhaseOverview / filter danh sách.</summary>
+    [HttpGet("needing-attention")]
+    public async Task<ActionResult<List<InterviewNeedingAttentionDto>>> GetInterviewsNeedingAttention()
+    {
+        var userId = CurrentUserHelper.GetCurrentUserId(this);
+        var scope = GetScopeByStaffId(User, userId);
+        return Ok(await _service.GetInterviewsNeedingAttentionAsync(scope));
+    }
 
     /// <summary>Lấy chi tiết một buổi phỏng vấn</summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<InterviewDetailDto>> GetInterviewDetail(int id)
     {
-        var detail = await _service.GetInterviewDetailAsync(id);
+        var userId = CurrentUserHelper.GetCurrentUserId(this);
+        var scope = GetScopeByStaffId(User, userId);
+        var detail = await _service.GetInterviewDetailAsync(id, scope);
         return detail == null ? NotFound() : Ok(detail);
+    }
+
+    /// <summary>Lịch sử thay đổi / sự kiện của buổi phỏng vấn (timeline).</summary>
+    [HttpGet("{id}/history")]
+    public async Task<ActionResult<List<InterviewHistoryItemDto>>> GetInterviewHistory(int id)
+    {
+        var err = await EnsureInterviewInScopeForStaffAsync(id);
+        if (err != null) return err;
+        var userId = CurrentUserHelper.GetCurrentUserId(this);
+        var scope = GetScopeByStaffId(User, userId);
+        var list = await _service.GetInterviewHistoryAsync(id, scope);
+        return Ok(list);
+    }
+
+    /// <summary>Sau khi đổi lịch: gửi yêu cầu đề cử người phỏng vấn đến trưởng phòng ban cho ngày mới (participant cũ đã bị xóa).</summary>
+    [HttpPost("{id}/request-participants-after-reschedule")]
+    public async Task<ActionResult<ActionResponseDto>> RequestParticipantsAfterReschedule(int id)
+    {
+        var err = await EnsureInterviewInScopeForStaffAsync(id);
+        if (err != null) return err;
+        var userId = CurrentUserHelper.GetCurrentUserId(this);
+        var scope = GetScopeByStaffId(User, userId);
+        var result = await _service.RequestParticipantsAfterRescheduleAsync(id, userId, scope);
+        return result.Success ? Ok(result) : BadRequest(result);
     }
 
     // ==================== PHASE 1: Conflict Detection ====================
@@ -101,7 +168,8 @@ public class HRInterviewsController : ControllerBase
     public async Task<ActionResult<ActionResponseDto>> CreateInterview([FromBody] CreateInterviewDto dto)
     {
         var userId = CurrentUserHelper.GetCurrentUserId(this);
-        var result = await _service.CreateInterviewAsync(dto, userId);
+        var scope = GetScopeByStaffId(User, userId);
+        var result = await _service.CreateInterviewAsync(dto, userId, scope);
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
@@ -109,7 +177,9 @@ public class HRInterviewsController : ControllerBase
     [HttpPut("{id}")]
     public async Task<ActionResult<ActionResponseDto>> UpdateInterview(int id, [FromBody] UpdateInterviewDto dto)
     {
-        var result = await _service.UpdateInterviewAsync(id, dto);
+        var userId = CurrentUserHelper.GetCurrentUserId(this);
+        var scope = GetScopeByStaffId(User, userId);
+        var result = await _service.UpdateInterviewAsync(id, dto, scope);
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
@@ -128,17 +198,73 @@ public class HRInterviewsController : ControllerBase
     public async Task<ActionResult<ActionResponseDto>> CancelInterview(int id)
     {
         var userId = CurrentUserHelper.GetCurrentUserId(this);
-        var result = await _service.CancelInterviewAsync(id, userId);
+        var scope = GetScopeByStaffId(User, userId);
+        var result = await _service.CancelInterviewAsync(id, userId, scope);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    /// <summary>Sau khi chọn online/offline: gửi thông báo chỉ cho người phỏng vấn (không gửi ứng viên).</summary>
+    [HttpPost("{id}/send-invitation")]
+    public async Task<ActionResult<ActionResponseDto>> SendInvitation(int id, [FromBody] SendInvitationDto? dto)
+    {
+        var err = await EnsureInterviewInScopeForStaffAsync(id);
+        if (err != null) return err;
+        var userId = CurrentUserHelper.GetCurrentUserId(this);
+        var scope = GetScopeByStaffId(User, userId);
+        var result = await _service.SendInvitationAsync(id, dto, scope);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    /// <summary>Gửi thông báo theo block (chỉ người phỏng vấn).</summary>
+    [HttpPost("send-invitation-batch")]
+    public async Task<ActionResult<ActionResponseDto>> SendInvitationBatch([FromBody] SendInvitationBatchDto dto)
+    {
+        var userId = CurrentUserHelper.GetCurrentUserId(this);
+        var scope = GetScopeByStaffId(User, userId);
+        var result = await _service.SendInvitationBatchAsync(dto, scope);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    /// <summary>Gửi yêu cầu xác nhận tham gia cho ứng viên (sau khi interviewer xác nhận). Ứng viên mới thấy buổi trong "Phỏng vấn của tôi".</summary>
+    [HttpPost("{id}/send-candidate-confirmation")]
+    public async Task<ActionResult<ActionResponseDto>> SendCandidateConfirmation(int id)
+    {
+        var err = await EnsureInterviewInScopeForStaffAsync(id);
+        if (err != null) return err;
+        var userId = CurrentUserHelper.GetCurrentUserId(this);
+        var scope = GetScopeByStaffId(User, userId);
+        var result = await _service.SendCandidateConfirmationRequestAsync(id, userId, scope);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    /// <summary>Gửi hàng loạt yêu cầu xác nhận tham gia cho ứng viên.</summary>
+    [HttpPost("send-candidate-confirmation-batch")]
+    public async Task<ActionResult<ActionResponseDto>> SendCandidateConfirmationBatch([FromBody] SendInvitationBatchDto dto)
+    {
+        var userId = CurrentUserHelper.GetCurrentUserId(this);
+        var scope = GetScopeByStaffId(User, userId);
+        var result = await _service.SendCandidateConfirmationRequestBatchAsync(dto, userId, scope);
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
     // ==================== Participant Requests ====================
 
-    /// <summary>HR Staff gửi yêu cầu đề cử người tham gia phỏng vấn đến trưởng phòng ban</summary>
+    /// <summary>HR gửi yêu cầu đề cử theo block (nhiều buổi cùng khung giờ) đến trưởng phòng</summary>
+    [HttpPost("participant-requests/batch")]
+    public async Task<ActionResult<ActionResponseDto>> CreateParticipantRequestBatch([FromBody] CreateParticipantRequestBatchDto dto)
+    {
+        var userId = CurrentUserHelper.GetCurrentUserId(this);
+        var result = await _requestService.CreateBatchRequestAsync(dto, userId);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    /// <summary>HR Staff gửi yêu cầu đề cử người tham gia phỏng vấn đến trưởng phòng ban (một buổi)</summary>
     [HttpPost("{id}/participant-requests")]
     public async Task<ActionResult<ActionResponseDto>> CreateParticipantRequest(
         int id, [FromBody] CreateParticipantRequestDto dto)
     {
+        var err = await EnsureInterviewInScopeForStaffAsync(id);
+        if (err != null) return err;
         var userId = CurrentUserHelper.GetCurrentUserId(this);
         var result = await _requestService.CreateRequestAsync(id, dto, userId);
         return result.Success ? Ok(result) : BadRequest(result);
@@ -147,7 +273,11 @@ public class HRInterviewsController : ControllerBase
     /// <summary>Lấy danh sách yêu cầu đề cử của một cuộc phỏng vấn</summary>
     [HttpGet("{id}/participant-requests")]
     public async Task<ActionResult<List<ParticipantRequestDto>>> GetParticipantRequests(int id)
-        => Ok(await _requestService.GetRequestsByInterviewAsync(id));
+    {
+        var err = await EnsureInterviewInScopeForStaffAsync(id);
+        if (err != null) return err;
+        return Ok(await _requestService.GetRequestsByInterviewAsync(id));
+    }
 
     /// <summary>HR Manager xem các yêu cầu được chuyển tiếp đến mình (từ HR Staff của vị trí cấp cao)</summary>
     [HttpGet("participant-requests/assigned")]
@@ -208,6 +338,8 @@ public class HRInterviewsController : ControllerBase
     [HttpPost("{id}/mark-no-show")]
     public async Task<ActionResult<ActionResponseDto>> MarkNoShow(int id, [FromBody] MarkNoShowRequestDto dto)
     {
+        var err = await EnsureInterviewInScopeForStaffAsync(id);
+        if (err != null) return err;
         try
         {
             var userId = CurrentUserHelper.GetCurrentUserId(this);
@@ -252,6 +384,8 @@ public class HRInterviewsController : ControllerBase
     [HttpGet("{id}/check-next-round")]
     public async Task<ActionResult<NextRoundCheckResultDto>> CheckNextRoundEligibility(int id)
     {
+        var err = await EnsureInterviewInScopeForStaffAsync(id);
+        if (err != null) return err;
         try
         {
             var result = await _multiRoundService.CheckNextRoundEligibilityAsync(id);
@@ -268,12 +402,35 @@ public class HRInterviewsController : ControllerBase
     public async Task<ActionResult<ActionResponseDto>> ScheduleNextRound(
         int id, [FromBody] ScheduleNextRoundRequestDto dto)
     {
+        var err = await EnsureInterviewInScopeForStaffAsync(id);
+        if (err != null) return err;
         try
         {
             var userId = CurrentUserHelper.GetCurrentUserId(this);
             dto.PreviousInterviewId = id;
             var newInterviewId = await _multiRoundService.AutoScheduleNextRoundAsync(id, dto, userId);
             return Ok(ResponseHelper.Success($"Next round scheduled successfully. Interview ID: {newInterviewId}", newInterviewId));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ResponseHelper.Error(ex.Message));
+        }
+    }
+
+    /// <summary>Lên lịch vòng phỏng vấn tiếp theo theo lô cho nhiều hồ sơ (cùng vị trí).</summary>
+    [HttpPost("next-round/batch")]
+    public async Task<ActionResult<ActionResponseDto>> ScheduleNextRoundBatch(
+        [FromBody] NextRoundBatchScheduleRequestDto dto)
+    {
+        try
+        {
+            var userId = CurrentUserHelper.GetCurrentUserId(this);
+            var ids = await _multiRoundService.AutoScheduleNextRoundBatchAsync(dto, userId);
+            var count = ids.Count;
+            var message = count == 1
+                ? "Đã tạo 1 vòng phỏng vấn tiếp theo"
+                : $"Đã tạo {count} vòng phỏng vấn tiếp theo";
+            return Ok(ResponseHelper.Success(message, ids));
         }
         catch (Exception ex)
         {
@@ -304,6 +461,8 @@ public class HRInterviewsController : ControllerBase
     [HttpGet("application/{applicationId}/round-progress")]
     public async Task<ActionResult<InterviewRoundProgressDto>> GetRoundProgress(int applicationId)
     {
+        var err = await EnsureApplicationInScopeForStaffAsync(applicationId);
+        if (err != null) return err;
         try
         {
             var progress = await _multiRoundService.GetRoundProgressAsync(applicationId);
@@ -329,6 +488,8 @@ public class HRInterviewsController : ControllerBase
     [HttpPost("{id}/send-feedback-reminder")]
     public async Task<ActionResult<ActionResponseDto>> SendFeedbackReminder(int id)
     {
+        var err = await EnsureInterviewInScopeForStaffAsync(id);
+        if (err != null) return err;
         var success = await _multiRoundService.SendFeedbackReminderAsync(id);
         return success
             ? Ok(ResponseHelper.Success("Feedback reminder sent successfully"))

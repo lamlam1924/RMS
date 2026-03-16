@@ -12,6 +12,9 @@ public interface IParticipantRequestService
     /// <summary>HR Staff tạo yêu cầu đề cử người tham gia cho một buổi phỏng vấn</summary>
     Task<ActionResponseDto> CreateRequestAsync(int interviewId, CreateParticipantRequestDto dto, int fromUserId);
 
+    /// <summary>HR gửi yêu cầu đề cử theo block (nhiều buổi) – 1 request + N ParticipantRequestInterviews</summary>
+    Task<ActionResponseDto> CreateBatchRequestAsync(CreateParticipantRequestBatchDto dto, int fromUserId);
+
     /// <summary>Lấy danh sách yêu cầu đề cử của một buổi phỏng vấn</summary>
     Task<List<ParticipantRequestDto>> GetRequestsByInterviewAsync(int interviewId);
 

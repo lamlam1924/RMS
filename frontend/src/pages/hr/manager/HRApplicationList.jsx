@@ -382,7 +382,7 @@ export default function HRApplicationList() {
         </div>
       )}
 
-      {selectedIds.length > 0 && (
+      {selectedIds.length > 0 && statusFilter === 10 && (
         <div style={{
           position: 'sticky',
           bottom: 12,

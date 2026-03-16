@@ -69,29 +69,6 @@ export default function CandidateLayout() {
               Hồ sơ ứng tuyển
             </NavLink>
             <NavLink
-              to="/app/offers"
-              className={({ isActive }) =>
-                `px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                  isActive 
-                    ? "bg-blue-600 text-white shadow-md shadow-blue-200" 
-                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                }`
-              }
-            >
-              Thư mời
-            </NavLink>
-            <NavLink
-              to="/app/profile"
-              className={({ isActive }) =>
-                `px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${isActive
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-200"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                }`
-              }
-            >
-              CV của tôi
-            </NavLink>
-            <NavLink
               to="/app/interviews"
               className={({ isActive }) =>
                 `px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
@@ -103,6 +80,31 @@ export default function CandidateLayout() {
             >
               Phỏng vấn
             </NavLink>
+            <NavLink
+              to="/app/offers"
+              className={({ isActive }) =>
+                `px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                  isActive 
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-200" 
+                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                }`
+              }
+            >
+              Thư mời
+            </NavLink>
+            
+            <NavLink
+              to="/app/profile"
+              className={({ isActive }) =>
+                `px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${isActive
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-200"
+                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                }`
+              }
+            >
+              CV của tôi
+            </NavLink>
+            
           </nav>
 
           <div className="flex items-center gap-4 text-sm relative" ref={dropdownRef}>

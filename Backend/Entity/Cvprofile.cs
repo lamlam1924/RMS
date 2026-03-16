@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace RMS.Entity;
@@ -24,6 +24,14 @@ public partial class Cvprofile
     public DateTime? CreatedAt { get; set; }
 
     public string? CvFileUrl { get; set; }
+
+    public string? Address { get; set; }
+
+    public string? ProfessionalTitle { get; set; }
+
+    public string? SkillsText { get; set; }
+
+    public string? ReferencesText { get; set; }
 
     public virtual ICollection<Application> Applications { get; set; } = new List<Application>();
 

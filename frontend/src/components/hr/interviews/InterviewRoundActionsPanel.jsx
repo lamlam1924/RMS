@@ -1,8 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import hrService from '../../../services/hrService';
 import notify from '../../../utils/notification';
-import { formatDateTimeVi, parseIdList } from '../../../utils/helpers/interviewPhase';
+import { formatDateTimeVi } from '../../../utils/helpers/interviewPhase';
+import { RECOMMENDATION_LABELS } from '../../shared/InterviewFeedbackForm';
 import InterviewSection from './InterviewSection';
+
+function feedbacksToSummary(feedbacks) {
+  if (!feedbacks?.length) return null;
+  return {
+    strongHireCount: feedbacks.filter((f) => f.recommendation === 'STRONG_HIRE').length,
+    hireCount: feedbacks.filter((f) => f.recommendation === 'HIRE').length,
+    noHireCount: feedbacks.filter((f) => f.recommendation === 'NO_HIRE').length,
+    strongNoHireCount: feedbacks.filter((f) => f.recommendation === 'STRONG_NO_HIRE').length,
+  };
+}
 
 const DECISION_OPTIONS = [
   { value: 'PASS', label: '✅ Đạt (sang vòng tiếp)', color: '#16a34a', bg: '#f0fdf4', border: '#86efac' },
@@ -23,8 +34,8 @@ function RecommendationBar({ summary }) {
   if (!summary) return null;
   const items = [
     { label: 'Rất nên tuyển', value: summary.strongHireCount, color: '#16a34a' },
-    { label: 'Nên tuyển', value: summary.hireCount, color: '#65a30d' },
-    { label: 'Không nên', value: summary.noHireCount, color: '#ea580c' },
+    { label: 'Đạt', value: summary.hireCount, color: '#65a30d' },
+    { label: 'Không đạt', value: summary.noHireCount, color: '#ea580c' },
     { label: 'Dứt khoát không', value: summary.strongNoHireCount, color: '#dc2626' },
   ].filter((i) => i.value > 0);
   if (items.length === 0) return null;
@@ -106,7 +117,7 @@ function RoundTimeline({ rounds }) {
   );
 }
 
-export default function PhaseTwoActionsPanel({ interview, onUpdated }) {
+export default function InterviewRoundActionsPanel({ interview, onUpdated, canReviewRound = true }) {
   const [submitting, setSubmitting] = useState(false);
   const [nextRoundCheck, setNextRoundCheck] = useState(null);
   const [roundProgress, setRoundProgress] = useState(null);
@@ -118,15 +129,13 @@ export default function PhaseTwoActionsPanel({ interview, onUpdated }) {
     startTime: '',
     endTime: '',
     location: '',
-    meetingLink: '',
-    interviewerIds: ''
+    meetingLink: ''
   });
 
   // Pre-fill next round form from current interview
   useEffect(() => {
     setNextRoundForm((current) => ({
       ...current,
-      interviewerIds: '',
       location: interview?.location || '',
       meetingLink: interview?.meetingLink || ''
     }));
@@ -144,6 +153,9 @@ export default function PhaseTwoActionsPanel({ interview, onUpdated }) {
   const isTerminal = ['COMPLETED', 'CANCELLED', 'NO_SHOW', 'INTERVIEWER_ABSENT'].includes(interview?.statusCode);
   const feedbackIncomplete = (interview?.participantCount || 0) > (interview?.feedbackCount || 0);
   const hasDecision = !!interview?.roundDecision;
+  const isLocked = isTerminal || hasDecision;
+  const confirmedParticipants = (interview?.participants || []).filter((p) => p.confirmedAt && !p.declinedAt);
+  const nonDeclinedParticipants = (interview?.participants || []).filter((p) => !p.declinedAt);
 
   const refreshParent = async () => {
     if (onUpdated) await onUpdated();
@@ -235,13 +247,8 @@ export default function PhaseTwoActionsPanel({ interview, onUpdated }) {
   };
 
   const handleScheduleNextRound = async () => {
-    const interviewerIds = parseIdList(nextRoundForm.interviewerIds);
     if (!nextRoundForm.startTime || !nextRoundForm.endTime) {
       notify.warning('Cần nhập thời gian cho vòng tiếp theo');
-      return;
-    }
-    if (interviewerIds.length === 0) {
-      notify.warning('Cần chọn ít nhất 1 người phỏng vấn');
       return;
     }
     setSubmitting(true);
@@ -250,8 +257,7 @@ export default function PhaseTwoActionsPanel({ interview, onUpdated }) {
         startTime: nextRoundForm.startTime,
         endTime: nextRoundForm.endTime,
         location: nextRoundForm.location || null,
-        meetingLink: nextRoundForm.meetingLink || null,
-        interviewerIds
+        meetingLink: nextRoundForm.meetingLink || null
       });
       notify.success('Đã tạo lịch vòng phỏng vấn tiếp theo');
       const [check, progress] = await Promise.all([
@@ -290,13 +296,13 @@ export default function PhaseTwoActionsPanel({ interview, onUpdated }) {
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
           <button
             type="button"
-            disabled={submitting || isTerminal}
+            disabled={submitting || isLocked}
             onClick={markCandidateNoShow}
             style={{ padding: '8px 14px', borderRadius: 6, border: '1px solid #dc2626', backgroundColor: '#fef2f2', color: '#b91c1c', cursor: 'pointer', fontWeight: 600 }}
           >
             Ứng viên vắng mặt
           </button>
-          {feedbackIncomplete && (
+          {feedbackIncomplete && !isLocked && (
             <button
               type="button"
               disabled={submitting}
@@ -308,9 +314,9 @@ export default function PhaseTwoActionsPanel({ interview, onUpdated }) {
           )}
         </div>
 
-        {interview?.participants?.length > 0 && (
+        {confirmedParticipants.length > 0 && !isLocked && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {interview.participants.map((participant) => (
+            {confirmedParticipants.map((participant) => (
               <div key={participant.userId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: 10, border: '1px solid #e5e7eb', borderRadius: 8, backgroundColor: '#fafafa' }}>
                 <div>
                   <div style={{ fontWeight: 600 }}>{participant.userName}</div>
@@ -330,11 +336,11 @@ export default function PhaseTwoActionsPanel({ interview, onUpdated }) {
         )}
       </InterviewSection>
 
-      {/* ── Chốt kết quả vòng ── */}
+      {/* ── Chốt kết quả vòng (chỉ HR Manager) ── */}
+      {canReviewRound && (
       <InterviewSection
-        step="Bước 1"
         title="Chốt kết quả vòng phỏng vấn"
-        description="Sau khi đủ đánh giá, HR chốt quyết định cho vòng này trước khi lên lịch vòng tiếp theo."
+        description="Sau khi đủ đánh giá, chốt quyết định vòng này (Đạt / Không đạt / Chờ / Cần thêm vòng) trước khi lên lịch vòng tiếp."
         tone={hasDecision ? 'muted' : 'default'}
       >
         {hasDecision ? (
@@ -349,11 +355,13 @@ export default function PhaseTwoActionsPanel({ interview, onUpdated }) {
           </div>
         ) : (
           <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: showReviewForm ? 14 : 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <div style={{ fontSize: 13, color: '#6b7280' }}>
                 {nextRoundCheck
                   ? `${nextRoundCheck.submittedFeedbacks}/${nextRoundCheck.totalInterviewers} đánh giá đã nộp`
-                  : 'Chưa kiểm tra số lượng đánh giá'}
+                  : interview?.feedbacks?.length != null && interview?.participants?.length != null
+                    ? `${interview.feedbacks.length}/${interview.participants.length} đánh giá đã nộp`
+                    : 'Chưa kiểm tra số lượng đánh giá'}
               </div>
               <button
                 type="button"
@@ -364,7 +372,34 @@ export default function PhaseTwoActionsPanel({ interview, onUpdated }) {
               </button>
             </div>
 
-            {showReviewForm && (
+            {/* Tổng hợp recommendation từ feedback + danh sách từng đánh giá */}
+            {(nextRoundCheck?.recommendationSummary || feedbacksToSummary(interview?.feedbacks)) && (
+              <div style={{ marginBottom: 14, padding: 12, borderRadius: 8, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                <RecommendationBar summary={nextRoundCheck?.recommendationSummary ?? feedbacksToSummary(interview?.feedbacks)} />
+                {interview?.feedbacks?.length > 0 && (
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 8 }}>Từng đánh giá:</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {interview.feedbacks.map((fb) => (
+                        <div key={fb.id} style={{ padding: 10, backgroundColor: '#fff', borderRadius: 6, border: '1px solid #e5e7eb', fontSize: 13 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: fb.note ? 4 : 0 }}>
+                            <span style={{ fontWeight: 600 }}>{fb.interviewerName}</span>
+                            {fb.recommendation && (
+                              <span style={{ fontWeight: 600, color: '#374151', padding: '2px 8px', borderRadius: 6, backgroundColor: '#e5e7eb' }}>
+                                {RECOMMENDATION_LABELS[fb.recommendation] ?? fb.recommendation}
+                              </span>
+                            )}
+                          </div>
+                          {fb.note && <div style={{ color: '#475569', fontStyle: 'italic' }}>"{fb.note}"</div>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {showReviewForm && !isLocked && (
               <div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 12 }}>
                   {DECISION_OPTIONS.map((opt) => (
@@ -400,12 +435,13 @@ export default function PhaseTwoActionsPanel({ interview, onUpdated }) {
           </>
         )}
       </InterviewSection>
+      )}
 
-      {/* ── Vòng tiếp theo ── */}
+      {/* ── Vòng tiếp theo: chỉ hiện khi vòng đã hoàn thành (COMPLETED) hoặc đã có quyết định ── */}
+      {(interview?.statusCode === 'COMPLETED' || hasDecision) && (
       <InterviewSection
-        step="Bước 2"
         title="Vòng phỏng vấn tiếp theo"
-        description="Kiểm tra điều kiện, xem tóm tắt đánh giá, rồi lên lịch nếu cần."
+        description="Kiểm tra điều kiện và, nếu phù hợp, lên lịch vòng tiếp theo."
       >
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: nextRoundCheck ? 14 : 0 }}>
           <button
@@ -432,12 +468,15 @@ export default function PhaseTwoActionsPanel({ interview, onUpdated }) {
             <div style={{ fontSize: 13, color: '#475569' }}>
               Đánh giá đã nộp: {nextRoundCheck.submittedFeedbacks}/{nextRoundCheck.totalInterviewers}
               {typeof nextRoundCheck.averageScore === 'number' && ` • Điểm TB: ${nextRoundCheck.averageScore}`}
+              {nextRoundCheck.averageScore == null && (
+                <span style={{ marginLeft: 6, fontSize: 11, color: '#94a3b8' }}>(Điểm TB chỉ hiện khi có chấm điểm theo tiêu chí)</span>
+              )}
             </div>
             <RecommendationBar summary={nextRoundCheck.recommendationSummary} />
           </div>
         )}
 
-        {nextRoundCheck?.shouldScheduleNextRound && (
+        {nextRoundCheck?.shouldScheduleNextRound && !isLocked && (
           <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 14 }}>
             <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12 }}>
               Lên lịch vòng {nextRoundCheck.nextRoundNo ?? ''}
@@ -452,27 +491,9 @@ export default function PhaseTwoActionsPanel({ interview, onUpdated }) {
                 <input type="datetime-local" value={nextRoundForm.endTime} onChange={(e) => setNextRoundForm((c) => ({ ...c, endTime: e.target.value }))} style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #d1d5db', boxSizing: 'border-box' }} />
               </div>
             </div>
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 4 }}>
-                Người phỏng vấn
-                <span style={{ fontWeight: 400, color: '#6b7280', marginLeft: 6 }}>(ID, phân cách bằng dấu phẩy — chọn lại cho vòng này)</span>
-              </label>
-              <input
-                type="text"
-                value={nextRoundForm.interviewerIds}
-                onChange={(e) => setNextRoundForm((c) => ({ ...c, interviewerIds: e.target.value }))}
-                placeholder="Ví dụ: 12, 18"
-                style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #d1d5db', boxSizing: 'border-box' }}
-              />
-              {interview?.participants?.length > 0 && (
-                <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {interview.participants.map((p) => (
-                    <span key={p.userId} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, backgroundColor: '#f1f5f9', border: '1px solid #e2e8f0', color: '#374151' }}>
-                      {p.userName} (ID: {p.userId})
-                    </span>
-                  ))}
-                </div>
-              )}
+            <div style={{ marginBottom: 12, fontSize: 12, color: '#6b7280' }}>
+              Sau khi tạo vòng tiếp theo, hãy mở chi tiết buổi đó và dùng chức năng
+              {' '}<strong>"Gửi yêu cầu đề cử"</strong> để trưởng phòng chọn người phỏng vấn cho vòng mới.
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
               <div>
@@ -507,6 +528,7 @@ export default function PhaseTwoActionsPanel({ interview, onUpdated }) {
           </div>
         )}
       </InterviewSection>
+      )}
     </>
   );
 }

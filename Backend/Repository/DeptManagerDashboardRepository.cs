@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RMS.Common;
 using RMS.Data;
 using RMS.Entity;
 using RMS.Repository.Interface;
@@ -30,7 +31,7 @@ public class DeptManagerDashboardRepository : IDeptManagerDashboardRepository
 
     public async Task<int> GetUpcomingInterviewsCountAsync(int managerId)
     {
-        var now = DateTime.Now;
+        var now = DateTimeHelper.Now;
         return await _context.InterviewParticipants
             .CountAsync(ip => ip.UserId == managerId && 
                              ip.Interview.StartTime > now &&
@@ -40,7 +41,7 @@ public class DeptManagerDashboardRepository : IDeptManagerDashboardRepository
     public async Task<int> GetActiveCandidatesCountAsync(int managerId)
     {
         // Count unique candidates in upcoming interviews
-        var now = DateTime.Now;
+        var now = DateTimeHelper.Now;
         return await _context.InterviewParticipants
             .Where(ip => ip.UserId == managerId && 
                         ip.Interview.StartTime > now &&

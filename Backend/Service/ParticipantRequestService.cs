@@ -24,6 +24,24 @@ public class ParticipantRequestService : IParticipantRequestService
         return new ActionResponseDto { Success = true, Message = "Đã gửi yêu cầu đề cử người phỏng vấn", Data = created };
     }
 
+    public async Task<ActionResponseDto> CreateBatchRequestAsync(CreateParticipantRequestBatchDto dto, int fromUserId)
+    {
+        if (dto.InterviewIds == null || !dto.InterviewIds.Any())
+            return new ActionResponseDto { Success = false, Message = "Vui lòng chọn ít nhất một buổi phỏng vấn" };
+        if (dto.RequiredCount < 1)
+            return new ActionResponseDto { Success = false, Message = "Số lượng người yêu cầu phải ít nhất là 1" };
+
+        try
+        {
+            var created = await _repo.CreateBatchRequestAsync(dto, fromUserId);
+            return new ActionResponseDto { Success = true, Message = "Đã gửi yêu cầu đề cử theo block", Data = created };
+        }
+        catch (ArgumentException ex)
+        {
+            return new ActionResponseDto { Success = false, Message = ex.Message };
+        }
+    }
+
     public Task<List<ParticipantRequestDto>> GetRequestsByInterviewAsync(int interviewId)
         => _repo.GetRequestsByInterviewAsync(interviewId);
 

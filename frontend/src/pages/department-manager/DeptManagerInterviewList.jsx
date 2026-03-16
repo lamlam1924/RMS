@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import deptManagerService from '../../services/deptManagerService';
-import SimpleInterviewListPage from '../../components/shared/interviews/SimpleInterviewListPage';
+import InterviewListPage from '../../components/shared/interviews/InterviewListPage';
 import { formatDateTime, formatTime } from '../../utils/formatters/display';
 
 export default function DeptManagerInterviewList() {
@@ -39,7 +39,7 @@ export default function DeptManagerInterviewList() {
   };
 
   return (
-    <SimpleInterviewListPage
+    <InterviewListPage
       title="Phỏng vấn của tôi"
       description="Danh sách buổi phỏng vấn bạn tham gia với vai trò trưởng phòng"
       filters={[

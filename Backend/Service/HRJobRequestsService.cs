@@ -1,4 +1,5 @@
 using AutoMapper;
+using RMS.Common;
 using RMS.Dto.Common;
 using RMS.Dto.HR;
 using RMS.Entity;
@@ -114,7 +115,7 @@ public class HRJobRequestsService : IHRJobRequestsService
 
         if (success)
         {
-            await _repository.UpdateLastReturnedAtAsync(id, DateTime.Now);
+            await _repository.UpdateLastReturnedAtAsync(id, DateTimeHelper.Now);
         }
         return success;
     }
@@ -153,7 +154,7 @@ public class HRJobRequestsService : IHRJobRequestsService
 
         var oldStatusId = jobRequest.StatusId;
         jobRequest.StatusId = statusId;
-        jobRequest.UpdatedAt = DateTime.Now;
+        jobRequest.UpdatedAt = DateTimeHelper.Now;
 
         await _repository.UpdateJobRequestAsync(jobRequest);
 
@@ -165,7 +166,7 @@ public class HRJobRequestsService : IHRJobRequestsService
             FromStatusId = oldStatusId,
             ToStatusId = statusId,
             ChangedBy = userId,
-            ChangedAt = DateTime.Now,
+            ChangedAt = DateTimeHelper.Now,
             Note = note
         };
         await _repository.AddStatusHistoryAsync(history);

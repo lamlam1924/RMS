@@ -190,6 +190,7 @@ builder.Services.AddScoped<IAdminWorkflowService, AdminWorkflowService>();
 builder.Services.AddScoped<IDirectorService, DirectorService>();
 builder.Services.AddScoped<IDeptManagerJobRequestsService, DeptManagerJobRequestsService>();
 builder.Services.AddScoped<IDeptManagerInterviewsService, DeptManagerInterviewsService>();
+builder.Services.AddScoped<IEmployeeInterviewsService, EmployeeInterviewsService>();
 builder.Services.AddScoped<IHRStatisticsService, HRStatisticsService>();
 builder.Services.AddScoped<IHRJobRequestsService, HRJobRequestsService>();
 builder.Services.AddScoped<IHRApplicationsService, HRApplicationsService>();

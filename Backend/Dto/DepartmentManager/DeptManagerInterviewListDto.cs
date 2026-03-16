@@ -16,4 +16,7 @@ public class DeptManagerInterviewListDto
     public string? MeetingLink { get; set; }
     public required string StatusCode { get; set; }
     public List<InterviewParticipantDto> Participants { get; set; } = new();
+    public bool HasMyFeedback { get; set; }
+    public DateTime? MyConfirmedAt { get; set; }
+    public DateTime? MyDeclinedAt { get; set; }
 }

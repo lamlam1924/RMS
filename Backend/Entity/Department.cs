@@ -23,6 +23,8 @@ public partial class Department
 
     public virtual User? HeadUser { get; set; }
 
+    public virtual ICollection<ParticipantRequest> ParticipantRequests { get; set; } = new List<ParticipantRequest>();
+
     public virtual ICollection<Position> Positions { get; set; } = new List<Position>();
 
     public virtual ICollection<UserDepartment> UserDepartments { get; set; } = new List<UserDepartment>();

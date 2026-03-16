@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import hrService from '../../../services/hrService';
+import notify from '../../../utils/notification';
 import WorkflowOverviewWidget from '../../../components/hr/WorkflowOverviewWidget';
+import PhaseOverviewPanel from '../../../components/hr/interviews/PhaseOverviewPanel';
+import { formatCurrency, formatDate, formatDateRelative, formatTime } from '../../../utils/formatters/display';
+import { PriorityBadge } from '../../../components/shared/Badge';
 
 export default function HRManagerDashboard() {
   const navigate = useNavigate();
@@ -51,6 +55,10 @@ export default function HRManagerDashboard() {
 
     } catch (error) {
       console.error('Failed to load dashboard:', error);
+      notify.error(error?.message || 'Không thể tải dữ liệu dashboard');
+      if (error?.message?.includes('đăng nhập') || error?.message?.includes('quyền')) {
+        setTimeout(() => navigate('/login', { replace: true }), 1500);
+      }
     } finally {
       setLoading(false);
     }
@@ -215,6 +223,9 @@ export default function HRManagerDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Cần xử lý từ chối / No-show / Feedback quá hạn */}
+      <PhaseOverviewPanel />
 
       {/* Workflow Overview Widget */}
       <div style={{ marginBottom: 32 }}>

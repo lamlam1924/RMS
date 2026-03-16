@@ -43,6 +43,10 @@ public partial class Interview
 
     public bool IsNextRoundScheduled { get; set; }
 
+    public DateTime? CandidateInvitationSentAt { get; set; }
+
+    public string? CandidateDeclineNote { get; set; }
+
     public virtual Application Application { get; set; } = null!;
 
     public virtual User CreatedByNavigation { get; set; } = null!;
@@ -53,9 +57,9 @@ public partial class Interview
 
     public virtual InterviewRoundDecision? InterviewRoundDecision { get; set; }
 
-    public virtual ICollection<ParticipantRequest> ParticipantRequests { get; set; } = new List<ParticipantRequest>();
-
     public virtual Status Status { get; set; } = null!;
 
     public virtual User? UpdatedByNavigation { get; set; }
+
+    public virtual ICollection<ParticipantRequest> Requests { get; set; } = new List<ParticipantRequest>();
 }

@@ -4,7 +4,7 @@ import directorService from '../../services/directorService';
 import notify from '../../utils/notification';
 import { getStatusBadge } from '../../utils/helpers/badge';
 import InterviewFeedbackForm from '../../components/shared/InterviewFeedbackForm';
-import SimpleInterviewerDetailPage from '../../components/shared/interviews/SimpleInterviewerDetailPage';
+import InterviewDetailPage from '../../components/shared/interviews/InterviewDetailPage';
 import { formatDateTime } from '../../utils/formatters/display';
 
 export default function DirectorInterviewDetail() {
@@ -53,7 +53,7 @@ export default function DirectorInterviewDetail() {
   const canEvaluate = isPast && !interview.hasMyFeedback && !isFinal;
 
   return (
-    <SimpleInterviewerDetailPage
+    <InterviewDetailPage
       onBack={() => navigate('/staff/director/my-interviews')}
       title={`Chi tiết phỏng vấn — Vòng ${interview.roundNo}`}
       statusBadge={badge}

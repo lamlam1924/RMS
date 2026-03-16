@@ -49,6 +49,8 @@ public partial class JobRequest
 
     public virtual ICollection<JobPosting> JobPostings { get; set; } = new List<JobPosting>();
 
+    public virtual ICollection<Offer> Offers { get; set; } = new List<Offer>();
+
     public virtual Position Position { get; set; } = null!;
 
     public virtual User RequestedByNavigation { get; set; } = null!;

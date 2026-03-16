@@ -26,6 +26,7 @@ public class DeptManagerInterviewsRepository : IDeptManagerInterviewsRepository
                 .ThenInclude(i => i.Application)
                     .ThenInclude(a => a.JobRequest)
                         .ThenInclude(jr => jr.Position)
+                            .ThenInclude(p => p.Department)
             .Include(ip => ip.Interview)
                 .ThenInclude(i => i.Status)
             .Include(ip => ip.Interview)
@@ -45,7 +46,7 @@ public class DeptManagerInterviewsRepository : IDeptManagerInterviewsRepository
 
     public async Task<List<Interview>> GetUpcomingInterviewsByManagerIdAsync(int managerId)
     {
-        var now = DateTime.Now;
+        var now = DateTimeHelper.Now;
         return await _context.InterviewParticipants
             .Include(ip => ip.Interview)
                 .ThenInclude(i => i.Application)
@@ -54,6 +55,7 @@ public class DeptManagerInterviewsRepository : IDeptManagerInterviewsRepository
                 .ThenInclude(i => i.Application)
                     .ThenInclude(a => a.JobRequest)
                         .ThenInclude(jr => jr.Position)
+                            .ThenInclude(p => p.Department)
             .Include(ip => ip.Interview)
                 .ThenInclude(i => i.Status)
             .Include(ip => ip.Interview)
@@ -86,6 +88,7 @@ public class DeptManagerInterviewsRepository : IDeptManagerInterviewsRepository
             .Include(i => i.Application)
                 .ThenInclude(a => a.JobRequest)
                     .ThenInclude(jr => jr.Position)
+                        .ThenInclude(p => p.Department)
             .Include(i => i.Status)
             .Include(i => i.InterviewParticipants)
                 .ThenInclude(p => p.User)
@@ -101,6 +104,29 @@ public class DeptManagerInterviewsRepository : IDeptManagerInterviewsRepository
     {
         return await _context.InterviewParticipants
             .AnyAsync(ip => ip.InterviewId == interviewId && ip.UserId == managerId);
+    }
+
+    public async Task<bool> RespondToParticipationAsync(int interviewId, int userId, bool confirm, string? declineNote = null)
+    {
+        var participant = await _context.InterviewParticipants
+            .FirstOrDefaultAsync(ip => ip.InterviewId == interviewId && ip.UserId == userId);
+        if (participant == null) return false;
+
+        var now = DateTimeHelper.Now;
+        if (confirm)
+        {
+            participant.ConfirmedAt = now;
+            participant.DeclinedAt = null;
+            participant.DeclineNote = null;
+        }
+        else
+        {
+            participant.DeclinedAt = now;
+            participant.ConfirmedAt = null;
+            participant.DeclineNote = string.IsNullOrWhiteSpace(declineNote) ? null : declineNote.Trim().Length > 500 ? declineNote.Trim().Substring(0, 500) : declineNote.Trim();
+        }
+        await _context.SaveChangesAsync();
+        return true;
     }
 
     public async Task<InterviewFeedback?> GetFeedbackByInterviewerAsync(int interviewId, int interviewerId)
@@ -131,7 +157,7 @@ public class DeptManagerInterviewsRepository : IDeptManagerInterviewsRepository
 
         var oldStatusId = application.StatusId;
         application.StatusId = statusId;
-        application.UpdatedAt = DateTime.Now;
+        application.UpdatedAt = DateTimeHelper.Now;
         application.UpdatedBy = updatedBy;
 
         // Add status history
@@ -142,7 +168,7 @@ public class DeptManagerInterviewsRepository : IDeptManagerInterviewsRepository
             FromStatusId = oldStatusId,
             ToStatusId = statusId,
             ChangedBy = updatedBy,
-            ChangedAt = DateTime.Now,
+            ChangedAt = DateTimeHelper.Now,
             Note = comment
         });
 

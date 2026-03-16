@@ -9,24 +9,25 @@ public class EmployeeInterviewsProfile : AutoMapper.Profile
 {
     public EmployeeInterviewsProfile()
     {
-        // Interview entity to list DTO
+        // Interview entity to list DTO (null-safe; không dùng ?. trong MapFrom vì expression tree không hỗ trợ)
         CreateMap<Interview, EmployeeInterviewListDto>()
-            .ForMember(dest => dest.StatusCode, opt => opt.MapFrom(src => src.Status.Code))
-            .ForMember(dest => dest.StatusName, opt => opt.MapFrom(src => src.Status.Name))
-            .ForMember(dest => dest.CandidateName, opt => opt.MapFrom(src => src.Application.Cvprofile.FullName))
-            .ForMember(dest => dest.CandidateEmail, opt => opt.MapFrom(src => src.Application.Cvprofile.Email))
-            .ForMember(dest => dest.PositionTitle, opt => opt.MapFrom(src => src.Application.JobRequest.Position.Title))
-            .ForMember(dest => dest.DepartmentName, opt => opt.MapFrom(src => src.Application.JobRequest.Position.Department.Name))
+            .ForMember(dest => dest.StatusCode, opt => opt.MapFrom(src => src.Status != null ? src.Status.Code : ""))
+            .ForMember(dest => dest.StatusName, opt => opt.MapFrom(src => src.Status != null ? src.Status.Name : ""))
+            .ForMember(dest => dest.CandidateName, opt => opt.MapFrom(src => src.Application != null && src.Application.Cvprofile != null ? src.Application.Cvprofile.FullName : ""))
+            .ForMember(dest => dest.CandidateEmail, opt => opt.MapFrom(src => src.Application != null && src.Application.Cvprofile != null ? src.Application.Cvprofile.Email : ""))
+            .ForMember(dest => dest.PositionTitle, opt => opt.MapFrom(src => src.Application != null && src.Application.JobRequest != null && src.Application.JobRequest.Position != null ? src.Application.JobRequest.Position.Title : ""))
+            .ForMember(dest => dest.DepartmentName, opt => opt.MapFrom(src => src.Application != null && src.Application.JobRequest != null && src.Application.JobRequest.Position != null && src.Application.JobRequest.Position.Department != null ? src.Application.JobRequest.Position.Department.Name : ""))
             .ForMember(dest => dest.HasMyFeedback, opt => opt.Ignore()); // Set in service
 
-        // Interview entity to detail DTO
+        // Interview entity to detail DTO (null-safe)
         CreateMap<Interview, EmployeeInterviewDetailDto>()
-            .ForMember(dest => dest.StatusCode, opt => opt.MapFrom(src => src.Status.Code))
-            .ForMember(dest => dest.StatusName, opt => opt.MapFrom(src => src.Status.Name))
-            .ForMember(dest => dest.PositionTitle, opt => opt.MapFrom(src => src.Application.JobRequest.Position.Title))
-            .ForMember(dest => dest.DepartmentName, opt => opt.MapFrom(src => src.Application.JobRequest.Position.Department.Name))
-            .ForMember(dest => dest.Candidate, opt => opt.MapFrom(src => src.Application.Cvprofile))
-            .ForMember(dest => dest.Participants, opt => opt.MapFrom(src => src.InterviewParticipants))
+            .ForMember(dest => dest.StatusCode, opt => opt.MapFrom(src => src.Status != null ? src.Status.Code : ""))
+            .ForMember(dest => dest.StatusName, opt => opt.MapFrom(src => src.Status != null ? src.Status.Name : ""))
+            .ForMember(dest => dest.PositionTitle, opt => opt.MapFrom(src => src.Application != null && src.Application.JobRequest != null && src.Application.JobRequest.Position != null ? src.Application.JobRequest.Position.Title : ""))
+            .ForMember(dest => dest.DepartmentName, opt => opt.MapFrom(src => src.Application != null && src.Application.JobRequest != null && src.Application.JobRequest.Position != null && src.Application.JobRequest.Position.Department != null ? src.Application.JobRequest.Position.Department.Name : ""))
+            .ForMember(dest => dest.Candidate, opt => opt.MapFrom(src => src.Application != null && src.Application.Cvprofile != null ? src.Application.Cvprofile : null))
+            // Chỉ hiển thị những người được đề cử/đang chờ hoặc đã xác nhận (bỏ qua những người đã từ chối)
+            .ForMember(dest => dest.Participants, opt => opt.MapFrom(src => src.InterviewParticipants.Where(p => !p.DeclinedAt.HasValue)))
             .ForMember(dest => dest.EvaluationCriteria, opt => opt.Ignore()) // Mapped separately in service
             .ForMember(dest => dest.HasMyFeedback, opt => opt.Ignore()); // Set in service
 
@@ -40,8 +41,9 @@ public class EmployeeInterviewsProfile : AutoMapper.Profile
 
         // Interview participants mapping (using Common DTO)
         CreateMap<InterviewParticipant, InterviewParticipantDto>()
-            .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.User.FullName))
-            .ForMember(dest => dest.InterviewRole, opt => opt.MapFrom(src => src.InterviewRole != null ? src.InterviewRole.Name : "Unknown"))
+            .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.User != null ? src.User.FullName : ""))
+            .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null))
+            .ForMember(dest => dest.InterviewRole, opt => opt.MapFrom(src => src.InterviewRole != null ? src.InterviewRole.Name : ""))
             .ForMember(dest => dest.HasFeedback, opt => opt.MapFrom(src =>
                 src.Interview.InterviewFeedbacks.Any(f => f.InterviewerId == src.UserId)));
 

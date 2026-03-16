@@ -4,7 +4,7 @@ import deptManagerService from '../../services/deptManagerService';
 import notify from '../../utils/notification';
 import { getStatusBadge } from '../../utils/helpers/badge';
 import InterviewFeedbackForm from '../../components/shared/InterviewFeedbackForm';
-import SimpleInterviewerDetailPage from '../../components/shared/interviews/SimpleInterviewerDetailPage';
+import InterviewDetailPage from '../../components/shared/interviews/InterviewDetailPage';
 import { formatDateTime } from '../../utils/formatters/display';
 
 export default function DeptManagerInterviewDetail() {
@@ -155,7 +155,7 @@ export default function DeptManagerInterviewDetail() {
   ) : null;
 
   return (
-    <SimpleInterviewerDetailPage
+    <InterviewDetailPage
       onBack={() => navigate('/staff/dept-manager/interviews')}
       backLabel="← Quay lại danh sách"
       title="Chi tiết buổi phỏng vấn"

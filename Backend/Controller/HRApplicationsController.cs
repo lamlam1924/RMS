@@ -20,14 +20,16 @@ public class HRApplicationsController : ControllerBase
     }
 
     /// <summary>
-    /// Get applications with optional status filter
+    /// Get applications with optional status filter. HR Staff: chỉ application thuộc job được gán.
     /// </summary>
     [HttpGet]
     public async Task<ActionResult<List<ApplicationListDto>>> GetApplications([FromQuery] int? statusId)
     {
         try
         {
-            var applications = await _hrApplicationsService.GetApplicationsAsync(statusId);
+            var userId = CurrentUserHelper.GetCurrentUserId(this);
+            var scopeByStaffId = User.IsInRole("HR_MANAGER") ? null : (int?)userId;
+            var applications = await _hrApplicationsService.GetApplicationsAsync(statusId, scopeByStaffId);
             return Ok(applications);
         }
         catch (Exception ex)

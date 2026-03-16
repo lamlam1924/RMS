@@ -106,7 +106,7 @@ public class HRJobRequestsRepository : IHRJobRequestsRepository
 
         // 1. Update JobRequest status
         jobRequest.StatusId = toStatusId;
-        jobRequest.UpdatedAt = DateTime.Now;
+        jobRequest.UpdatedAt = DateTimeHelper.Now;
         jobRequest.UpdatedBy = changedBy;
 
         // 2. Add Status History
@@ -117,7 +117,7 @@ public class HRJobRequestsRepository : IHRJobRequestsRepository
             FromStatusId = fromStatusId,
             ToStatusId = toStatusId,
             ChangedBy = changedBy,
-            ChangedAt = DateTime.Now,
+            ChangedAt = DateTimeHelper.Now,
             Note = note
         };
 

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import directorService from '../../services/directorService';
 import notify from '../../utils/notification';
-import SimpleInterviewListPage from '../../components/shared/interviews/SimpleInterviewListPage';
+import InterviewListPage from '../../components/shared/interviews/InterviewListPage';
 import { formatDateTime } from '../../utils/formatters/display';
 
 export default function DirectorInterviewList() {
@@ -28,7 +28,7 @@ export default function DirectorInterviewList() {
   };
 
   return (
-    <SimpleInterviewListPage
+    <InterviewListPage
       title="Phỏng vấn của tôi"
       description="Các buổi phỏng vấn bạn tham gia với tư cách người phỏng vấn"
       filters={[

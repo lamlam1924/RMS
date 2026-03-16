@@ -11,6 +11,12 @@ public partial class InterviewParticipant
 
     public int? InterviewRoleId { get; set; }
 
+    public DateTime? ConfirmedAt { get; set; }
+
+    public DateTime? DeclinedAt { get; set; }
+
+    public string? DeclineNote { get; set; }
+
     public virtual Interview Interview { get; set; } = null!;
 
     public virtual InterviewRole? InterviewRole { get; set; }

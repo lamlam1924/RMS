@@ -1,4 +1,5 @@
 using AutoMapper;
+using RMS.Common;
 using RMS.Dto.Common;
 using RMS.Dto.HR;
 using RMS.Entity;
@@ -30,7 +31,7 @@ public class HRJobRequestsProfile : Profile
             .ForMember(dest => dest.ToStatus, opt => opt.MapFrom(src => src.ToStatus.Name))
             .ForMember(dest => dest.ChangedById, opt => opt.MapFrom(src => src.ChangedBy))
             .ForMember(dest => dest.ChangedByName, opt => opt.MapFrom(src => src.ChangedByNavigation.FullName))
-            .ForMember(dest => dest.ChangedAt, opt => opt.MapFrom(src => src.ChangedAt ?? DateTime.Now));
+            .ForMember(dest => dest.ChangedAt, opt => opt.MapFrom(src => src.ChangedAt ?? DateTimeHelper.Now));
 
         CreateMap<Status, StatusDto>()
             .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Name));

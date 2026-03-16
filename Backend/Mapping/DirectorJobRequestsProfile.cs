@@ -1,4 +1,5 @@
 using AutoMapper;
+using RMS.Common;
 using RMS.Dto.Director;
 using RMS.Entity;
 
@@ -18,7 +19,7 @@ public class DirectorJobRequestsProfile : Profile
                     ? src.ExpectedStartDate.Value.ToDateTime(TimeOnly.MinValue)
                     : (DateTime?)null))
             .ForMember(dest => dest.CurrentStatus, opt => opt.Ignore())
-            .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt ?? DateTime.Now));
+            .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt ?? DateTimeHelper.Now));
 
         // JobRequest Entity -> JobRequestDetailDto
         CreateMap<JobRequest, JobRequestDetailDto>()
@@ -31,7 +32,7 @@ public class DirectorJobRequestsProfile : Profile
                     ? src.ExpectedStartDate.Value.ToDateTime(TimeOnly.MinValue)
                     : (DateTime?)null))
             .ForMember(dest => dest.CurrentStatus, opt => opt.Ignore())
-            .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt ?? DateTime.Now))
+            .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt ?? DateTimeHelper.Now))
             .ForMember(dest => dest.ApprovalHistory, opt => opt.Ignore()); // Set separately from StatusHistory
 
         // StatusHistory Entity -> ApprovalHistoryDto
@@ -40,6 +41,6 @@ public class DirectorJobRequestsProfile : Profile
             .ForMember(dest => dest.ChangedByName, opt => opt.MapFrom(src => src.ChangedByNavigation.FullName))
             .ForMember(dest => dest.ChangedByRole, opt => opt.MapFrom(src => src.ChangedByNavigation.Roles.FirstOrDefault() != null ? src.ChangedByNavigation.Roles.FirstOrDefault()!.Name : ""))
             .ForMember(dest => dest.Comment, opt => opt.MapFrom(src => src.Note ?? ""))
-            .ForMember(dest => dest.ChangedAt, opt => opt.MapFrom(src => src.ChangedAt ?? DateTime.Now));
+            .ForMember(dest => dest.ChangedAt, opt => opt.MapFrom(src => src.ChangedAt ?? DateTimeHelper.Now));
     }
 }

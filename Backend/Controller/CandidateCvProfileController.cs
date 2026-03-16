@@ -49,9 +49,9 @@ public class CandidateCvProfileController : ControllerBase
             return Unauthorized();
 
         var profile = await _context.Cvprofiles
-            .Include(c => c.Cvexperiences.OrderBy(e => e.StartDate))
-            .Include(c => c.Cveducations.OrderBy(e => e.StartYear))
-            .Include(c => c.Cvcertificates.OrderBy(cert => cert.IssuedYear))
+            .Include(c => c.Cvexperiences)
+            .Include(c => c.Cveducations)
+            .Include(c => c.Cvcertificates)
             .Where(c => c.CandidateId == candidateId)
             .OrderByDescending(c => c.CreatedAt)
             .FirstOrDefaultAsync();
@@ -71,7 +71,7 @@ public class CandidateCvProfileController : ControllerBase
             Source = profile.Source,
             CvFileUrl = profile.CvFileUrl,
             CreatedAt = profile.CreatedAt,
-            Experiences = (profile.Cvexperiences ?? new List<Cvexperience>()).Select(e => new CvExperienceDto
+            Experiences = (profile.Cvexperiences ?? new List<Cvexperience>()).OrderBy(e => e.StartDate).Select(e => new CvExperienceDto
             {
                 Id = e.Id,
                 CompanyName = e.CompanyName,
@@ -80,7 +80,7 @@ public class CandidateCvProfileController : ControllerBase
                 EndDate = e.EndDate,
                 Description = e.Description
             }).ToList(),
-            Educations = (profile.Cveducations ?? new List<Cveducation>()).Select(e => new CvEducationDto
+            Educations = (profile.Cveducations ?? new List<Cveducation>()).OrderBy(e => e.StartYear).Select(e => new CvEducationDto
             {
                 Id = e.Id,
                 SchoolName = e.SchoolName,
@@ -90,7 +90,7 @@ public class CandidateCvProfileController : ControllerBase
                 EndYear = e.EndYear,
                 Gpa = e.Gpa
             }).ToList(),
-            Certificates = (profile.Cvcertificates ?? new List<Cvcertificate>()).Select(c => new CvCertificateDto
+            Certificates = (profile.Cvcertificates ?? new List<Cvcertificate>()).OrderBy(c => c.IssuedYear).Select(c => new CvCertificateDto
             {
                 Id = c.Id,
                 CertificateName = c.CertificateName,

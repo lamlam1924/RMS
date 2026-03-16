@@ -1,3 +1,4 @@
+using RMS.Common;
 using RMS.Entity;
 using RMS.Repository.Interface;
 using RMS.Service.Interface;
@@ -55,7 +56,7 @@ public class MediaService : IMediaService
                 StorageProvider = "Local",
                 PublicId    = $"uploads/jd/{entityId}/{newFileName}",
                 FileUrl     = localUrl,
-                UploadedAt  = DateTime.Now,
+                UploadedAt  = DateTimeHelper.Now,
                 IsDeleted   = false
             };
             var saved = await _repository.AddFileUploadedAsync(localFile);
@@ -75,7 +76,7 @@ public class MediaService : IMediaService
             StorageProvider = "Cloudinary",
             PublicId = uploadResult.PublicId,
             FileUrl = uploadResult.SecureUrl,
-            UploadedAt = DateTime.Now,
+            UploadedAt = DateTimeHelper.Now,
             IsDeleted = false
         };
 

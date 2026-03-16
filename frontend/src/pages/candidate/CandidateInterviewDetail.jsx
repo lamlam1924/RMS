@@ -64,9 +64,15 @@ export default function CandidateInterviewDetail() {
   };
 
   const handleRespond = async (response) => {
+    let note;
+    if (response === 'DECLINE') {
+      const value = window.prompt('Ghi chú từ chối (tùy chọn, vd. muốn đổi ngày khác) để HR thương lượng:');
+      if (value === null) return;
+      note = (value || '').trim() || undefined;
+    }
     setResponding(true);
     try {
-      await candidateService.respondInterview(id, response);
+      await candidateService.respondInterview(id, response, note);
       notify.success(response === 'CONFIRM' ? 'Đã xác nhận tham dự phỏng vấn' : 'Đã từ chối lịch phỏng vấn');
       await loadDetail();
     } catch (err) {
@@ -177,6 +183,11 @@ export default function CandidateInterviewDetail() {
         {/* Hành động */}
         {canRespond && (
           <SectionCard style={{ backgroundColor: '#f0f9ff', borderColor: '#bae6fd' }}>
+            {interview.statusCode === 'RESCHEDULED' && (
+              <div style={{ fontSize: 13, color: '#92400e', marginBottom: 12, padding: '8px 12px', backgroundColor: '#fffbeb', borderRadius: 6, border: '1px solid #fcd34d', fontWeight: 600 }}>
+                Lịch đã được cập nhật, vui lòng xác nhận lại tham gia.
+              </div>
+            )}
             <div style={{ fontSize: 14, color: '#0c4a6e', marginBottom: 14, lineHeight: 1.6 }}>
               Vui lòng xác nhận hoặc từ chối lịch phỏng vấn này để HR có thể chuẩn bị tốt hơn cho buổi phỏng vấn.
             </div>

@@ -30,7 +30,9 @@ public class InterviewEmailService : IInterviewEmailService
             {
                 CandidateName = data.CandidateName,
                 PositionTitle = data.PositionTitle,
-                RoundName = $"Vòng {data.RoundNo} - {data.RoundName}",
+                RoundName = string.IsNullOrEmpty(data.RoundName) || data.RoundName == $"Vòng {data.RoundNo}"
+                ? $"Vòng {data.RoundNo}"
+                : $"Vòng {data.RoundNo} - {data.RoundName}",
                 InterviewDateTime = data.InterviewDateTime.ToString("dddd, dd/MM/yyyy 'lúc' HH:mm", new CultureInfo("vi-VN")),
                 Duration = $"{data.DurationMinutes} phút",
                 InterviewType = data.InterviewType == "Online" ? "🖥️ Phỏng vấn trực tuyến" : "🏢 Phỏng vấn trực tiếp",
@@ -171,7 +173,10 @@ public class InterviewEmailService : IInterviewEmailService
                 LocationOrLink = data.InterviewType == "Online" ? data.MeetingLink : data.Location,
                 CandidateCVLink = data.CandidateCVLink,
                 EvaluationCriteriaLink = data.EvaluationCriteriaLink,
-                InterviewDetailLink = data.InterviewDetailLink ?? "#"
+                InterviewDetailLink = data.InterviewDetailLink ?? "#",
+                ConfirmLink = data.ConfirmLink,
+                DeclineLink = data.DeclineLink,
+                ConfirmDeadline = data.ConfirmDeadline.ToString("dd/MM/yyyy HH:mm", new CultureInfo("vi-VN"))
             };
 
             await _emailService.SendTemplatedEmailAsync(
@@ -186,6 +191,32 @@ public class InterviewEmailService : IInterviewEmailService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send interviewer assignment to {Email}", data.InterviewerEmail);
+            throw;
+        }
+    }
+
+    public async Task SendInterviewerAssignmentBulkAsync(InterviewerAssignmentBulkEmailData data)
+    {
+        try
+        {
+            var templateData = new
+            {
+                InterviewerName = data.InterviewerName,
+                AssignmentsTableHtml = data.AssignmentsTableHtml,
+                ConfirmDeadline = data.ConfirmDeadline.ToString("dd/MM/yyyy HH:mm", new CultureInfo("vi-VN")),
+                MyInterviewsLink = data.MyInterviewsLink
+            };
+            await _emailService.SendTemplatedEmailAsync(
+                data.InterviewerEmail,
+                "Nhắc nhở: Phân công phỏng vấn",
+                "InterviewerAssignmentBulk",
+                templateData
+            );
+            _logger.LogInformation("Interviewer assignment bulk sent to {Email}", data.InterviewerEmail);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send interviewer assignment bulk to {Email}", data.InterviewerEmail);
             throw;
         }
     }

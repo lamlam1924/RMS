@@ -21,9 +21,9 @@ public class HRApplicationsService : IHRApplicationsService
         _mapper = mapper;
     }
 
-    public async Task<List<ApplicationListDto>> GetApplicationsAsync(int? statusId = null)
+    public async Task<List<ApplicationListDto>> GetApplicationsAsync(int? statusId = null, int? scopeByStaffId = null)
     {
-        var entities = await _repository.GetApplicationsAsync(statusId);
+        var entities = await _repository.GetApplicationsAsync(statusId, scopeByStaffId);
         var dtos = _mapper.Map<List<ApplicationListDto>>(entities);
 
         foreach (var dto in dtos)

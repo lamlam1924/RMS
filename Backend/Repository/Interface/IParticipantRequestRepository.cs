@@ -5,6 +5,7 @@ namespace RMS.Repository.Interface;
 public interface IParticipantRequestRepository
 {
     Task<ParticipantRequestDto> CreateRequestAsync(int interviewId, CreateParticipantRequestDto dto, int fromUserId);
+    Task<ParticipantRequestDto> CreateBatchRequestAsync(CreateParticipantRequestBatchDto dto, int fromUserId);
     Task<List<ParticipantRequestDto>> GetRequestsByInterviewAsync(int interviewId);
     /// <summary>Requests assigned to this user (waiting for their response)</summary>
     Task<List<ParticipantRequestDto>> GetAssignedRequestsAsync(int userId);

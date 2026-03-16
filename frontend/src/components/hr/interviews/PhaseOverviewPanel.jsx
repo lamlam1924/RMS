@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import hrService from '../../../services/hrService';
 import { formatDateTimeVi } from '../../../utils/helpers/interviewPhase';
 
@@ -9,17 +10,25 @@ const cardStyle = {
   padding: 16
 };
 
+function formatDateTimeShort(dateStr) {
+  if (!dateStr) return '—';
+  return new Date(dateStr).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
+}
+
 export default function PhaseOverviewPanel() {
+  const navigate = useNavigate();
   const [noShowSummary, setNoShowSummary] = useState(null);
   const [pendingFeedbacks, setPendingFeedbacks] = useState([]);
+  const [needingAttention, setNeedingAttention] = useState([]);
 
   useEffect(() => {
     let active = true;
 
     const load = async () => {
-      const [noShowResult, pendingResult] = await Promise.allSettled([
+      const [noShowResult, pendingResult, attentionResult] = await Promise.allSettled([
         hrService.interviews.getNoShowStatistics(),
-        hrService.interviews.getPendingFeedbacks({ overdueOnly: true })
+        hrService.interviews.getPendingFeedbacks({ overdueOnly: true }),
+        hrService.interviews.getNeedingAttention()
       ]);
 
       if (!active) return;
@@ -31,6 +40,10 @@ export default function PhaseOverviewPanel() {
       if (pendingResult.status === 'fulfilled') {
         setPendingFeedbacks(Array.isArray(pendingResult.value) ? pendingResult.value.slice(0, 6) : []);
       }
+
+      if (attentionResult.status === 'fulfilled' && Array.isArray(attentionResult.value)) {
+        setNeedingAttention(attentionResult.value.slice(0, 8));
+      }
     };
 
     load();
@@ -39,31 +52,76 @@ export default function PhaseOverviewPanel() {
     };
   }, []);
 
-  if (!noShowSummary && pendingFeedbacks.length === 0) {
+  if (!noShowSummary && pendingFeedbacks.length === 0 && needingAttention.length === 0) {
     return null;
   }
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 16, marginBottom: 24 }}>
+      {needingAttention.length > 0 && (
+        <div style={{ ...cardStyle, gridColumn: '1 / -1' }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#111827', marginBottom: 12 }}>
+            Cần xử lý từ chối (ứng viên / interviewer)
+          </div>
+          <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 12 }}>
+            Các buổi có ghi chú từ chối — đề cử interviewer khác hoặc đổi lịch rồi gửi lại cho ứng viên.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {needingAttention.map((item) => (
+              <div
+                key={item.interviewId}
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate(`/staff/hr-manager/interviews/${item.interviewId}`)}
+                onKeyDown={(e) => e.key === 'Enter' && navigate(`/staff/hr-manager/interviews/${item.interviewId}`)}
+                style={{
+                  padding: 10,
+                  border: '1px solid #fecaca',
+                  borderRadius: 8,
+                  backgroundColor: '#fef2f2',
+                  cursor: 'pointer'
+                }}
+              >
+                <div style={{ fontWeight: 600, color: '#111827', marginBottom: 4 }}>
+                  {item.candidateName} — {item.positionTitle}
+                </div>
+                <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
+                  {formatDateTimeShort(item.startTime)} • {item.statusName}
+                </div>
+                {item.candidateDeclined && item.candidateDeclineNote && (
+                  <div style={{ fontSize: 12, color: '#b91c1c', marginTop: 4 }}>
+                    Ứng viên từ chối: {item.candidateDeclineNote}
+                  </div>
+                )}
+                {item.declinedParticipantNames?.length > 0 && (
+                  <div style={{ fontSize: 12, color: '#92400e', marginTop: 4 }}>
+                    Interviewer từ chối: {item.declinedParticipantNames.join(', ')}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {noShowSummary && (
         <div style={cardStyle}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#111827', marginBottom: 12 }}>Phase 2: No-show overview</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#111827', marginBottom: 12 }}>Tổng quan vắng mặt (No-show)</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 14 }}>
             <div style={{ padding: 12, borderRadius: 8, backgroundColor: '#f8fafc' }}>
               <div style={{ fontSize: 12, color: '#6b7280' }}>Tổng no-show</div>
               <div style={{ fontSize: 24, fontWeight: 700, color: '#111827' }}>{noShowSummary.totalNoShows || 0}</div>
             </div>
             <div style={{ padding: 12, borderRadius: 8, backgroundColor: '#fef2f2' }}>
-              <div style={{ fontSize: 12, color: '#6b7280' }}>Candidate</div>
+              <div style={{ fontSize: 12, color: '#6b7280' }}>Ứng viên</div>
               <div style={{ fontSize: 24, fontWeight: 700, color: '#b91c1c' }}>{noShowSummary.candidateNoShows || 0}</div>
             </div>
             <div style={{ padding: 12, borderRadius: 8, backgroundColor: '#eff6ff' }}>
-              <div style={{ fontSize: 12, color: '#6b7280' }}>Interviewer</div>
+              <div style={{ fontSize: 12, color: '#6b7280' }}>Người phỏng vấn</div>
               <div style={{ fontSize: 24, fontWeight: 700, color: '#1d4ed8' }}>{noShowSummary.interviewerNoShows || 0}</div>
             </div>
           </div>
 
-          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: '#111827' }}>Top no-show candidates</div>
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: '#111827' }}>Ứng viên vắng mặt nhiều nhất</div>
           {noShowSummary.topOffenders?.length ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {noShowSummary.topOffenders.slice(0, 4).map((item) => (
@@ -75,7 +133,7 @@ export default function PhaseOverviewPanel() {
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontWeight: 700, color: '#111827' }}>{item.totalNoShows} lần</div>
                     <div style={{ fontSize: 12, color: item.isBlacklisted ? '#b91c1c' : '#6b7280' }}>
-                      {item.isBlacklisted ? 'Đã blacklist' : 'Đang theo dõi'}
+                      {item.isBlacklisted ? 'Đã đưa vào danh sách đen' : 'Đang theo dõi'}
                     </div>
                   </div>
                 </div>
@@ -88,7 +146,7 @@ export default function PhaseOverviewPanel() {
       )}
 
       <div style={cardStyle}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: '#111827', marginBottom: 12 }}>Phase 2: Pending feedback</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#111827', marginBottom: 12 }}>Đánh giá (feedback) quá hạn</div>
         {pendingFeedbacks.length ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {pendingFeedbacks.map((item) => (
@@ -96,13 +154,13 @@ export default function PhaseOverviewPanel() {
                 <div style={{ fontWeight: 600, color: '#111827', marginBottom: 4 }}>{item.interviewTitle}</div>
                 <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>{item.interviewerName} • {item.interviewerEmail}</div>
                 <div style={{ fontSize: 12, color: item.isOverdue ? '#c2410c' : '#475569' }}>
-                  Hạn: {formatDateTimeVi(item.requiresFeedbackBy)} • {item.daysSinceInterview} ngày từ lúc interview
+                  Hạn nộp: {formatDateTimeVi(item.requiresFeedbackBy)} • {item.daysSinceInterview} ngày sau buổi phỏng vấn
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div style={{ fontSize: 13, color: '#6b7280' }}>Không có feedback quá hạn.</div>
+          <div style={{ fontSize: 13, color: '#6b7280' }}>Không có đánh giá nào quá hạn.</div>
         )}
       </div>
     </div>

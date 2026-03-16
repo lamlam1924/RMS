@@ -5,6 +5,7 @@ namespace RMS.Dto.HR;
 public class ApplicationListDto
 {
     public int Id { get; set; }
+    public int JobRequestId { get; set; }
     public string CandidateName { get; set; } = "";
     public string? CandidateEmail { get; set; }
     public string? CandidatePhone { get; set; }

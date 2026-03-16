@@ -49,4 +49,7 @@ public class RespondInterviewDto
 {
     /// <summary>CONFIRM hoặc DECLINE</summary>
     public string Response { get; set; } = "";
+
+    /// <summary>Ghi chú khi từ chối (vd. bận ngày đó, có thể chọn ngày khác) để HR thương lượng/đổi lịch.</summary>
+    public string? Note { get; set; }
 }

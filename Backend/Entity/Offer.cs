@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace RMS.Entity;
@@ -9,17 +9,23 @@ public partial class Offer
 
     public int? ApplicationId { get; set; }
 
-    public int? CandidateId { get; set; }
-
-    public int? JobRequestId { get; set; }
-
     public decimal? ProposedSalary { get; set; }
+
+    public int StatusId { get; set; }
+
+    public int CreatedBy { get; set; }
+
+    public DateTime? CreatedAt { get; set; }
+
+    public bool? IsDeleted { get; set; }
+
+    public DateTime? DeletedAt { get; set; }
+
+    public int? DeletedBy { get; set; }
 
     public string? Benefits { get; set; }
 
     public DateOnly? StartDate { get; set; }
-
-    public int StatusId { get; set; }
 
     public string? CandidateResponse { get; set; }
 
@@ -29,19 +35,13 @@ public partial class Offer
 
     public DateTime? SentAt { get; set; }
 
-    public int CreatedBy { get; set; }
-
-    public DateTime? CreatedAt { get; set; }
-
     public DateTime? UpdatedAt { get; set; }
 
     public int? UpdatedBy { get; set; }
 
-    public bool? IsDeleted { get; set; }
+    public int? CandidateId { get; set; }
 
-    public DateTime? DeletedAt { get; set; }
-
-    public int? DeletedBy { get; set; }
+    public int? JobRequestId { get; set; }
 
     public virtual Application? Application { get; set; }
 

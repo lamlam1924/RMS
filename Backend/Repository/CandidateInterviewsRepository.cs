@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using RMS.Common;
 using RMS.Data;
 using RMS.Dto.Candidate;
+using RMS.Entity;
 using RMS.Repository.Interface;
 
 namespace RMS.Repository;
@@ -22,7 +24,8 @@ public class CandidateInterviewsRepository : ICandidateInterviewsRepository
         return await _context.Interviews
             .Where(i =>
                 i.Application.Cvprofile.CandidateId == candidateId &&
-                i.IsDeleted == false)
+                i.IsDeleted == false &&
+                i.CandidateInvitationSentAt != null)
             .OrderByDescending(i => i.StartTime)
             .Select(i => new CandidateInterviewListDto
             {
@@ -40,7 +43,7 @@ public class CandidateInterviewsRepository : ICandidateInterviewsRepository
             .ToListAsync();
     }
 
-    public async Task<bool> RespondAsync(int interviewId, int candidateId, bool confirm)
+    public async Task<bool> RespondAsync(int interviewId, int candidateId, bool confirm, string? declineNote = null, int? changedByUserId = null)
     {
         var interview = await _context.Interviews
             .Include(i => i.Status)
@@ -57,7 +60,28 @@ public class CandidateInterviewsRepository : ICandidateInterviewsRepository
         if (interview.Status.Code is not ("SCHEDULED" or "RESCHEDULED"))
             return false;
 
-        interview.StatusId = await GetStatusIdAsync(confirm ? "CONFIRMED" : "DECLINED_BY_CANDIDATE");
+        var oldStatusId = interview.StatusId;
+        var newStatusId = await GetStatusIdAsync(confirm ? "CONFIRMED" : "DECLINED_BY_CANDIDATE");
+        interview.StatusId = newStatusId;
+        if (!confirm)
+            interview.CandidateDeclineNote = string.IsNullOrWhiteSpace(declineNote) ? null : declineNote.Trim().Length > 500 ? declineNote.Trim().Substring(0, 500) : declineNote.Trim();
+        else
+            interview.CandidateDeclineNote = null;
+
+        if (changedByUserId.HasValue && changedByUserId.Value > 0)
+        {
+            _context.StatusHistories.Add(new StatusHistory
+            {
+                EntityTypeId = 4,
+                EntityId = interviewId,
+                FromStatusId = oldStatusId,
+                ToStatusId = newStatusId,
+                ChangedBy = changedByUserId.Value,
+                ChangedAt = DateTimeHelper.Now,
+                Note = confirm ? "Ứng viên xác nhận tham gia" : "Ứng viên từ chối tham gia"
+            });
+        }
+
         await _context.SaveChangesAsync();
         return true;
     }
@@ -79,7 +103,8 @@ public class CandidateInterviewsRepository : ICandidateInterviewsRepository
             .FirstOrDefaultAsync(i =>
                 i.Id == interviewId &&
                 i.Application.Cvprofile.CandidateId == candidateId &&
-                i.IsDeleted == false);
+                i.IsDeleted == false &&
+                i.CandidateInvitationSentAt != null);
 
         if (interview == null) return null;
 

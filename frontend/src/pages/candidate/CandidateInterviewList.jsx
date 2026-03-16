@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { candidateService } from '../../services/candidateService';
 import notify from '../../utils/notification';
-import SimpleInterviewListPage from '../../components/shared/interviews/SimpleInterviewListPage';
+import InterviewListPage from '../../components/shared/interviews/InterviewListPage';
 import { formatDateTime } from '../../utils/formatters/display';
 
 export default function CandidateInterviewList() {
@@ -27,9 +27,15 @@ export default function CandidateInterviewList() {
   };
 
   const handleRespond = async (interviewId, response) => {
+    let note;
+    if (response === 'DECLINE') {
+      const value = window.prompt('Ghi chú từ chối (tùy chọn, vd. muốn đổi ngày khác) để HR thương lượng:');
+      if (value === null) return;
+      note = (value || '').trim() || undefined;
+    }
     setResponding(interviewId);
     try {
-      await candidateService.respondInterview(interviewId, response);
+      await candidateService.respondInterview(interviewId, response, note);
       notify.success(response === 'CONFIRM' ? 'Đã xác nhận tham gia phỏng vấn' : 'Đã từ chối lịch phỏng vấn');
       await loadInterviews();
     } catch (err) {
@@ -40,7 +46,7 @@ export default function CandidateInterviewList() {
   };
 
   return (
-    <SimpleInterviewListPage
+    <InterviewListPage
       title="Lịch phỏng vấn của tôi"
       description="Xem và phản hồi lời mời tham gia phỏng vấn"
       loading={loading}

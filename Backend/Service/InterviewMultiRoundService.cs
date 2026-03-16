@@ -62,13 +62,16 @@ public class InterviewMultiRoundService : IInterviewMultiRoundService
 
         if (!allFeedbackSubmitted)
         {
-            result.Message = $"Waiting for {summary.TotalInterviewers - summary.SubmittedFeedbacks} more feedback(s)";
+            var remaining = summary.TotalInterviewers - summary.SubmittedFeedbacks;
+            result.Message = remaining > 0
+                ? $"Còn thiếu {remaining} đánh giá trước khi chốt vòng {interview.RoundNo}"
+                : $"Đã nhận đủ đánh giá cho vòng {interview.RoundNo}";
             return result;
         }
 
         if (roundDecision == null)
         {
-            result.Message = $"All feedback submitted for round {interview.RoundNo}. Waiting for HR decision";
+            result.Message = $"Đã đủ đánh giá cho vòng {interview.RoundNo}. Chờ HR chốt kết quả.";
             return result;
         }
 
@@ -76,14 +79,14 @@ public class InterviewMultiRoundService : IInterviewMultiRoundService
         result.Message = roundDecision.DecisionCode switch
         {
             InterviewWorkflowHelper.RoundDecisionPass =>
-                $"Round {interview.RoundNo} was approved. Candidate is ready for the next round",
+                $"Vòng {interview.RoundNo} đã được duyệt Đạt. Ứng viên sẵn sàng cho vòng tiếp theo.",
             InterviewWorkflowHelper.RoundDecisionFail =>
-                $"Round {interview.RoundNo} was marked as FAIL",
+                $"Vòng {interview.RoundNo} đã được chốt Không đạt.",
             InterviewWorkflowHelper.RoundDecisionHold =>
-                $"Round {interview.RoundNo} is on hold pending further review",
+                $"Vòng {interview.RoundNo} đang ở trạng thái Chờ quyết định thêm.",
             InterviewWorkflowHelper.RoundDecisionExtraRound =>
-                $"Round {interview.RoundNo} requires an additional interview round",
-            _ => "Round decision has been recorded"
+                $"Vòng {interview.RoundNo} cần thêm một vòng phỏng vấn bổ sung.",
+            _ => "Kết quả vòng phỏng vấn đã được ghi nhận."
         };
 
         return result;
@@ -175,9 +178,9 @@ public class InterviewMultiRoundService : IInterviewMultiRoundService
             if (hasFeedback)
                 continue;
 
-            var daysSinceInterview = (DateTime.Now - participant.Interview.EndTime).Days;
+            var daysSinceInterview = (DateTimeHelper.Now - participant.Interview.EndTime).Days;
             var requiresFeedbackBy = participant.Interview.RequiresFeedbackBy ?? participant.Interview.EndTime.AddDays(FEEDBACK_DEADLINE_DAYS);
-            var isOverdue = DateTime.Now > requiresFeedbackBy;
+            var isOverdue = DateTimeHelper.Now > requiresFeedbackBy;
 
             if (overdueOnly && !isOverdue)
                 continue;
@@ -217,7 +220,7 @@ public class InterviewMultiRoundService : IInterviewMultiRoundService
 
         var baseUrl = _configuration["AppSettings:BaseUrl"] ?? "https://rms.com";
         var deadline = interview.RequiresFeedbackBy ?? interview.EndTime.AddDays(FEEDBACK_DEADLINE_DAYS);
-        var isOverdue = DateTime.Now > deadline;
+        var isOverdue = DateTimeHelper.Now > deadline;
 
         var candidateName = interview.Application?.Cvprofile?.Candidate?.FullName ?? "N/A";
         var positionTitle = interview.Application?.JobRequest?.Position?.Title ?? "N/A";
@@ -284,7 +287,7 @@ public class InterviewMultiRoundService : IInterviewMultiRoundService
                 DecisionCode = normalizedDecision,
                 Note = request.Note,
                 DecidedBy = decidedBy,
-                DecidedAt = DateTime.Now
+                DecidedAt = DateTimeHelper.Now
             };
 
             _context.InterviewRoundDecisions.Add(roundDecision);
@@ -294,7 +297,7 @@ public class InterviewMultiRoundService : IInterviewMultiRoundService
             roundDecision.DecisionCode = normalizedDecision;
             roundDecision.Note = request.Note;
             roundDecision.DecidedBy = decidedBy;
-            roundDecision.DecidedAt = DateTime.Now;
+            roundDecision.DecidedAt = DateTimeHelper.Now;
         }
 
         _context.StatusHistories.Add(new StatusHistory
@@ -304,7 +307,7 @@ public class InterviewMultiRoundService : IInterviewMultiRoundService
             FromStatusId = interview.StatusId,
             ToStatusId = interview.StatusId,
             ChangedBy = decidedBy,
-            ChangedAt = DateTime.Now,
+            ChangedAt = DateTimeHelper.Now,
             Note = $"ROUND_DECISION|Decision:{normalizedDecision}|AverageScore:{summary.AverageScore?.ToString("F2") ?? "N/A"}|Note:{request.Note ?? string.Empty}"
         });
 
@@ -319,10 +322,7 @@ public class InterviewMultiRoundService : IInterviewMultiRoundService
         if (request.EndTime <= request.StartTime)
             throw new Exception("EndTime must be greater than StartTime");
 
-        if (request.InterviewerIds == null || request.InterviewerIds.Count == 0)
-            throw new Exception("At least one interviewer is required for the next round");
-
-        var distinctInterviewerIds = request.InterviewerIds.Distinct().ToList();
+        var distinctInterviewerIds = request.InterviewerIds?.Distinct().ToList() ?? new List<int>();
 
         await using var transaction = await _context.Database.BeginTransactionAsync();
 
@@ -348,18 +348,21 @@ public class InterviewMultiRoundService : IInterviewMultiRoundService
         if (existingNextRound)
             throw new Exception($"Round {nextRoundNo} has already been created for this application");
 
-        var conflictResult = await _conflictService.CheckAllConflictsAsync(
-            previousInterview.ApplicationId,
-            distinctInterviewerIds,
-            request.StartTime,
-            request.EndTime);
-
-        if (!conflictResult.CanProceed)
+        if (distinctInterviewerIds.Any())
         {
-            var conflictMessage = string.Join("; ", conflictResult.Conflicts
-                .Where(c => c.Severity == "ERROR")
-                .Select(c => $"{c.UserName} conflict with interview {c.ConflictingInterviewId}"));
-            throw new Exception($"Cannot schedule next round due to conflicts: {conflictMessage}");
+            var conflictResult = await _conflictService.CheckAllConflictsAsync(
+                previousInterview.ApplicationId,
+                distinctInterviewerIds,
+                request.StartTime,
+                request.EndTime);
+
+            if (!conflictResult.CanProceed)
+            {
+                var conflictMessage = string.Join("; ", conflictResult.Conflicts
+                    .Where(c => c.Severity == "ERROR")
+                    .Select(c => $"{c.UserName} conflict with interview {c.ConflictingInterviewId}"));
+                throw new Exception($"Cannot schedule next round due to conflicts: {conflictMessage}");
+            }
         }
 
         var scheduledStatus = await _context.Statuses.FirstOrDefaultAsync(s => s.Code == "SCHEDULED");
@@ -376,19 +379,22 @@ public class InterviewMultiRoundService : IInterviewMultiRoundService
             MeetingLink = request.MeetingLink,
             StatusId = scheduledStatus.Id,
             CreatedBy = createdBy,
-            CreatedAt = DateTime.Now
+            CreatedAt = DateTimeHelper.Now
         };
 
         _context.Interviews.Add(newInterview);
         await _context.SaveChangesAsync();
 
-        foreach (var interviewerId in distinctInterviewerIds)
+        if (distinctInterviewerIds.Any())
         {
-            _context.InterviewParticipants.Add(new InterviewParticipant
+            foreach (var interviewerId in distinctInterviewerIds)
             {
-                InterviewId = newInterview.Id,
-                UserId = interviewerId
-            });
+                _context.InterviewParticipants.Add(new InterviewParticipant
+                {
+                    InterviewId = newInterview.Id,
+                    UserId = interviewerId
+                });
+            }
         }
 
         previousInterview.IsNextRoundScheduled = true;
@@ -397,6 +403,62 @@ public class InterviewMultiRoundService : IInterviewMultiRoundService
         await transaction.CommitAsync();
 
         return newInterview.Id;
+    }
+
+    public async Task<List<int>> AutoScheduleNextRoundBatchAsync(NextRoundBatchScheduleRequestDto request, int createdBy)
+    {
+        if (request.ApplicationIds == null || request.ApplicationIds.Count == 0)
+            throw new Exception("At least one application is required to schedule next round.");
+
+        if (request.DurationMinutes <= 0 || request.DurationMinutes > 240)
+            throw new Exception("DurationMinutes must be between 1 and 240.");
+
+        if (request.BreakMinutes < 0 || request.BreakMinutes > 240)
+            throw new Exception("BreakMinutes must be between 0 and 240.");
+
+        var distinctAppIds = request.ApplicationIds.Distinct().ToList();
+
+        // Lấy tất cả interview mới nhất cho mỗi application
+        var interviews = await _context.Interviews
+            .Where(i => distinctAppIds.Contains(i.ApplicationId) && i.IsDeleted == false)
+            .GroupBy(i => i.ApplicationId)
+            .Select(g => g.OrderByDescending(i => i.RoundNo).First())
+            .ToListAsync();
+
+        if (interviews.Count == 0)
+            throw new Exception("No interviews found for the provided applications.");
+
+        var createdIds = new List<int>();
+
+        // Sắp xếp ứng viên theo ApplicationId để có thứ tự ổn định
+        var orderedInterviews = interviews.OrderBy(i => i.ApplicationId).ToList();
+
+        var baseStart = request.StartTime;
+        var duration = request.DurationMinutes;
+        var breakMinutes = request.BreakMinutes;
+
+        for (var index = 0; index < orderedInterviews.Count; index++)
+        {
+            var previousInterview = orderedInterviews[index];
+
+            var slotStart = baseStart.AddMinutes(index * (duration + breakMinutes));
+            var slotEnd = slotStart.AddMinutes(duration);
+
+            var nextRequest = new ScheduleNextRoundRequestDto
+            {
+                PreviousInterviewId = previousInterview.Id,
+                StartTime = slotStart,
+                EndTime = slotEnd,
+                Location = request.Location,
+                MeetingLink = request.MeetingLink,
+                InterviewerIds = null // Không gán interviewer; HR sẽ gửi yêu cầu đề cử sau
+            };
+
+            var newId = await AutoScheduleNextRoundAsync(previousInterview.Id, nextRequest, createdBy);
+            createdIds.Add(newId);
+        }
+
+        return createdIds;
     }
 
     private async Task<InterviewRoundDecisionDto?> BuildRoundDecisionDtoAsync(int interviewId)

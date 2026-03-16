@@ -21,14 +21,14 @@ public class CandidateInterviewsService : ICandidateInterviewsService
     public Task<CandidateInterviewDetailDto?> GetInterviewDetailAsync(int interviewId, int candidateId)
         => _repository.GetInterviewDetailAsync(interviewId, candidateId);
 
-    public async Task<ActionResponseDto> RespondAsync(int interviewId, int candidateId, RespondInterviewDto dto)
+    public async Task<ActionResponseDto> RespondAsync(int interviewId, int candidateId, RespondInterviewDto dto, int? changedByUserId = null)
     {
         var response = dto.Response?.Trim().ToUpper();
         if (response != "CONFIRM" && response != "DECLINE")
             return ResponseHelper.CreateActionResponse(false, "", "Response phải là CONFIRM hoặc DECLINE");
 
         var confirm = response == "CONFIRM";
-        var success = await _repository.RespondAsync(interviewId, candidateId, confirm);
+        var success = await _repository.RespondAsync(interviewId, candidateId, confirm, confirm ? null : dto?.Note, changedByUserId);
 
         return ResponseHelper.CreateActionResponse(
             success,

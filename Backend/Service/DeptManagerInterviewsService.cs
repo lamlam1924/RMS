@@ -26,13 +26,31 @@ public class DeptManagerInterviewsService : IDeptManagerInterviewsService
     public async Task<List<DeptManagerInterviewListDto>> GetInterviewsAsync(int managerId)
     {
         var entities = await _repository.GetInterviewsByManagerIdAsync(managerId);
-        return _mapper.Map<List<DeptManagerInterviewListDto>>(entities);
+        var dtos = _mapper.Map<List<DeptManagerInterviewListDto>>(entities);
+        foreach (var dto in dtos)
+        {
+            var entity = entities.First(e => e.Id == dto.Id);
+            dto.HasMyFeedback = entity.InterviewFeedbacks.Any(f => f.InterviewerId == managerId);
+            var me = entity.InterviewParticipants?.FirstOrDefault(p => p.UserId == managerId);
+            dto.MyConfirmedAt = me?.ConfirmedAt;
+            dto.MyDeclinedAt = me?.DeclinedAt;
+        }
+        return dtos;
     }
 
     public async Task<List<DeptManagerInterviewListDto>> GetUpcomingInterviewsAsync(int managerId)
     {
         var entities = await _repository.GetUpcomingInterviewsByManagerIdAsync(managerId);
-        return _mapper.Map<List<DeptManagerInterviewListDto>>(entities);
+        var dtos = _mapper.Map<List<DeptManagerInterviewListDto>>(entities);
+        foreach (var dto in dtos)
+        {
+            var entity = entities.First(e => e.Id == dto.Id);
+            dto.HasMyFeedback = entity.InterviewFeedbacks.Any(f => f.InterviewerId == managerId);
+            var me = entity.InterviewParticipants?.FirstOrDefault(p => p.UserId == managerId);
+            dto.MyConfirmedAt = me?.ConfirmedAt;
+            dto.MyDeclinedAt = me?.DeclinedAt;
+        }
+        return dtos;
     }
 
     public async Task<DeptManagerInterviewDetailDto?> GetInterviewDetailAsync(int id, int managerId)
@@ -42,9 +60,17 @@ public class DeptManagerInterviewsService : IDeptManagerInterviewsService
 
         var dto = _mapper.Map<DeptManagerInterviewDetailDto>(interview);
 
-        // Check if current manager has submitted feedback
+        // Check if current manager has submitted feedback & expose summary for UI
         var feedback = await _repository.GetFeedbackByInterviewerAsync(id, managerId);
         dto.HasMyFeedback = feedback != null;
+        if (feedback != null)
+        {
+            dto.MyFeedbackComment = feedback.Note;
+            dto.MyFeedbackRecommendation = feedback.Recommendation;
+        }
+        var me = interview.InterviewParticipants?.FirstOrDefault(p => p.UserId == managerId);
+        dto.MyConfirmedAt = me?.ConfirmedAt;
+        dto.MyDeclinedAt = me?.DeclinedAt;
 
         // Get evaluation criteria for the position
         if (interview.Application?.JobRequest?.PositionId != null)
@@ -63,6 +89,22 @@ public class DeptManagerInterviewsService : IDeptManagerInterviewsService
         }
 
         return dto;
+    }
+
+    public async Task<ActionResponseDto> RespondToParticipationAsync(int interviewId, int userId, string response, string? note = null)
+    {
+        var normalized = response?.Trim().ToUpperInvariant();
+        if (normalized != "CONFIRM" && normalized != "DECLINE")
+            return ResponseHelper.CreateActionResponse(false, "", "Response phải là CONFIRM hoặc DECLINE");
+
+        if (!await _repository.IsInterviewParticipantAsync(interviewId, userId))
+            return ResponseHelper.CreateActionResponse(false, "", "Bạn không được phân công vào phỏng vấn này");
+
+        var success = await _repository.RespondToParticipationAsync(interviewId, userId, normalized == "CONFIRM", normalized == "DECLINE" ? note : null);
+        return ResponseHelper.CreateActionResponse(
+            success,
+            success ? (normalized == "CONFIRM" ? "Đã xác nhận tham gia" : "Đã ghi nhận từ chối tham gia") : "",
+            success ? "" : "Không thể cập nhật phản hồi");
     }
 
     public async Task<ActionResponseDto> SubmitInterviewFeedbackAsync(

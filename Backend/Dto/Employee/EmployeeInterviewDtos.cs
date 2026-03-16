@@ -25,6 +25,10 @@ public class EmployeeInterviewListDto
     
     // My feedback status
     public bool HasMyFeedback { get; set; }
+
+    // Xác nhận tham gia (từ Phỏng vấn của tôi hoặc link trong email)
+    public DateTime? MyConfirmedAt { get; set; }
+    public DateTime? MyDeclinedAt { get; set; }
 }
 
 /// <summary>
@@ -56,6 +60,10 @@ public class EmployeeInterviewDetailDto
     
     // My feedback
     public bool HasMyFeedback { get; set; }
+
+    // Xác nhận tham gia
+    public DateTime? MyConfirmedAt { get; set; }
+    public DateTime? MyDeclinedAt { get; set; }
 }
 
 public class CandidateProfileDto

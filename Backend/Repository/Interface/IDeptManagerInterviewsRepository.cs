@@ -17,6 +17,9 @@ public interface IDeptManagerInterviewsRepository
     /// <summary>Kiểm tra user có được phân công vào buổi phỏng vấn không</summary>
     Task<bool> IsInterviewParticipantAsync(int interviewId, int managerId);
 
+    /// <summary>Ghi nhận xác nhận hoặc từ chối tham gia của interviewer. Khi từ chối có thể gửi declineNote để HR thương lượng/đổi lịch.</summary>
+    Task<bool> RespondToParticipationAsync(int interviewId, int userId, bool confirm, string? declineNote = null);
+
     /// <summary>Lấy feedback của interviewer cho một buổi phỏng vấn</summary>
     Task<InterviewFeedback?> GetFeedbackByInterviewerAsync(int interviewId, int interviewerId);
 

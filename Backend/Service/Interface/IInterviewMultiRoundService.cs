@@ -24,4 +24,10 @@ public interface IInterviewMultiRoundService
 
     /// <summary>Tự động lên lịch vòng phỏng vấn tiếp theo dựa trên kết quả vòng trước</summary>
     Task<int> AutoScheduleNextRoundAsync(int previousInterviewId, ScheduleNextRoundRequestDto request, int createdBy);
+
+    /// <summary>
+    /// Tự động lên lịch vòng phỏng vấn tiếp theo theo lô cho nhiều hồ sơ (cùng vị trí),
+    /// sử dụng cùng một khung giờ bắt đầu + độ dài + khoảng nghỉ giữa các buổi.
+    /// </summary>
+    Task<List<int>> AutoScheduleNextRoundBatchAsync(NextRoundBatchScheduleRequestDto request, int createdBy);
 }

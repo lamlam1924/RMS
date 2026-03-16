@@ -20,7 +20,8 @@ const tabStyle = (active) => ({
   color: active ? 'white' : '#374151'
 });
 
-export default function SimpleInterviewListPage({
+/** Trang danh sách phỏng vấn dùng chung cho HR, Director, DeptManager, Employee, Interviewer, Candidate */
+export default function InterviewListPage({
   title,
   description,
   filters = [],

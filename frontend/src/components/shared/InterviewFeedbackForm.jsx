@@ -9,6 +9,25 @@ const baseInputStyle = {
   boxSizing: 'border-box'
 };
 
+const DEFAULT_DECISION_OPTIONS = [
+  { value: 'PASS', label: 'Đạt', isPositive: true },
+  { value: 'REJECT', label: 'Không đạt', isPositive: false },
+];
+
+// Lựa chọn kết luận cho tất cả interviewer: chỉ còn Đạt / Không đạt
+export const INTERVIEW_FEEDBACK_DECISION_OPTIONS = [
+  { value: 'PASS', label: 'Đạt', isPositive: true },
+  { value: 'REJECT', label: 'Không đạt', isPositive: false },
+];
+
+/** Map recommendation code → label (dùng khi hiển thị feedback trong danh sách / chốt vòng) */
+export const RECOMMENDATION_LABELS = {
+  STRONG_HIRE: 'Rất nên tuyển',
+  HIRE: 'Đạt',
+  NO_HIRE: 'Không đạt',
+  STRONG_NO_HIRE: 'Dứt khoát không tuyển',
+};
+
 export default function InterviewFeedbackForm({
   title = 'Nộp đánh giá',
   description,
@@ -20,12 +39,18 @@ export default function InterviewFeedbackForm({
   commentLabel = 'Nhận xét',
   commentPlaceholder = 'Ghi nhận xét của bạn về ứng viên...',
   decisionLabels,
+  decisionOptions: decisionOptionsProp,
   disabled = false
 }) {
-  const labels = decisionLabels || {
-    PASS: 'Đạt',
-    REJECT: 'Không đạt'
-  };
+  const decisionOptions = decisionOptionsProp != null
+    ? decisionOptionsProp
+    : (decisionLabels
+        ? Object.entries(decisionLabels).map(([value, label]) => ({
+            value,
+            label,
+            isPositive: value === 'PASS' || value === 'HIRE' || value === 'STRONG_HIRE',
+          }))
+        : DEFAULT_DECISION_OPTIONS);
 
   return (
     <div style={{ backgroundColor: 'white', borderRadius: 10, border: '1px solid #e5e7eb', padding: 20 }}>
@@ -52,29 +77,29 @@ export default function InterviewFeedbackForm({
         <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>
           Kết luận <span style={{ color: '#ef4444' }}>*</span>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          {['PASS', 'REJECT'].map((decision) => {
-            const active = feedback.decision === decision;
-            const isPass = decision === 'PASS';
+        <div style={{ display: 'grid', gridTemplateColumns: decisionOptions.length === 4 ? '1fr 1fr' : '1fr 1fr', gap: 10 }}>
+          {decisionOptions.map((opt) => {
+            const active = feedback.decision === opt.value;
+            const isPositive = opt.isPositive !== false;
             return (
               <button
-                key={decision}
+                key={opt.value}
                 type="button"
                 disabled={disabled || submitting}
-                onClick={() => setFeedback((prev) => ({ ...prev, decision }))}
+                onClick={() => setFeedback((prev) => ({ ...prev, decision: opt.value }))}
                 style={{
-                  flex: 1,
-                  padding: '10px 0',
+                  padding: '10px 12px',
                   borderRadius: 8,
                   cursor: disabled || submitting ? 'not-allowed' : 'pointer',
                   fontWeight: 600,
                   border: '2px solid',
-                  borderColor: active ? (isPass ? '#10b981' : '#ef4444') : '#e5e7eb',
-                  backgroundColor: active ? (isPass ? '#dcfce7' : '#fee2e2') : 'white',
-                  color: active ? (isPass ? '#166534' : '#991b1b') : '#374151'
+                  borderColor: active ? (isPositive ? '#10b981' : '#ef4444') : '#e5e7eb',
+                  backgroundColor: active ? (isPositive ? '#dcfce7' : '#fee2e2') : 'white',
+                  color: active ? (isPositive ? '#166534' : '#991b1b') : '#374151',
+                  fontSize: 13,
                 }}
               >
-                {labels[decision] || decision}
+                {opt.label}
               </button>
             );
           })}

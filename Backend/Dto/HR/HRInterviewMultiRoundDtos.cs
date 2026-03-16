@@ -63,7 +63,35 @@ public class ScheduleNextRoundRequestDto
     public DateTime EndTime { get; set; }
     public string? Location { get; set; }
     public string? MeetingLink { get; set; }
-    public List<int> InterviewerIds { get; set; } = new();
+    /// <summary>
+    /// (Tuỳ chọn) Danh sách interviewer cho vòng tiếp theo.
+    /// Nếu để trống, vòng mới sẽ được tạo không có người phỏng vấn; HR sẽ gửi yêu cầu đề cử như vòng đầu.
+    /// </summary>
+    public List<int>? InterviewerIds { get; set; }
+}
+
+/// <summary>
+/// Yêu cầu lên lịch vòng phỏng vấn tiếp theo theo lô (nhiều hồ sơ cùng vị trí).
+/// </summary>
+public class NextRoundBatchScheduleRequestDto
+{
+    /// <summary>Id JobRequest (vị trí) để tham chiếu / logging (tuỳ chọn, không bắt buộc).</summary>
+    public int? JobRequestId { get; set; }
+
+    /// <summary>Danh sách ApplicationId cần lên lịch vòng tiếp theo.</summary>
+    public List<int> ApplicationIds { get; set; } = new();
+
+    /// <summary>Thời gian bắt đầu buổi đầu tiên.</summary>
+    public DateTime StartTime { get; set; }
+
+    /// <summary>Độ dài mỗi buổi (phút).</summary>
+    public int DurationMinutes { get; set; } = 30;
+
+    /// <summary>Khoảng nghỉ giữa 2 buổi (phút).</summary>
+    public int BreakMinutes { get; set; } = 0;
+
+    public string? Location { get; set; }
+    public string? MeetingLink { get; set; }
 }
 
 /// <summary>

@@ -63,7 +63,7 @@ const deptManagerService = {
       api.post(`/dept-manager/interviews/${id}/feedback`, feedback),
   },
 
-  // Participant Requests (nomination requests from HR)
+  // Participant Requests (single + block gộp chung: mỗi item có interviews[])
   participantRequests: {
     getMyAssigned: () => api.get('/dept-manager/participant-requests'),
     getById: (reqId) => api.get(`/dept-manager/participant-requests/${reqId}`),

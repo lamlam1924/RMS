@@ -32,4 +32,6 @@ public partial class Candidate
     public string? AvatarUrl { get; set; }
 
     public virtual ICollection<Cvprofile> Cvprofiles { get; set; } = new List<Cvprofile>();
+
+    public virtual ICollection<Offer> Offers { get; set; } = new List<Offer>();
 }

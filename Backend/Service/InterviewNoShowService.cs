@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RMS.Common;
 using RMS.Data;
 using RMS.Dto.HR;
 using RMS.Entity;
@@ -103,7 +104,7 @@ public class InterviewNoShowService : IInterviewNoShowService
             FromStatusId = oldStatusId,
             ToStatusId = targetStatus.Id,
             ChangedBy = markedBy,
-            ChangedAt = DateTime.Now,
+            ChangedAt = DateTimeHelper.Now,
             Note = noteText
         };
 

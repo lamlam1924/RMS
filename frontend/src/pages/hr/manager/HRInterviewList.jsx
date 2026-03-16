@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import hrService from '../../../services/hrService';
 import notify from '../../../utils/notification';
-import SimpleInterviewListPage from '../../../components/shared/interviews/SimpleInterviewListPage';
+import InterviewListPage from '../../../components/shared/interviews/InterviewListPage';
 import { formatDateTime } from '../../../utils/formatters/display';
 
 export default function HRInterviewList() {
@@ -41,8 +41,11 @@ export default function HRInterviewList() {
       setInterviews(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to load interviews:', error);
-      notify.error('Không thể tải danh sách phỏng vấn');
+      notify.error(error?.message || 'Không thể tải danh sách phỏng vấn');
       setInterviews([]);
+      if (error?.message?.includes('đăng nhập') || error?.message?.includes('quyền')) {
+        setTimeout(() => navigate('/login', { replace: true }), 1500);
+      }
     } finally {
       setLoading(false);
     }
@@ -64,6 +67,10 @@ export default function HRInterviewList() {
       return isReadyToFinalize(item);
     }
 
+    if (focusMode === 'decline-notes') {
+      return item.hasDeclineNote === true;
+    }
+
     return true;
   }).filter((item) => {
     if (positionFilter !== 'all' && item.positionTitle !== positionFilter) {
@@ -82,10 +89,11 @@ export default function HRInterviewList() {
     pendingFeedback: interviews.filter((item) => (item.participantCount || 0) > (item.feedbackCount || 0)).length,
     missingInterviewer: interviews.filter((item) => isMissingInterviewer(item)).length,
     readyFinalize: interviews.filter((item) => isReadyToFinalize(item)).length,
+    declineNotes: interviews.filter((item) => item.hasDeclineNote === true).length,
   };
 
   return (
-    <SimpleInterviewListPage
+    <InterviewListPage
       title="Danh sách phỏng vấn"
       description="Quản lý và theo dõi các buổi phỏng vấn ứng viên"
       filters={[
@@ -99,20 +107,50 @@ export default function HRInterviewList() {
       emptyTitle="Chưa có lịch phỏng vấn"
       emptyDescription={filter === 'upcoming' ? 'Không có buổi phỏng vấn sắp diễn ra' : 'Không có dữ liệu phỏng vấn theo bộ lọc hiện tại'}
       topRight={(
-        <button
-          onClick={() => navigate('/staff/hr-manager/interviews/create')}
-          style={{
-            padding: '9px 16px',
-            backgroundColor: '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: 6,
-            cursor: 'pointer',
-            fontWeight: 600
-          }}
-        >
-          + Tạo lịch phỏng vấn
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => navigate('/staff/hr-manager/interviews/batch-request')}
+            style={{
+              padding: '9px 16px',
+              border: '1px solid #2563eb',
+              backgroundColor: 'white',
+              color: '#2563eb',
+              borderRadius: 6,
+              cursor: 'pointer',
+              fontWeight: 600
+            }}
+          >
+            Gửi yêu cầu theo block
+          </button>
+          <button
+            onClick={() => navigate('/staff/hr-manager/interviews/next-round-batch')}
+            style={{
+              padding: '9px 16px',
+              border: '1px solid #10b981',
+              backgroundColor: 'white',
+              color: '#047857',
+              borderRadius: 6,
+              cursor: 'pointer',
+              fontWeight: 600
+            }}
+          >
+            Lên lịch vòng tiếp (theo vị trí)
+          </button>
+          <button
+            onClick={() => navigate('/staff/hr-manager/interviews/create')}
+            style={{
+              padding: '9px 16px',
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: 6,
+              cursor: 'pointer',
+              fontWeight: 600
+            }}
+          >
+            + Tạo lịch phỏng vấn
+          </button>
+        </div>
       )}
       extraTop={(
         <div style={{ marginBottom: 14 }}>
@@ -122,6 +160,7 @@ export default function HRInterviewList() {
               { id: 'pending-feedback', label: `Chờ feedback (${summary.pendingFeedback})` },
               { id: 'missing-interviewer', label: `Thiếu interviewer (${summary.missingInterviewer})` },
               { id: 'ready-finalize', label: `Đủ điều kiện chốt vòng (${summary.readyFinalize})` },
+              { id: 'decline-notes', label: `Cần xử lý từ chối (${summary.declineNotes})` },
             ].map((mode) => (
               <button
                 key={mode.id}
@@ -199,15 +238,18 @@ export default function HRInterviewList() {
           { label: 'Địa điểm', value: interview.location || '—' },
           { label: 'Người tham gia / Đánh giá', value: `${interview.participantCount} / ${interview.feedbackCount}` }
         ],
-        note: (interview.participantCount || 0) === 0
-          ? ((interview.fulfilledParticipantRequestCount || 0) > 0
-            ? '✅ Đã đề cử interviewer thành công, danh sách người tham gia sẽ được đồng bộ ngay.'
-            : ((interview.openParticipantRequestCount || 0) > 0
-              ? '⏳ Đang chờ phản hồi đề cử interviewer.'
-              : '⚠️ Buổi này chưa có interviewer, cần điều phối sớm.'))
-          : (interview.participantCount || 0) > (interview.feedbackCount || 0)
-            ? `📝 Còn thiếu ${(interview.participantCount || 0) - (interview.feedbackCount || 0)} feedback.`
-            : ''
+        note: [
+          (interview.participantCount || 0) === 0
+            ? ((interview.fulfilledParticipantRequestCount || 0) > 0
+              ? '✅ Đã đề cử interviewer thành công, danh sách người tham gia sẽ được đồng bộ ngay.'
+              : ((interview.openParticipantRequestCount || 0) > 0
+                ? '⏳ Đang chờ phản hồi đề cử interviewer.'
+                : '⚠️ Buổi này chưa có interviewer, cần điều phối sớm.'))
+            : (interview.participantCount || 0) > (interview.feedbackCount || 0)
+              ? `📝 Còn thiếu ${(interview.participantCount || 0) - (interview.feedbackCount || 0)} feedback.`
+              : '',
+          interview.hasDeclineNote ? '📌 Có ghi chú từ chối — cần xử lý (đề cử interviewer / đổi lịch).' : ''
+        ].filter(Boolean).join(' • ')
       })}
     />
   );

@@ -124,11 +124,11 @@ export const candidateService = {
     return res.json();
   },
 
-  async respondInterview(id, response) {
+  async respondInterview(id, response, note) {
     const res = await authFetch(`${API_BASE_URL}/candidate/interviews/${id}/respond`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ response }),
+      body: JSON.stringify({ response, note: note || undefined }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));

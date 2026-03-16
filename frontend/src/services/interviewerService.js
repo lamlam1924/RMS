@@ -47,6 +47,15 @@ const interviewerService = {
         rolePrefix ? () => api.get(`${rolePrefix}/${id}`) : null
       );
     },
+    /** Xác nhận hoặc từ chối tham gia (CONFIRM / DECLINE). Khi từ chối có thể gửi note để HR thương lượng/đổi lịch. */
+    respond: async (id, response, note) => {
+      const rolePrefix = getRoleBasedPrefix();
+      const body = { response, note: note || undefined };
+      return withFallback(
+        () => api.post(`/interviewer/interviews/${id}/respond`, body),
+        rolePrefix ? () => api.post(`${rolePrefix}/${id}/respond`, body) : null
+      );
+    },
     submitFeedback: async (id, feedback) => {
       const rolePrefix = getRoleBasedPrefix();
       return withFallback(

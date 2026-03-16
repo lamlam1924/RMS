@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RMS.Common;
 using RMS.Data;
 using RMS.Dto.Candidate;
 
@@ -28,7 +29,7 @@ public class CandidateJobPostingsController : ControllerBase
         try
         {
             // StatusId = 7 là PUBLISHED
-            var today = DateOnly.FromDateTime(DateTime.Now);
+            var today = DateOnly.FromDateTime(DateTimeHelper.Now);
             var jobPostings = await _context.JobPostings
                 .Include(jp => jp.JobRequest)
                     .ThenInclude(jr => jr.Position)
@@ -46,7 +47,7 @@ public class CandidateJobPostingsController : ControllerBase
                     SalaryMin = jp.SalaryMin,
                     SalaryMax = jp.SalaryMax,
                     DeadlineDate = jp.DeadlineDate.HasValue ? jp.DeadlineDate.Value.ToDateTime(TimeOnly.MinValue) : null,
-                    CreatedAt = jp.CreatedAt ?? DateTime.Now
+                    CreatedAt = jp.CreatedAt ?? DateTimeHelper.Now
                 })
                 .ToListAsync();
 
@@ -98,7 +99,7 @@ public class CandidateJobPostingsController : ControllerBase
                 SalaryMin = jobPosting.SalaryMin,
                 SalaryMax = jobPosting.SalaryMax,
                 DeadlineDate = jobPosting.DeadlineDate.HasValue ? jobPosting.DeadlineDate.Value.ToDateTime(TimeOnly.MinValue) : null,
-                CreatedAt = jobPosting.CreatedAt ?? DateTime.Now,
+                CreatedAt = jobPosting.CreatedAt ?? DateTimeHelper.Now,
                 JdFileUrl = jdFileUrl
             };
 

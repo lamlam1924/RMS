@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f7fafc;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f7fafc; padding: 20px 0;">
+        <tr>
+            <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 8px 8px 0 0;">
+                            <h1 style="color: #ffffff; margin: 0; font-size: 24px;">📬 Nhắc nhở: Phân công phỏng vấn</h1>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 40px 30px;">
+                            <p style="font-size: 16px; color: #2d3748; margin: 0 0 20px 0;">Chào <strong>{{InterviewerName}}</strong>,</p>
+                            <p style="font-size: 14px; color: #4a5568; line-height: 1.6; margin: 0 0 20px 0;">
+                                Đây là email <strong>nhắc nhở</strong>: bạn được phân công tham gia các buổi phỏng vấn bên dưới. Vào mục <strong>Phỏng vấn của tôi</strong> trong hệ thống để <strong>xác nhận tham gia</strong>, <strong>từ chối</strong> hoặc <strong>xem chi tiết</strong> từng buổi.
+                            </p>
+                            <div style="text-align: center; margin: 24px 0;">
+                                <a href="{{MyInterviewsLink}}" style="display: inline-block; background-color: #16a34a; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 15px;">
+                                    Vào Phỏng vấn của tôi
+                                </a>
+                            </div>
+                            <p style="font-size: 13px; color: #6b7280; margin: 0 0 16px 0;">Danh sách buổi (có thể xác nhận/từ chối/xem chi tiết từng dòng hoặc dùng nút trên):</p>
+                            <div style="overflow-x: auto;">
+                                {{AssignmentsTableHtml}}
+                            </div>
+                            <p style="font-size: 13px; color: #718096; line-height: 1.6; margin: 20px 0 0 0;">
+                                Cảm ơn bạn đã hỗ trợ! Nếu có thắc mắc, vui lòng liên hệ HR.
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="background-color: #f7fafc; padding: 20px 30px; border-radius: 0 0 8px 8px; text-align: center;">
+                            <p style="color: #718096; font-size: 12px; margin: 0;">Đội ngũ tuyển dụng - RMS</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

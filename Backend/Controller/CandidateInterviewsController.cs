@@ -47,7 +47,7 @@ public class CandidateInterviewsController : ControllerBase
         var candidateId = CurrentUserHelper.GetCurrentUserId(this);
         if (candidateId == 0) return Unauthorized();
 
-        var result = await _service.RespondAsync(id, candidateId, dto);
+        var result = await _service.RespondAsync(id, candidateId, dto, candidateId);
         return result.Success ? Ok(result) : BadRequest(result);
     }
 }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using RMS.Entity;
@@ -173,6 +173,7 @@ public partial class RecruitmentDbContext : DbContext
             entity.Property(e => e.Gpa)
                 .HasColumnType("decimal(4, 2)")
                 .HasColumnName("GPA");
+            entity.Property(e => e.Location).HasMaxLength(200);
             entity.Property(e => e.Major).HasMaxLength(200);
             entity.Property(e => e.SchoolName).HasMaxLength(200);
 
@@ -192,6 +193,7 @@ public partial class RecruitmentDbContext : DbContext
             entity.Property(e => e.CvprofileId).HasColumnName("CVProfileId");
             entity.Property(e => e.Description).HasMaxLength(1000);
             entity.Property(e => e.JobTitle).HasMaxLength(200);
+            entity.Property(e => e.Location).HasMaxLength(200);
 
             entity.HasOne(d => d.Cvprofile).WithMany(p => p.Cvexperiences)
                 .HasForeignKey(d => d.CvprofileId)
@@ -205,6 +207,7 @@ public partial class RecruitmentDbContext : DbContext
 
             entity.ToTable("CVProfiles");
 
+            entity.Property(e => e.Address).HasMaxLength(500);
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
@@ -215,6 +218,9 @@ public partial class RecruitmentDbContext : DbContext
             entity.Property(e => e.Phone)
                 .HasMaxLength(50)
                 .IsUnicode(false);
+            entity.Property(e => e.ProfessionalTitle).HasMaxLength(200);
+            entity.Property(e => e.ReferencesText).HasMaxLength(1000);
+            entity.Property(e => e.SkillsText).HasMaxLength(1000);
             entity.Property(e => e.Source)
                 .HasMaxLength(50)
                 .IsUnicode(false);
@@ -353,6 +359,8 @@ public partial class RecruitmentDbContext : DbContext
 
             entity.HasIndex(e => new { e.StartTime, e.EndTime, e.StatusId, e.IsDeleted }, "IX_Interviews_Time_Status");
 
+            entity.Property(e => e.CandidateDeclineNote).HasMaxLength(500);
+            entity.Property(e => e.CandidateInvitationSentAt).HasColumnType("datetime");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
@@ -415,6 +423,8 @@ public partial class RecruitmentDbContext : DbContext
             entity.HasKey(e => new { e.InterviewId, e.UserId }).HasName("PK__Intervie__1804D49622F7F85D");
 
             entity.HasIndex(e => new { e.UserId, e.InterviewId }, "IX_InterviewParticipants_User_Interview");
+
+            entity.Property(e => e.DeclineNote).HasMaxLength(500);
 
             entity.HasOne(d => d.Interview).WithMany(p => p.InterviewParticipants)
                 .HasForeignKey(d => d.InterviewId)
@@ -553,29 +563,34 @@ public partial class RecruitmentDbContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("PK__Offers__3214EC07E812C1E8");
 
+            entity.HasIndex(e => e.ApplicationId, "IX_Offers_ApplicationId").HasFilter("([IsDeleted]=(0) AND [ApplicationId] IS NOT NULL)");
+
+            entity.HasIndex(e => e.CandidateId, "IX_Offers_CandidateId").HasFilter("([IsDeleted]=(0))");
+
+            entity.Property(e => e.CandidateComment).HasMaxLength(500);
+            entity.Property(e => e.CandidateRespondedAt).HasColumnType("datetime");
+            entity.Property(e => e.CandidateResponse)
+                .HasMaxLength(50)
+                .IsUnicode(false);
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
             entity.Property(e => e.DeletedAt).HasColumnType("datetime");
             entity.Property(e => e.IsDeleted).HasDefaultValue(false);
             entity.Property(e => e.ProposedSalary).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.SentAt).HasColumnType("datetime");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
 
             entity.HasOne(d => d.Application).WithMany(p => p.Offers)
                 .HasForeignKey(d => d.ApplicationId)
-                .IsRequired(false)
-                .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("FK_Offers_Application");
 
-            entity.HasOne(d => d.Candidate).WithMany()
+            entity.HasOne(d => d.Candidate).WithMany(p => p.Offers)
                 .HasForeignKey(d => d.CandidateId)
-                .IsRequired(false)
-                .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("FK_Offers_Candidate");
 
-            entity.HasOne(d => d.JobRequest).WithMany()
+            entity.HasOne(d => d.JobRequest).WithMany(p => p.Offers)
                 .HasForeignKey(d => d.JobRequestId)
-                .IsRequired(false)
-                .OnDelete(DeleteBehavior.Restrict)
                 .HasConstraintName("FK_Offers_JobRequest");
 
             entity.HasOne(d => d.Status).WithMany(p => p.Offers)
@@ -613,30 +628,48 @@ public partial class RecruitmentDbContext : DbContext
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
             entity.Property(e => e.Message).HasMaxLength(500);
+            entity.Property(e => e.PositionTitle).HasMaxLength(200);
             entity.Property(e => e.RequiredCount).HasDefaultValue(1);
             entity.Property(e => e.RespondedAt).HasColumnType("datetime");
             entity.Property(e => e.Status)
                 .HasMaxLength(50)
                 .HasDefaultValue("PENDING");
+            entity.Property(e => e.TimeRangeEnd).HasPrecision(2);
+            entity.Property(e => e.TimeRangeStart).HasPrecision(2);
+            entity.Property(e => e.TitleLabel).HasMaxLength(300);
 
             entity.HasOne(d => d.AssignedToUser).WithMany(p => p.ParticipantRequestAssignedToUsers)
                 .HasForeignKey(d => d.AssignedToUserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_PR_AssignedTo");
 
+            entity.HasOne(d => d.Department).WithMany(p => p.ParticipantRequests)
+                .HasForeignKey(d => d.DepartmentId)
+                .HasConstraintName("FK_ParticipantRequests_Department");
+
             entity.HasOne(d => d.ForwardedToUser).WithMany(p => p.ParticipantRequestForwardedToUsers)
                 .HasForeignKey(d => d.ForwardedToUserId)
                 .HasConstraintName("FK_PR_ForwardedTo");
-
-            entity.HasOne(d => d.Interview).WithMany(p => p.ParticipantRequests)
-                .HasForeignKey(d => d.InterviewId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_PR_Interview");
 
             entity.HasOne(d => d.RequestedByUser).WithMany(p => p.ParticipantRequestRequestedByUsers)
                 .HasForeignKey(d => d.RequestedByUserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_PR_RequestedBy");
+
+            entity.HasMany(d => d.Interviews).WithMany(p => p.Requests)
+                .UsingEntity<Dictionary<string, object>>(
+                    "ParticipantRequestInterview",
+                    r => r.HasOne<Interview>().WithMany()
+                        .HasForeignKey("InterviewId")
+                        .HasConstraintName("FK_PRI_Interview"),
+                    l => l.HasOne<ParticipantRequest>().WithMany()
+                        .HasForeignKey("RequestId")
+                        .HasConstraintName("FK_PRI_Request"),
+                    j =>
+                    {
+                        j.HasKey("RequestId", "InterviewId");
+                        j.ToTable("ParticipantRequestInterviews");
+                    });
         });
 
         modelBuilder.Entity<Position>(entity =>

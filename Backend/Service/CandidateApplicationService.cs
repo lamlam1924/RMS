@@ -42,7 +42,7 @@ public class CandidateApplicationService : ICandidateApplicationService
             return (false, "Tin tuyển dụng này đã đóng hoặc chưa được công khai.", null);
 
         // 3. Kiểm tra deadline
-        if (jobPosting.DeadlineDate.HasValue && jobPosting.DeadlineDate.Value < DateOnly.FromDateTime(DateTime.Now))
+        if (jobPosting.DeadlineDate.HasValue && jobPosting.DeadlineDate.Value < DateOnly.FromDateTime(DateTimeHelper.Now))
             return (false, "Tin tuyển dụng này đã hết hạn nộp hồ sơ.", null);
 
         // 4. Lấy CV Profile của candidate (lấy CV mới nhất)
@@ -102,7 +102,7 @@ public class CandidateApplicationService : ICandidateApplicationService
             PositionTitle = positionTitle,
             DepartmentName = departmentName,
             Status = "APPLIED",
-            AppliedAt = created.AppliedAt ?? DateTime.Now,
+            AppliedAt = created.AppliedAt ?? DateTimeHelper.Now,
             CvFileUrl = cvFileUrl
         });
     }

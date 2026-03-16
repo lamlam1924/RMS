@@ -14,13 +14,15 @@ public class DeptManagerInterviewsProfile : AutoMapper.Profile
             .ForMember(dest => dest.CandidateName, opt => opt.MapFrom(src => src.Application.Cvprofile.FullName))
             .ForMember(dest => dest.PositionTitle, opt => opt.MapFrom(src => src.Application.JobRequest.Position.Title))
             .ForMember(dest => dest.StatusCode, opt => opt.MapFrom(src => src.Status.Code))
-            .ForMember(dest => dest.Participants, opt => opt.MapFrom(src => src.InterviewParticipants));
+            // Chỉ những người được đề cử/đang chờ hoặc đã xác nhận (bỏ qua đã từ chối)
+            .ForMember(dest => dest.Participants, opt => opt.MapFrom(src => src.InterviewParticipants.Where(p => !p.DeclinedAt.HasValue)));
 
         CreateMap<Interview, DeptManagerInterviewDetailDto>()
             .ForMember(dest => dest.CandidateName, opt => opt.MapFrom(src => src.Application.Cvprofile.FullName))
             .ForMember(dest => dest.PositionTitle, opt => opt.MapFrom(src => src.Application.JobRequest.Position.Title))
             .ForMember(dest => dest.StatusCode, opt => opt.MapFrom(src => src.Status.Code))
-            .ForMember(dest => dest.Participants, opt => opt.MapFrom(src => src.InterviewParticipants))
+            // Chỉ hiển thị những người được đề cử/đang chờ hoặc đã xác nhận (bỏ qua đã từ chối)
+            .ForMember(dest => dest.Participants, opt => opt.MapFrom(src => src.InterviewParticipants.Where(p => !p.DeclinedAt.HasValue)))
             .ForMember(dest => dest.CandidateProfile, opt => opt.MapFrom(src => src.Application.Cvprofile))
             .ForMember(dest => dest.EvaluationCriteria, opt => opt.Ignore()) // Mapped separately
             .ForMember(dest => dest.HasMyFeedback, opt => opt.Ignore()) // Set in service
@@ -28,7 +30,8 @@ public class DeptManagerInterviewsProfile : AutoMapper.Profile
 
         CreateMap<InterviewParticipant, InterviewParticipantDto>()
             .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.User.FullName))
-            .ForMember(dest => dest.InterviewRole, opt => opt.MapFrom(src => src.InterviewRole != null ? src.InterviewRole.Name : "Unknown"))
+            .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.User != null ? src.User.Email : null))
+            .ForMember(dest => dest.InterviewRole, opt => opt.MapFrom(src => src.InterviewRole != null ? src.InterviewRole.Name : ""))
             .ForMember(dest => dest.HasFeedback, opt => opt.MapFrom(src => 
                 src.Interview.InterviewFeedbacks.Any(f => f.InterviewerId == src.UserId)));
 

@@ -19,7 +19,13 @@ public class DeptManagerInterviewDetailDto
     public List<InterviewParticipantDto> Participants { get; set; } = new();
     public CandidateProfileSummaryDto? CandidateProfile { get; set; }
     public List<EvaluationCriterionDto> EvaluationCriteria { get; set; } = new();
+
+    // My feedback summary (for interviewer to review their own evaluation)
     public bool HasMyFeedback { get; set; }
+    public string? MyFeedbackComment { get; set; }
+    public string? MyFeedbackRecommendation { get; set; }
+    public DateTime? MyConfirmedAt { get; set; }
+    public DateTime? MyDeclinedAt { get; set; }
     public List<PreviousRoundSummaryDto> PreviousRounds { get; set; } = new();
 }
 

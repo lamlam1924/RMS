@@ -15,7 +15,7 @@ public class HRApplicationsRepository : IHRApplicationsRepository
         _context = context;
     }
 
-    public async Task<List<Application>> GetApplicationsAsync(int? statusId = null)
+    public async Task<List<Application>> GetApplicationsAsync(int? statusId = null, int? scopeByStaffId = null)
     {
         var query = _context.Applications
             .Include(a => a.Cvprofile)
@@ -27,9 +27,10 @@ public class HRApplicationsRepository : IHRApplicationsRepository
             .Where(a => a.IsDeleted == false);
 
         if (statusId.HasValue)
-        {
             query = query.Where(a => a.StatusId == statusId.Value);
-        }
+
+        if (scopeByStaffId.HasValue)
+            query = query.Where(a => a.JobRequest != null && a.JobRequest.AssignedStaffId == scopeByStaffId.Value);
 
         return await query
             .OrderByDescending(a => a.AppliedAt)

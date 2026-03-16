@@ -15,7 +15,8 @@ const SectionCard = ({ title, children }) => (
   </div>
 );
 
-export default function SimpleInterviewerDetailPage({
+/** Trang chi tiết phỏng vấn dùng chung cho Employee, Interviewer, Director, DeptManager */
+export default function InterviewDetailPage({
   backLabel = '← Quay lại',
   title,
   statusBadge,
@@ -29,6 +30,7 @@ export default function SimpleInterviewerDetailPage({
   successMessage,
   pendingMessage,
   extraSections,
+  topSection,
   maxWidth = 980,
   onBack
 }) {
@@ -56,6 +58,8 @@ export default function SimpleInterviewerDetailPage({
             {statusText}
           </span>
         </div>
+
+        {topSection}
 
         <SectionCard>
           <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>Luồng của bạn</div>
@@ -100,14 +104,20 @@ export default function SimpleInterviewerDetailPage({
                       {participant.name}
                       {participant.isMe ? <span style={{ fontSize: 11, color: '#6b7280' }}> (bạn)</span> : null}
                     </div>
-                    <div style={{ fontSize: 12, color: '#6b7280' }}>{participant.email || participant.role}</div>
+                    <div style={{ fontSize: 12, color: '#6b7280' }}>
+                      {participant.email || (participant.role && participant.role.trim() ? participant.role : null) || '—'}
+                    </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {participant.role ? (
+                    {(participant.role && participant.role.trim()) ? (
                       <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 12, backgroundColor: '#e0e7ff', color: '#3730a3', fontWeight: 600 }}>
                         {participant.role}
                       </span>
-                    ) : null}
+                    ) : (
+                      <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 12, backgroundColor: '#f3f4f6', color: '#6b7280', fontWeight: 500 }}>
+                        Chưa gán vai trò
+                      </span>
+                    )}
                     {participant.hasFeedback ? (
                       <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 12, backgroundColor: '#d1fae5', color: '#065f46', fontWeight: 600 }}>
                         Đã nộp

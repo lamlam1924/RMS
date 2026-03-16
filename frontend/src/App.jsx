@@ -58,6 +58,8 @@ import HRApplicationDetail from "./pages/hr/manager/HRApplicationDetail";
 import HRInterviewList from "./pages/hr/manager/HRInterviewList";
 import HRInterviewDetail from "./pages/hr/manager/HRInterviewDetail";
 import HRInterviewCreate from "./pages/hr/manager/HRInterviewCreate";
+import HRInterviewBatchRequest from "./pages/hr/manager/HRInterviewBatchRequest";
+import HRInterviewNextRoundBatch from "./pages/hr/manager/HRInterviewNextRoundBatch";
 import HROfferList from "./pages/hr/manager/HROfferList";
 import HROfferCreate from "./pages/hr/manager/HROfferCreate";
 import HROfferDetail from "./pages/hr/manager/HROfferDetail";
@@ -70,6 +72,7 @@ import EditJobPosting from "./pages/hr/staff/EditJobPosting";
 // Employee Pages
 import EmployeeInterviewList from "./pages/employee/EmployeeInterviewList";
 import EmployeeInterviewDetail from "./pages/employee/EmployeeInterviewDetail";
+import EmployeeInterviewConfirm from "./pages/employee/EmployeeInterviewConfirm";
 import InterviewerInterviewList from "./pages/interviewer/InterviewerInterviewList";
 import InterviewerInterviewDetail from "./pages/interviewer/InterviewerInterviewDetail";
 
@@ -81,6 +84,8 @@ import MyOffers from "./pages/candidate/MyOffers";
 import MyProfile from "./pages/candidate/MyProfile";
 import CandidateInterviewList from "./pages/candidate/CandidateInterviewList";
 import CandidateInterviewDetail from "./pages/candidate/CandidateInterviewDetail";
+import CandidateInterviewConfirm from "./pages/candidate/CandidateInterviewConfirm";
+import CandidateInterviewConfirmSuccess from "./pages/candidate/CandidateInterviewConfirmSuccess";
 
 // Resume Builder (standalone)
 import ResumePage from "./pages/resume-builder/ResumePage";
@@ -198,6 +203,9 @@ export default function App() {
           <Route path="applications" element={<MyApplications />} />
           <Route path="offers" element={<MyOffers />} />
           <Route path="interviews" element={<CandidateInterviewList />} />
+          <Route path="interviews/confirm-success" element={<CandidateInterviewConfirmSuccess />} />
+          <Route path="interviews/:id/confirm" element={<CandidateInterviewConfirm />} />
+          <Route path="interviews/:id/decline" element={<CandidateInterviewConfirm />} />
           <Route path="interviews/:id" element={<CandidateInterviewDetail />} />
           <Route path="profile" element={<MyProfile />} />
           {/* Default redirect to jobs */}
@@ -488,6 +496,22 @@ export default function App() {
             }
           />
           <Route
+            path="employee/interviews/:id/confirm"
+            element={
+              <PrivateRoute roles={[ROLES.EMPLOYEE, ROLES.DEPARTMENT_MANAGER, ROLES.DIRECTOR, ROLES.HR_MANAGER, ROLES.HR_STAFF]}>
+                <EmployeeInterviewConfirm />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="employee/interviews/:id/decline"
+            element={
+              <PrivateRoute roles={[ROLES.EMPLOYEE, ROLES.DEPARTMENT_MANAGER, ROLES.DIRECTOR, ROLES.HR_MANAGER, ROLES.HR_STAFF]}>
+                <EmployeeInterviewConfirm />
+              </PrivateRoute>
+            }
+          />
+          <Route
             path="employee/interviews/:id"
             element={
               <PrivateRoute roles={[ROLES.EMPLOYEE]}>
@@ -594,6 +618,22 @@ export default function App() {
             element={
               <PrivateRoute roles={[ROLES.HR_MANAGER, ROLES.HR_STAFF]}>
                 <HRInterviewCreate />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="hr-manager/interviews/batch-request"
+            element={
+              <PrivateRoute roles={[ROLES.HR_MANAGER, ROLES.HR_STAFF]}>
+                <HRInterviewBatchRequest />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="hr-manager/interviews/next-round-batch"
+            element={
+              <PrivateRoute roles={[ROLES.HR_MANAGER, ROLES.HR_STAFF]}>
+                <HRInterviewNextRoundBatch />
               </PrivateRoute>
             }
           />

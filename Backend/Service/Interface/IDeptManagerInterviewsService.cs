@@ -17,6 +17,9 @@ public interface IDeptManagerInterviewsService
     /// <summary>Lấy chi tiết buổi phỏng vấn (chỉ khi user được phân công)</summary>
     Task<DeptManagerInterviewDetailDto?> GetInterviewDetailAsync(int id, int managerId);
 
+    /// <summary>Xác nhận hoặc từ chối tham gia phỏng vấn (CONFIRM / DECLINE). Khi từ chối có thể gửi note để HR thương lượng/đổi lịch.</summary>
+    Task<ActionResponseDto> RespondToParticipationAsync(int interviewId, int userId, string response, string? note = null);
+
     /// <summary>Nộp feedback sau khi tham gia phỏng vấn</summary>
     Task<ActionResponseDto> SubmitInterviewFeedbackAsync(int interviewId, SubmitInterviewFeedbackDto feedback, int managerId);
 }

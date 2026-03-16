@@ -1,4 +1,5 @@
 using AutoMapper;
+using RMS.Common;
 using RMS.Dto.Director;
 using RMS.Entity;
 
@@ -24,7 +25,7 @@ public class DirectorOffersProfile : Profile
                     : (src.JobRequest != null ? src.JobRequest.Position.Department.Name : "")))
             .ForMember(dest => dest.ProposedSalary, opt => opt.MapFrom(src => src.ProposedSalary ?? 0))
             .ForMember(dest => dest.CurrentStatus, opt => opt.MapFrom(src => src.Status.Name)) // Map from Status entity
-            .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt ?? DateTime.Now));
+            .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt ?? DateTimeHelper.Now));
 
         // Offer Entity -> OfferDetailDto
         CreateMap<Offer, OfferDetailDto>()
@@ -54,7 +55,7 @@ public class DirectorOffersProfile : Profile
                 src.StartDate.HasValue ? src.StartDate.Value.ToDateTime(TimeOnly.MinValue) : (DateTime?)null))
             .ForMember(dest => dest.Benefits, opt => opt.MapFrom(src => src.Benefits))
             .ForMember(dest => dest.CurrentStatus, opt => opt.MapFrom(src => src.Status.Name)) // Map from Status entity
-            .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt ?? DateTime.Now))
+            .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt ?? DateTimeHelper.Now))
             .ForMember(dest => dest.ApprovalHistory, opt => opt.Ignore()); // Set separately from OfferApproval
 
         // OfferApproval Entity -> OfferApprovalHistoryDto
@@ -63,6 +64,6 @@ public class DirectorOffersProfile : Profile
             .ForMember(dest => dest.ApproverRole, opt => opt.MapFrom(src => src.Approver.Roles.FirstOrDefault() != null ? src.Approver.Roles.FirstOrDefault()!.Name : ""))
             .ForMember(dest => dest.Decision, opt => opt.MapFrom(src => src.Decision))
             .ForMember(dest => dest.Comment, opt => opt.MapFrom(src => src.Comment ?? ""))
-            .ForMember(dest => dest.ApprovedAt, opt => opt.MapFrom(src => src.ApprovedAt ?? DateTime.Now));
+            .ForMember(dest => dest.ApprovedAt, opt => opt.MapFrom(src => src.ApprovedAt ?? DateTimeHelper.Now));
     }
 }

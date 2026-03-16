@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RMS.Common;
+using RMS.Dto.Candidate;
 using RMS.Dto.Common;
 using RMS.Dto.DepartmentManager;
 using RMS.Service.Interface;
@@ -48,6 +49,16 @@ public class InterviewerInterviewsController : ControllerBase
         if (userId == 0) return Unauthorized(new { message = "Invalid user" });
         var detail = await _service.GetInterviewDetailAsync(id, userId);
         return detail == null ? NotFound(new { message = "Không tìm thấy phỏng vấn hoặc bạn không được phân công" }) : Ok(detail);
+    }
+
+    /// <summary>Xác nhận hoặc từ chối tham gia phỏng vấn (CONFIRM / DECLINE)</summary>
+    [HttpPost("{id}/respond")]
+    public async Task<ActionResult<ActionResponseDto>> RespondToParticipation(int id, [FromBody] RespondInterviewDto dto)
+    {
+        var userId = CurrentUserHelper.GetCurrentUserId(this);
+        if (userId == 0) return Unauthorized(new { message = "Invalid user" });
+        var result = await _service.RespondToParticipationAsync(id, userId, dto?.Response ?? "", dto?.Note);
+        return result.Success ? Ok(result) : BadRequest(result);
     }
 
     /// <summary>Nộp feedback sau buổi phỏng vấn (quyết định PASS/REJECT và ghi chú)</summary>

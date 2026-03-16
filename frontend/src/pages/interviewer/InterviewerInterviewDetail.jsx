@@ -3,8 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import interviewerService from '../../services/interviewerService';
 import notify from '../../utils/notification';
 import { getStatusBadge } from '../../utils/helpers/badge';
-import InterviewFeedbackForm from '../../components/shared/InterviewFeedbackForm';
-import SimpleInterviewerDetailPage from '../../components/shared/interviews/SimpleInterviewerDetailPage';
+import InterviewFeedbackForm, { INTERVIEW_FEEDBACK_DECISION_OPTIONS } from '../../components/shared/InterviewFeedbackForm';
+import InterviewDetailPage from '../../components/shared/interviews/InterviewDetailPage';
 import { formatDateTime } from '../../utils/formatters/display';
 
 export default function InterviewerInterviewDetail() {
@@ -59,6 +59,61 @@ export default function InterviewerInterviewDetail() {
   const badge = getStatusBadge(interview.statusCode);
   const isFinal = ['COMPLETED', 'CANCELLED'].includes(interview.statusCode);
   const canEvaluate = new Date(interview.endTime) < new Date() && !interview.hasMyFeedback && !isFinal;
+  const myConfirmed = !!interview.myConfirmedAt;
+  const myDeclined = !!interview.myDeclinedAt;
+  const participationPending = !myConfirmed && !myDeclined;
+
+  const handleRespondParticipation = async (response) => {
+    let note;
+    if (response === 'DECLINE') {
+      const value = window.prompt('Ghi chú từ chối (tùy chọn, vd. bận ngày đó / có thể chọn ngày khác) để HR thương lượng:');
+      if (value === null) return;
+      note = (value || '').trim() || undefined;
+    }
+    try {
+      setSubmitting(true);
+      const result = await interviewerService.interviews.respond(id, response, note);
+      if (result?.success) {
+        notify.success(response === 'CONFIRM' ? 'Đã xác nhận tham gia' : 'Đã ghi nhận từ chối');
+        loadInterview();
+      } else notify.error(result?.message || 'Thao tác thất bại');
+    } catch (err) {
+      notify.error(err?.message || 'Thao tác thất bại');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const participationSection = (
+    <div style={{ backgroundColor: '#f0fdf4', borderRadius: 10, border: '1px solid #86efac', padding: 16, marginBottom: 16 }}>
+      <h3 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 8px 0', color: '#166534' }}>✓ Xác nhận tham gia buổi phỏng vấn</h3>
+      <p style={{ fontSize: 13, color: '#15803d', margin: '0 0 12px 0' }}>Vui lòng bấm một trong hai nút bên dưới để xác nhận bạn sẽ tham gia hoặc từ chối.</p>
+      {participationPending ? (
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => handleRespondParticipation('CONFIRM')}
+            disabled={submitting}
+            style={{ padding: '8px 16px', borderRadius: 6, border: 'none', backgroundColor: '#16a34a', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}
+          >
+            Xác nhận tham gia
+          </button>
+          <button
+            type="button"
+            onClick={() => handleRespondParticipation('DECLINE')}
+            disabled={submitting}
+            style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #dc2626', backgroundColor: 'white', color: '#dc2626', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}
+          >
+            Từ chối tham gia
+          </button>
+        </div>
+      ) : myConfirmed ? (
+        <div style={{ color: '#16a34a', fontWeight: 600, fontSize: 14 }}>✓ Bạn đã xác nhận tham gia buổi này.</div>
+      ) : (
+        <div style={{ color: '#991b1b', fontWeight: 600, fontSize: 14 }}>Bạn đã từ chối tham gia buổi này.</div>
+      )}
+    </div>
+  );
 
   const cp = interview.candidateProfile;
   const prevRounds = interview.previousRounds || [];
@@ -149,12 +204,33 @@ export default function InterviewerInterviewDetail() {
     </>
   ) : null;
 
+  const myFeedbackSection = interview.hasMyFeedback ? (
+    <div style={{ backgroundColor: 'white', borderRadius: 10, border: '1px solid #e5e7eb', padding: 20, marginBottom: 16 }}>
+      <h3 style={{ fontSize: 14, fontWeight: 700, color: '#111827', margin: '0 0 12px 0' }}>
+        Đánh giá của bạn cho buổi này
+      </h3>
+      <div style={{ fontSize: 13, marginBottom: 8 }}>
+        <span style={{ fontWeight: 600 }}>Kết luận: </span>
+        <span style={{ color: interview.myFeedbackRecommendation === 'HIRE' ? '#16a34a' : '#dc2626', fontWeight: 700 }}>
+          {interview.myFeedbackRecommendation === 'HIRE' ? 'Đạt' : 'Không đạt'}
+        </span>
+      </div>
+      <div style={{ fontSize: 13 }}>
+        <div style={{ fontWeight: 600, marginBottom: 4 }}>Nhận xét:</div>
+        <div style={{ whiteSpace: 'pre-wrap', color: '#374151' }}>
+          {interview.myFeedbackComment || <span style={{ color: '#9ca3af' }}>Bạn không nhập nhận xét nào.</span>}
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   return (
-    <SimpleInterviewerDetailPage
+    <InterviewDetailPage
       onBack={() => navigate('/staff/interviews')}
       title={`Chi tiết phỏng vấn — Vòng ${interview.roundNo}`}
       statusBadge={badge}
       statusText={interview.statusName || badge.label}
+      topSection={participationSection}
       flowMessage={
         interview.hasMyFeedback
           ? 'Bạn đã nộp đánh giá cho buổi phỏng vấn này.'
@@ -180,19 +256,22 @@ export default function InterviewerInterviewDetail() {
       }))}
       candidateSection={candidateSection}
       feedbackSection={
-        canEvaluate ? (
-          <InterviewFeedbackForm
-            title="Nộp đánh giá của bạn"
-            description="Ghi nhận xét về ứng viên và chọn kết luận cuối cùng."
-            feedback={feedback}
-            setFeedback={setFeedback}
-            submitting={submitting}
-            onSubmit={handleSubmitFeedback}
-            submitLabel="Gửi đánh giá"
-            commentLabel="Nhận xét tổng quan"
-            commentPlaceholder="Ghi nhận xét chính của bạn về ứng viên..."
-          />
-        ) : null
+        interview.hasMyFeedback
+          ? myFeedbackSection
+          : (canEvaluate ? (
+            <InterviewFeedbackForm
+              title="Nộp đánh giá của bạn"
+              description="Ghi nhận xét về ứng viên và chọn kết luận."
+              feedback={feedback}
+              setFeedback={setFeedback}
+              submitting={submitting}
+              onSubmit={handleSubmitFeedback}
+              submitLabel="Gửi đánh giá"
+              commentLabel="Nhận xét tổng quan"
+              commentPlaceholder="Ghi nhận xét chính của bạn về ứng viên..."
+              decisionOptions={INTERVIEW_FEEDBACK_DECISION_OPTIONS}
+            />
+          ) : null)
       }
       successMessage={interview.hasMyFeedback ? 'Đánh giá của bạn đã được lưu cho buổi phỏng vấn này.' : null}
       pendingMessage={!canEvaluate && !interview.hasMyFeedback && !isFinal ? `Bạn có thể nộp đánh giá sau khi buổi phỏng vấn kết thúc vào ${formatDateTime(interview.endTime)}.` : null}

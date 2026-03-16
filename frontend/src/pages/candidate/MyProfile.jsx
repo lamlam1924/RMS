@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import { authService } from '../../services/authService';
 import { candidateService } from '../../services/candidateService';
 import { authService } from '../../services/authService';
 
@@ -46,6 +47,8 @@ export default function MyProfile() {
   const [uploadError, setUploadError] = useState('');
   const [uploadSuccess, setUploadSuccess] = useState('');
 
+  const [success, setSuccess] = useState('');
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(buildFormFromCv(null, authService.getUserInfo()));
 
   useEffect(() => {
