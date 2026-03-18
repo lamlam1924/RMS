@@ -16,6 +16,24 @@ public class HRJobPostingsService : IHRJobPostingsService
         _repository = repository;
     }
 
+    private async Task<string?> ValidateDeadlineAsync(int jobRequestId, DateTime? deadline)
+    {
+        if (!deadline.HasValue)
+            return "Hạn nộp hồ sơ là bắt buộc.";
+
+        var deadlineDate = DateOnly.FromDateTime(deadline.Value);
+        var today = DateOnly.FromDateTime(DateTimeHelper.Now);
+
+        if (deadlineDate < today)
+            return "Hạn nộp hồ sơ không được ở quá khứ.";
+
+        var jobRequest = await _repository.GetJobRequestByIdAsync(jobRequestId);
+        if (jobRequest == null)
+            return "Yêu cầu tuyển dụng không tồn tại.";
+
+        return null;
+    }
+
     public async Task<List<JobPostingListDto>> GetJobPostingsAsync()
     {
         return await _repository.GetJobPostingsAsync();
@@ -70,6 +88,17 @@ public class HRJobPostingsService : IHRJobPostingsService
 
     public async Task<ActionResponseDto> CreateJobPostingAsync(CreateJobPostingDto dto, int userId)
     {
+        if (await _repository.HasJobPostingByJobRequestIdAsync(dto.JobRequestId))
+        {
+            return ResponseHelper.CreateActionResponse(false, "", "Mỗi Job Request chỉ được tạo một Job Posting.");
+        }
+
+        var deadlineValidationError = await ValidateDeadlineAsync(dto.JobRequestId, dto.Deadline);
+        if (deadlineValidationError != null)
+        {
+            return ResponseHelper.CreateActionResponse(false, "", deadlineValidationError);
+        }
+
         var jobPosting = new JobPosting
         {
             JobRequestId = dto.JobRequestId,
@@ -106,6 +135,12 @@ public class HRJobPostingsService : IHRJobPostingsService
             return ResponseHelper.CreateActionResponse(false, "", "Closed job postings cannot be updated");
         }
 
+        var deadlineValidationError = await ValidateDeadlineAsync(jobPosting.JobRequestId, dto.Deadline);
+        if (deadlineValidationError != null)
+        {
+            return ResponseHelper.CreateActionResponse(false, "", deadlineValidationError);
+        }
+
         jobPosting.Title = dto.Title;
         jobPosting.Description = dto.Description;
         jobPosting.Requirements = dto.Requirements;
@@ -128,6 +163,23 @@ public class HRJobPostingsService : IHRJobPostingsService
 
     public async Task<ActionResponseDto> PublishJobPostingAsync(int jobPostingId, int userId)
     {
+        var jobPosting = await _repository.GetJobPostingByIdAsync(jobPostingId);
+        if (jobPosting == null)
+        {
+            return ResponseHelper.CreateActionResponse(false, "", "Job posting not found");
+        }
+
+        if (!jobPosting.DeadlineDate.HasValue)
+        {
+            return ResponseHelper.CreateActionResponse(false, "", "Không thể publish khi chưa có hạn nộp hồ sơ.");
+        }
+
+        var today = DateOnly.FromDateTime(DateTimeHelper.Now);
+        if (jobPosting.DeadlineDate.Value < today)
+        {
+            return ResponseHelper.CreateActionResponse(false, "", "Không thể publish tin đã hết hạn nộp hồ sơ.");
+        }
+
         var success = await _repository.PublishJobPostingAsync(jobPostingId, userId);
 
         return ResponseHelper.CreateActionResponse(

@@ -34,7 +34,7 @@ public class HRApplicationsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "Failed to load applications", error = ex.Message });
+            return StatusCode(500, new { message = "Không thể tải danh sách hồ sơ ứng tuyển", error = ex.Message });
         }
     }
 
@@ -55,7 +55,7 @@ public class HRApplicationsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "Failed to load application", error = ex.Message });
+            return StatusCode(500, new { message = "Không thể tải chi tiết hồ sơ ứng tuyển", error = ex.Message });
         }
     }
 
@@ -79,7 +79,7 @@ public class HRApplicationsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "Failed to update application status", error = ex.Message });
+            return StatusCode(500, new { message = "Không thể cập nhật trạng thái hồ sơ", error = ex.Message });
         }
     }
 }

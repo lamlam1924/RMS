@@ -32,7 +32,7 @@ public class HRJobPostingsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "Failed to load job postings", error = ex.Message });
+            return StatusCode(500, new { message = "Không thể tải danh sách tin tuyển dụng", error = ex.Message });
         }
     }
 
@@ -50,7 +50,7 @@ public class HRJobPostingsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "Failed to load draft job postings", error = ex.Message });
+            return StatusCode(500, new { message = "Không thể tải danh sách tin nháp", error = ex.Message });
         }
     }
 
@@ -68,7 +68,7 @@ public class HRJobPostingsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "Failed to load job posting", error = ex.Message });
+            return StatusCode(500, new { message = "Không thể tải chi tiết tin tuyển dụng", error = ex.Message });
         }
     }
 
@@ -90,7 +90,7 @@ public class HRJobPostingsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "Failed to create job posting", error = ex.Message });
+            return StatusCode(500, new { message = "Không thể tạo tin tuyển dụng", error = ex.Message });
         }
     }
 
@@ -113,7 +113,7 @@ public class HRJobPostingsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "Failed to update job posting", error = ex.Message });
+            return StatusCode(500, new { message = "Không thể cập nhật tin tuyển dụng", error = ex.Message });
         }
     }
 
@@ -136,7 +136,7 @@ public class HRJobPostingsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "Failed to publish job posting", error = ex.Message });
+            return StatusCode(500, new { message = "Không thể đăng tin tuyển dụng", error = ex.Message });
         }
     }
 
@@ -161,7 +161,7 @@ public class HRJobPostingsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "Failed to close job posting", error = ex.Message });
+            return StatusCode(500, new { message = "Không thể đóng tin tuyển dụng", error = ex.Message });
         }
     }
 
@@ -179,7 +179,7 @@ public class HRJobPostingsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "Failed to load HR staff list", error = ex.Message });
+            return StatusCode(500, new { message = "Không thể tải danh sách HR Staff", error = ex.Message });
         }
     }
 
@@ -202,7 +202,7 @@ public class HRJobPostingsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "Failed to assign staff", error = ex.Message });
+            return StatusCode(500, new { message = "Không thể phân công HR Staff", error = ex.Message });
         }
     }
 
@@ -221,7 +221,7 @@ public class HRJobPostingsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "Failed to load job postings", error = ex.Message });
+            return StatusCode(500, new { message = "Không thể tải danh sách tin được giao", error = ex.Message });
         }
     }
 }

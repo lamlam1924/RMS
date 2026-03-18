@@ -31,16 +31,16 @@ export default function HRApplicationDetail() {
   /**
    * Allowed next statuses based on current status + role:
    *   HR Staff:   APPLIED→SCREENING, APPLIED→REJECTED
-   *               SCREENING→INTERVIEWING, SCREENING→REJECTED
+   *               SCREENING→REJECTED
    *               INTERVIEWING and beyond → no action
    *   HR Manager: APPLIED→SCREENING, APPLIED→REJECTED
-   *               SCREENING→INTERVIEWING, SCREENING→REJECTED
+   *               SCREENING→REJECTED
    *               INTERVIEWING→PASSED, INTERVIEWING→REJECTED
    */
   const getAllowedNextStatuses = (currentStatusId) => {
     const transitions = {
       9:  { staff: [10, 13], manager: [10, 13] },
-      10: { staff: [11, 13], manager: [11, 13] },
+      10: { staff: [13], manager: [13] },
       11: { staff: [],       manager: [12, 13] },
       12: { staff: [],       manager: [] },
       13: { staff: [],       manager: [] },
@@ -69,6 +69,10 @@ export default function HRApplicationDetail() {
 
   const handleUpdateStatus = async () => {
     if (!newStatusId) return;
+    if (newStatusId === 13 && !note.trim()) {
+      notify.warning('Vui lòng nhập lý do từ chối hồ sơ');
+      return;
+    }
 
     try {
       setUpdating(true);
@@ -124,6 +128,8 @@ export default function HRApplicationDetail() {
     const status = statusOptions.find(s => s.value === statusId);
     return status ? status.color : '#6b7280';
   };
+
+  const canScheduleInterview = application?.statusId === 10;
 
   if (loading) {
     return <div style={{ padding: 40, textAlign: 'center' }}>Loading...</div>;
@@ -213,8 +219,113 @@ export default function HRApplicationDetail() {
                   <div style={{ fontWeight: 500 }}>{application.yearsOfExperience} years</div>
                 </div>
               )}
+              {application.professionalTitle && (
+                <div>
+                  <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Professional Title</div>
+                  <div style={{ fontWeight: 500 }}>{application.professionalTitle}</div>
+                </div>
+              )}
+              {application.address && (
+                <div>
+                  <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Address</div>
+                  <div style={{ fontWeight: 500 }}>{application.address}</div>
+                </div>
+              )}
             </div>
+            {application.summary && (
+              <div style={{ marginTop: 16 }}>
+                <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>Summary</div>
+                <div style={{ color: '#374151', lineHeight: 1.6, whiteSpace: 'pre-line' }}>
+                  {application.summary}
+                </div>
+              </div>
+            )}
+            {application.skillsText && (
+              <div style={{ marginTop: 16 }}>
+                <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>Skills</div>
+                <div style={{ color: '#374151', lineHeight: 1.6, whiteSpace: 'pre-line' }}>
+                  {application.skillsText}
+                </div>
+              </div>
+            )}
           </div>
+
+          {(application.experiences?.length > 0 || application.educations?.length > 0 || application.certificates?.length > 0) && (
+            <div style={{
+              backgroundColor: 'white',
+              padding: 24,
+              borderRadius: 8,
+              border: '1px solid #e5e7eb'
+            }}>
+              <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 16 }}>
+                CV Details
+              </h2>
+
+              {application.experiences?.length > 0 && (
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10, color: '#111827' }}>
+                    Kinh nghiệm làm việc ({application.experiences.length})
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {application.experiences.map((exp) => (
+                      <div key={exp.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
+                        <div style={{ fontWeight: 600, color: '#111827' }}>{exp.jobTitle} - {exp.companyName}</div>
+                        <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+                          {exp.startDate} - {exp.endDate || 'Hiện tại'}
+                        </div>
+                        {exp.description && (
+                          <div style={{ fontSize: 13, color: '#374151', marginTop: 8, whiteSpace: 'pre-line' }}>
+                            {exp.description}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {application.educations?.length > 0 && (
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10, color: '#111827' }}>
+                    Học vấn ({application.educations.length})
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {application.educations.map((edu) => (
+                      <div key={edu.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
+                        <div style={{ fontWeight: 600, color: '#111827' }}>{edu.schoolName}</div>
+                        <div style={{ fontSize: 13, color: '#374151', marginTop: 2 }}>
+                          {edu.degree || 'Bằng cấp'}{edu.major ? ` - ${edu.major}` : ''}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+                          {(edu.startYear || '?')} - {(edu.endYear || 'Hiện tại')}
+                          {(edu.gpa !== null && edu.gpa !== undefined) ? ` • GPA: ${edu.gpa}` : ''}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {application.certificates?.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 10, color: '#111827' }}>
+                    Chứng chỉ ({application.certificates.length})
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {application.certificates.map((cert) => (
+                      <div key={cert.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
+                        <div style={{ fontWeight: 600, color: '#111827' }}>{cert.certificateName}</div>
+                        <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+                          {cert.issuer || 'Không rõ đơn vị cấp'}
+                          {cert.issuedYear ? ` • ${cert.issuedYear}` : ''}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Job Information */}
           <div style={{
@@ -405,6 +516,19 @@ export default function HRApplicationDetail() {
             </div>
           </div>
 
+          {application.rejectionReason && (
+            <div style={{
+              backgroundColor: '#fef2f2',
+              padding: 16,
+              borderRadius: 8,
+              border: '1px solid #fecaca',
+              marginBottom: 8
+            }}>
+              <div style={{ fontSize: 13, color: '#b91c1c', fontWeight: 700, marginBottom: 6 }}>Lý do từ chối gần nhất</div>
+              <div style={{ fontSize: 13, color: '#7f1d1d', lineHeight: 1.6 }}>{application.rejectionReason}</div>
+            </div>
+          )}
+
           {/* Quick Actions */}
           <div style={{
             backgroundColor: 'white',
@@ -416,18 +540,24 @@ export default function HRApplicationDetail() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <button
                 onClick={() => navigate(`/staff/hr-manager/interviews/create?applicationId=${id}`)}
+                disabled={!canScheduleInterview}
                 style={{
                   padding: '10px 16px',
-                  backgroundColor: '#8b5cf6',
+                  backgroundColor: canScheduleInterview ? '#8b5cf6' : '#d1d5db',
                   color: 'white',
                   border: 'none',
                   borderRadius: 6,
-                  cursor: 'pointer',
+                  cursor: canScheduleInterview ? 'pointer' : 'not-allowed',
                   fontWeight: 500
                 }}
               >
                 Schedule Interview
               </button>
+              {!canScheduleInterview && (
+                <div style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.4 }}>
+                  Chỉ tạo lịch khi hồ sơ ở trạng thái Screening.
+                </div>
+              )}
               {/* Chỉ HR Manager thấy nút Create Offer, và chỉ khi ứng viên đã Passed */}
               {isHRManager && application.statusId === 12 && (
                 <button
@@ -499,13 +629,13 @@ export default function HRApplicationDetail() {
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
-                Note (optional)
+                {newStatusId === 13 ? 'Lý do từ chối *' : 'Note (optional)'}
               </label>
               <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 rows={4}
-                placeholder="Add notes about this status change..."
+                placeholder={newStatusId === 13 ? 'Nhập lý do từ chối hồ sơ...' : 'Add notes about this status change...'}
                 style={{
                   width: '100%',
                   padding: '10px 12px',
@@ -537,14 +667,14 @@ export default function HRApplicationDetail() {
               </button>
               <button
                 onClick={handleUpdateStatus}
-                disabled={updating || !newStatusId}
+                disabled={updating || !newStatusId || (newStatusId === 13 && !note.trim())}
                 style={{
                   padding: '10px 20px',
-                  backgroundColor: newStatusId ? '#3b82f6' : '#d1d5db',
+                  backgroundColor: (newStatusId && !(newStatusId === 13 && !note.trim())) ? '#3b82f6' : '#d1d5db',
                   color: 'white',
                   border: 'none',
                   borderRadius: 6,
-                  cursor: newStatusId && !updating ? 'pointer' : 'not-allowed',
+                  cursor: (newStatusId && !(newStatusId === 13 && !note.trim()) && !updating) ? 'pointer' : 'not-allowed',
                   fontWeight: 500
                 }}
               >

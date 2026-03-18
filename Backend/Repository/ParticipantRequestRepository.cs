@@ -11,6 +11,9 @@ public class ParticipantRequestRepository : IParticipantRequestRepository
 {
     private readonly RecruitmentDbContext _context;
 
+    private Task<int> GetStatusIdAsync(string code)
+        => _context.Statuses.Where(s => s.Code == code).Select(s => s.Id).FirstAsync();
+
     public ParticipantRequestRepository(RecruitmentDbContext context)
     {
         _context = context;
@@ -20,6 +23,7 @@ public class ParticipantRequestRepository : IParticipantRequestRepository
     {
         var interview = await _context.Interviews.FindAsync(interviewId);
         if (interview == null) throw new ArgumentException("Interview not found");
+        var pendingStatusId = await GetStatusIdAsync("PENDING");
 
         var request = new ParticipantRequest
         {
@@ -28,7 +32,7 @@ public class ParticipantRequestRepository : IParticipantRequestRepository
             AssignedToUserId = dto.AssignedToUserId,
             RequiredCount = dto.RequiredCount,
             Message = dto.Message,
-            Status = "PENDING",
+            StatusId = pendingStatusId,
             CreatedAt = DateTimeHelper.Now
         };
         request.Interviews.Add(interview);
@@ -42,6 +46,8 @@ public class ParticipantRequestRepository : IParticipantRequestRepository
     {
         if (dto.InterviewIds == null || !dto.InterviewIds.Any())
             throw new ArgumentException("InterviewIds required");
+
+        var pendingStatusId = await GetStatusIdAsync("PENDING");
 
         var interviewEntities = await _context.Interviews
             .Include(i => i.Application).ThenInclude(a => a.JobRequest!).ThenInclude(jr => jr.Position)
@@ -61,7 +67,7 @@ public class ParticipantRequestRepository : IParticipantRequestRepository
             AssignedToUserId = dto.AssignedToUserId,
             RequiredCount = dto.RequiredCount,
             Message = dto.Message,
-            Status = "PENDING",
+            StatusId = pendingStatusId,
             CreatedAt = DateTimeHelper.Now,
             TimeRangeStart = first.StartTime,
             TimeRangeEnd = last.EndTime,
@@ -115,7 +121,7 @@ public class ParticipantRequestRepository : IParticipantRequestRepository
     public async Task<List<ParticipantRequestDto>> GetForwardedRequestsAsync(int userId)
     {
         var ids = await _context.ParticipantRequests
-            .Where(r => r.ForwardedToUserId == userId && r.Status == "FORWARDED")
+            .Where(r => r.ForwardedToUserId == userId && r.Status.Code == "FORWARDED")
             .Select(r => r.Id)
             .ToListAsync();
 
@@ -133,13 +139,18 @@ public class ParticipantRequestRepository : IParticipantRequestRepository
 
     public async Task<bool> NominateAsync(int reqId, List<int> userIds, int nominatorUserId)
     {
+        var pendingStatusId = await GetStatusIdAsync("PENDING");
+        var forwardedStatusId = await GetStatusIdAsync("FORWARDED");
+        var fulfilledStatusId = await GetStatusIdAsync("FULFILLED");
+
         var request = await _context.ParticipantRequests
             .Include(r => r.Interviews)
+            .Include(r => r.Status)
             .FirstOrDefaultAsync(r => r.Id == reqId);
 
         if (request == null) return false;
-        var canNominate = (request.AssignedToUserId == nominatorUserId && request.Status == "PENDING")
-            || (request.ForwardedToUserId == nominatorUserId && request.Status == "FORWARDED");
+        var canNominate = (request.AssignedToUserId == nominatorUserId && request.StatusId == pendingStatusId)
+            || (request.ForwardedToUserId == nominatorUserId && request.StatusId == forwardedStatusId);
         if (!canNominate)
             return false;
 
@@ -169,7 +180,7 @@ public class ParticipantRequestRepository : IParticipantRequestRepository
             }
         }
 
-        request.Status = "FULFILLED";
+        request.StatusId = fulfilledStatusId;
         request.RespondedAt = DateTimeHelper.Now;
 
         return await _context.SaveChangesAsync() > 0;
@@ -180,7 +191,9 @@ public class ParticipantRequestRepository : IParticipantRequestRepository
         var original = await _context.ParticipantRequests.FindAsync(reqId);
         if (original == null || original.AssignedToUserId != fromUserId) return false;
 
-        original.Status = "FORWARDED";
+        var forwardedStatusId = await GetStatusIdAsync("FORWARDED");
+
+        original.StatusId = forwardedStatusId;
         original.ForwardedToUserId = directorId;
         original.RespondedAt = DateTimeHelper.Now;
 
@@ -193,7 +206,9 @@ public class ParticipantRequestRepository : IParticipantRequestRepository
         var request = await _context.ParticipantRequests.FindAsync(reqId);
         if (request == null || request.RequestedByUserId != requesterUserId) return false;
 
-        request.Status = "CANCELLED";
+        var cancelledStatusId = await GetStatusIdAsync("CANCELLED");
+
+        request.StatusId = cancelledStatusId;
         return await _context.SaveChangesAsync() > 0;
     }
 
@@ -267,6 +282,7 @@ public class ParticipantRequestRepository : IParticipantRequestRepository
             .Include(r => r.RequestedByUser)
             .Include(r => r.AssignedToUser)
             .Include(r => r.ForwardedToUser)
+            .Include(r => r.Status)
             .Include(r => r.Department)
             .FirstOrDefaultAsync(r => r.Id == reqId);
 
@@ -313,7 +329,7 @@ public class ParticipantRequestRepository : IParticipantRequestRepository
             AssignedToName = request.AssignedToUser.FullName,
             RequiredCount = request.RequiredCount,
             Message = request.Message,
-            Status = request.Status,
+            Status = request.Status.Code,
             CreatedAt = request.CreatedAt,
             ForwardedToUserId = request.ForwardedToUserId,
             ForwardedToName = request.ForwardedToUser?.FullName,

@@ -79,7 +79,7 @@ export default function HRStaffDashboard() {
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <StatCard title="Yêu cầu được giao" value={stats.assignedJobRequests} hint="Yêu cầu tuyển dụng APPROVED được phân công" color="#2563eb" onClick={() => navigate('/staff/hr-manager/job-requests')} />
+        <StatCard title="Yêu cầu được giao" value={stats.assignedJobRequests} hint="Yêu cầu tuyển dụng APPROVED được phân công" color="#2563eb" onClick={() => navigate('/staff/hr-staff/job-postings')} />
         <StatCard title="Tin tuyển dụng của tôi" value={stats.myJobPostings} hint="Tin tuyển dụng được giao xử lý" color="#10b981" onClick={() => navigate('/staff/hr-staff/job-postings')} />
         <StatCard title="Phỏng vấn sắp tới" value={stats.upcomingInterviews} hint="Lịch phỏng vấn được phân công cho bạn" color="#f59e0b" onClick={() => navigate('/staff/interviews')} />
         <StatCard title="Offer chờ gửi" value={stats.approvedOffersToSend} hint="Offer đã duyệt, chờ gửi ứng viên" color="#7c3aed" onClick={() => navigate('/staff/hr-manager/offers')} />
@@ -89,7 +89,7 @@ export default function HRStaffDashboard() {
         <Panel
           title="Yêu cầu tuyển dụng được giao"
           actionLabel="Xem tất cả"
-          onAction={() => navigate('/staff/hr-manager/job-requests')}
+          onAction={() => navigate('/staff/hr-staff/job-postings')}
           emptyText="Không có yêu cầu nào được giao"
           items={assignedJobRequests}
           renderItem={(item) => (

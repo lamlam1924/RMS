@@ -117,6 +117,23 @@ public class HRJobPostingsRepository : IHRJobPostingsRepository
             .CountAsync(a => a.JobRequestId == jobRequestId && !a.IsDeleted!.Value);
     }
 
+    public async Task<bool> HasJobPostingByJobRequestIdAsync(int jobRequestId, int? excludeJobPostingId = null)
+    {
+        var query = _context.JobPostings
+            .Where(jp => jp.JobRequestId == jobRequestId && jp.IsDeleted == false);
+
+        if (excludeJobPostingId.HasValue)
+            query = query.Where(jp => jp.Id != excludeJobPostingId.Value);
+
+        return await query.AnyAsync();
+    }
+
+    public async Task<JobRequest?> GetJobRequestByIdAsync(int jobRequestId)
+    {
+        return await _context.JobRequests
+            .FirstOrDefaultAsync(jr => jr.Id == jobRequestId && jr.IsDeleted == false);
+    }
+
     public async Task<int> CreateJobPostingAsync(JobPosting jobPosting)
     {
         _context.JobPostings.Add(jobPosting);

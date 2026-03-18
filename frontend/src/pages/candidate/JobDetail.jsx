@@ -118,6 +118,8 @@ export default function JobDetail() {
   }
 
   const daysLeft = getDaysLeft(job.deadlineDate);
+  const isJdImage = /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(job.jdFileUrl || '');
+  const jdPreviewUrl = job.jobRequestId ? `/api/files/jd/${job.jobRequestId}` : job.jdFileUrl;
 
   return (
     <div className="min-h-screen bg-slate-50 py-8 px-4 font-sans">
@@ -194,10 +196,10 @@ export default function JobDetail() {
                 <span className="bg-blue-600 w-1.5 h-6 rounded-full mr-3"></span>
                 Mô tả công việc
               </h2>
-              {job.jdFileUrl && job.jdFileUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) && (
+              {job.jdFileUrl && isJdImage && (
                 <div className="mb-6">
                   <img
-                    src={job.jdFileUrl}
+                    src={jdPreviewUrl}
                     alt="Ảnh mô tả công việc"
                     className="w-full rounded-xl border border-slate-200 object-contain"
                   />

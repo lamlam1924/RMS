@@ -40,6 +40,11 @@ public class CandidateApplicationRepository : ICandidateApplicationRepository
             .Include(a => a.JobRequest.JobPostings)
             .Include(a => a.Status)
             .Include(a => a.Cvprofile)
+                .ThenInclude(cv => cv.Cvexperiences)
+            .Include(a => a.Cvprofile)
+                .ThenInclude(cv => cv.Cveducations)
+            .Include(a => a.Cvprofile)
+                .ThenInclude(cv => cv.Cvcertificates)
             .Where(a => a.Cvprofile.CandidateId == candidateId && a.IsDeleted == false)
             .OrderByDescending(a => a.AppliedAt)
             .ToListAsync();
@@ -54,6 +59,11 @@ public class CandidateApplicationRepository : ICandidateApplicationRepository
             .Include(a => a.JobRequest.JobPostings)
             .Include(a => a.Status)
             .Include(a => a.Cvprofile)
+                .ThenInclude(cv => cv.Cvexperiences)
+            .Include(a => a.Cvprofile)
+                .ThenInclude(cv => cv.Cveducations)
+            .Include(a => a.Cvprofile)
+                .ThenInclude(cv => cv.Cvcertificates)
             .FirstOrDefaultAsync(a =>
                 a.Id == id &&
                 a.Cvprofile.CandidateId == candidateId &&

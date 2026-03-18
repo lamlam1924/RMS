@@ -23,6 +23,8 @@ export default function EditJobPosting() {
     deadline: ''
   });
 
+  const todayString = new Date().toISOString().split('T')[0];
+
   useEffect(() => {
     loadJobPosting();
   }, [id]);
@@ -61,6 +63,17 @@ export default function EditJobPosting() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!formData.deadline) {
+      notify.warning('Vui lòng chọn hạn nộp hồ sơ');
+      return;
+    }
+
+    if (formData.deadline < todayString) {
+      notify.warning('Hạn nộp hồ sơ không được ở quá khứ');
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -72,7 +85,7 @@ export default function EditJobPosting() {
         salaryMin: formData.salaryMin ? parseFloat(formData.salaryMin) : null,
         salaryMax: formData.salaryMax ? parseFloat(formData.salaryMax) : null,
         location: formData.location,
-        deadline: formData.deadline ? new Date(formData.deadline).toISOString() : null
+        deadline: formData.deadline ? `${formData.deadline}T00:00:00` : null
       };
 
       await hrService.jobPostings.update(id, payload);
@@ -195,6 +208,7 @@ export default function EditJobPosting() {
                   name="deadline"
                   value={formData.deadline ? formData.deadline.split('T')[0] : ''}
                   onChange={handleChange}
+                  min={todayString}
                   style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6 }}
                 />
               </div>

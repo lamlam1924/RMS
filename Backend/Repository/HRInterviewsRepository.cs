@@ -515,6 +515,7 @@ public class HRInterviewsRepository : IHRInterviewsRepository
             .Include(i => i.InterviewParticipants)
             .Include(i => i.InterviewFeedbacks)
             .Include(i => i.Requests)
+                .ThenInclude(r => r.Status)
             .Include(i => i.Application)
                 .ThenInclude(a => a.Cvprofile)
                     .ThenInclude(cv => cv.Candidate)
@@ -522,6 +523,10 @@ public class HRInterviewsRepository : IHRInterviewsRepository
                 .ThenInclude(a => a.JobRequest)
                     .ThenInclude(jr => jr.Position)
                         .ThenInclude(p => p.Department);
+
+        // Khi hồ sơ bị REJECTED thì interview không còn hiển thị ở màn quản lý phỏng vấn.
+        query = query.Where(i => i.Application != null && i.Application.StatusId != 13);
+
         if (scopeByStaffId.HasValue)
             query = query.Where(i => i.Application != null && i.Application.JobRequest != null && i.Application.JobRequest.AssignedStaffId == scopeByStaffId.Value);
         return query;
@@ -546,10 +551,10 @@ public class HRInterviewsRepository : IHRInterviewsRepository
             MeetingLink = i.MeetingLink,
             StatusCode = i.Status.Code,
             StatusName = i.Status.Name,
-            ParticipantCount = i.InterviewParticipants.Count,
-            FeedbackCount = i.InterviewFeedbacks.Count,
-            OpenParticipantRequestCount = i.Requests.Count(r => r.Status == "PENDING" || r.Status == "FORWARDED"),
-            FulfilledParticipantRequestCount = i.Requests.Count(r => r.Status == "FULFILLED"),
+            ParticipantCount = i.InterviewParticipants?.Count ?? 0,
+            FeedbackCount = i.InterviewFeedbacks?.Count ?? 0,
+            OpenParticipantRequestCount = i.Requests?.Count(r => r.Status.Code == "PENDING" || r.Status.Code == "FORWARDED") ?? 0,
+            FulfilledParticipantRequestCount = i.Requests?.Count(r => r.Status.Code == "FULFILLED") ?? 0,
             HasDeclineNote = hasDecline
         };
     }

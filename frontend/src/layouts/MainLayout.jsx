@@ -96,6 +96,11 @@ const MENU_CONFIG = [
         to: "/staff/hr-manager/job-requests",
       },
       {
+        key: "hrManagerAssignStaff",
+        label: "Phân công HR Staff",
+        to: "/staff/hr-manager/staff-assignments",
+      },
+      {
         key: "hrManagerMyInterviews",
         label: "Phỏng vấn của tôi",
         to: "/staff/interviews",
@@ -154,12 +159,6 @@ const MENU_CONFIG = [
   },
 
   // Shared Operations (HR Manager + HR Staff)
-  {
-    key: "sharedJobRequests",
-    label: "Yêu cầu Tuyển dụng",
-    to: "/staff/hr-manager/job-requests",
-    roles: [ROLES.HR_MANAGER, ROLES.HR_STAFF],
-  },
   {
     key: "sharedApplications",
     label: "Hồ sơ Ứng tuyển",

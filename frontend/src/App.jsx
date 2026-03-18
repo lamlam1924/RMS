@@ -52,6 +52,7 @@ import HRManagerDashboard from "./pages/hr/dashboard/HRManagerDashboard";
 import HRStaffDashboard from "./pages/hr/dashboard/HRStaffDashboard";
 import HRJobRequestList from "./pages/hr/manager/HRJobRequestList";
 import HRJobRequestDetail from "./pages/hr/manager/HRJobRequestDetail";
+import HRStaffAssignmentList from "./pages/hr/manager/HRStaffAssignmentList";
 import HRManagerJobPostingList from "./pages/hr/manager/HRManagerJobPostingList";
 import HRApplicationList from "./pages/hr/manager/HRApplicationList";
 import HRApplicationDetail from "./pages/hr/manager/HRApplicationDetail";
@@ -532,15 +533,23 @@ export default function App() {
           <Route
             path="hr-manager/job-requests"
             element={
-              <PrivateRoute roles={[ROLES.HR_MANAGER, ROLES.HR_STAFF]}>
+              <PrivateRoute roles={[ROLES.HR_MANAGER]}>
                 <HRJobRequestList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="hr-manager/staff-assignments"
+            element={
+              <PrivateRoute roles={[ROLES.HR_MANAGER]}>
+                <HRStaffAssignmentList />
               </PrivateRoute>
             }
           />
           <Route
             path="hr-manager/job-requests/:id"
             element={
-              <PrivateRoute roles={[ROLES.HR_MANAGER, ROLES.HR_STAFF]}>
+              <PrivateRoute roles={[ROLES.HR_MANAGER]}>
                 <HRJobRequestDetail />
               </PrivateRoute>
             }

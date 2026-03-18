@@ -42,7 +42,10 @@ public class CandidateApplicationService : ICandidateApplicationService
             return (false, "Tin tuyển dụng này đã đóng hoặc chưa được công khai.", null);
 
         // 3. Kiểm tra deadline
-        if (jobPosting.DeadlineDate.HasValue && jobPosting.DeadlineDate.Value < DateOnly.FromDateTime(DateTimeHelper.Now))
+        if (!jobPosting.DeadlineDate.HasValue)
+            return (false, "Tin tuyển dụng chưa cấu hình hạn nộp hồ sơ.", null);
+
+        if (jobPosting.DeadlineDate.Value < DateOnly.FromDateTime(DateTimeHelper.Now))
             return (false, "Tin tuyển dụng này đã hết hạn nộp hồ sơ.", null);
 
         // 4. Lấy CV Profile của candidate (lấy CV mới nhất)
@@ -111,6 +114,17 @@ public class CandidateApplicationService : ICandidateApplicationService
     {
         var applications = await _repository.GetApplicationsByCandidateIdAsync(candidateId);
         var result = new List<CandidateApplicationListDto>();
+        var appIds = applications.Select(a => a.Id).ToList();
+        var rejectionNotes = await _context.StatusHistories
+            .Where(h => h.EntityTypeId == 3 && h.ToStatusId == 13 && appIds.Contains(h.EntityId))
+            .OrderByDescending(h => h.ChangedAt)
+            .GroupBy(h => h.EntityId)
+            .Select(g => new
+            {
+                ApplicationId = g.Key,
+                Note = g.Select(x => x.Note).FirstOrDefault()
+            })
+            .ToDictionaryAsync(x => x.ApplicationId, x => x.Note);
 
         foreach (var app in applications)
         {
@@ -119,6 +133,7 @@ public class CandidateApplicationService : ICandidateApplicationService
                 .FirstOrDefault()?.Title ?? app.JobRequest.Position.Title;
 
             var fileUrl = await _repository.GetCvFileUrlAsync(app.Id);
+            rejectionNotes.TryGetValue(app.Id, out var rejectionReason);
 
             result.Add(new CandidateApplicationListDto
             {
@@ -129,7 +144,15 @@ public class CandidateApplicationService : ICandidateApplicationService
                 StatusId = app.StatusId,
                 StatusName = app.Status.Name,
                 AppliedAt = app.AppliedAt,
-                CvFileUrl = fileUrl
+                CvFileUrl = fileUrl,
+                ProfessionalTitle = app.Cvprofile.ProfessionalTitle,
+                Summary = app.Cvprofile.Summary,
+                YearsOfExperience = app.Cvprofile.YearsOfExperience,
+                SkillsText = app.Cvprofile.SkillsText,
+                ExperienceCount = app.Cvprofile.Cvexperiences.Count,
+                EducationCount = app.Cvprofile.Cveducations.Count,
+                CertificateCount = app.Cvprofile.Cvcertificates.Count,
+                RejectionReason = rejectionReason
             });
         }
 
@@ -164,7 +187,55 @@ public class CandidateApplicationService : ICandidateApplicationService
             SalaryMax = jobPosting?.SalaryMax,
             CandidateName = app.Cvprofile.FullName,
             CandidateEmail = app.Cvprofile.Email,
-            CandidatePhone = app.Cvprofile.Phone
+            CandidatePhone = app.Cvprofile.Phone,
+            Address = app.Cvprofile.Address,
+            ProfessionalTitle = app.Cvprofile.ProfessionalTitle,
+            Summary = app.Cvprofile.Summary,
+            YearsOfExperience = app.Cvprofile.YearsOfExperience,
+            SkillsText = app.Cvprofile.SkillsText,
+            ExperienceCount = app.Cvprofile.Cvexperiences.Count,
+            EducationCount = app.Cvprofile.Cveducations.Count,
+            CertificateCount = app.Cvprofile.Cvcertificates.Count,
+            RejectionReason = await _context.StatusHistories
+                .Where(h => h.EntityTypeId == 3 && h.EntityId == app.Id && h.ToStatusId == 13)
+                .OrderByDescending(h => h.ChangedAt)
+                .Select(h => h.Note)
+                .FirstOrDefaultAsync(),
+            Experiences = app.Cvprofile.Cvexperiences
+                .OrderByDescending(e => e.StartDate)
+                .Select(e => new CandidateApplicationExperienceDto
+                {
+                    Id = e.Id,
+                    CompanyName = e.CompanyName,
+                    JobTitle = e.JobTitle,
+                    StartDate = e.StartDate,
+                    EndDate = e.EndDate,
+                    Description = e.Description
+                })
+                .ToList(),
+            Educations = app.Cvprofile.Cveducations
+                .OrderByDescending(e => e.EndYear ?? e.StartYear ?? 0)
+                .Select(e => new CandidateApplicationEducationDto
+                {
+                    Id = e.Id,
+                    SchoolName = e.SchoolName,
+                    Degree = e.Degree,
+                    Major = e.Major,
+                    StartYear = e.StartYear,
+                    EndYear = e.EndYear,
+                    Gpa = e.Gpa
+                })
+                .ToList(),
+            Certificates = app.Cvprofile.Cvcertificates
+                .OrderByDescending(c => c.IssuedYear ?? 0)
+                .Select(c => new CandidateApplicationCertificateDto
+                {
+                    Id = c.Id,
+                    CertificateName = c.CertificateName,
+                    Issuer = c.Issuer,
+                    IssuedYear = c.IssuedYear
+                })
+                .ToList()
         };
     }
 }

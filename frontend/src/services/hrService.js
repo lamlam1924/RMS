@@ -268,7 +268,10 @@ const hrService = {
         headers: getAuthHeaders(),
         body: JSON.stringify(data)
       });
-      if (!response.ok) throw new Error('Failed to update job posting');
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || 'Không thể cập nhật tin tuyển dụng');
+      }
       return response.json();
     },
     
@@ -278,7 +281,10 @@ const hrService = {
         method: 'PUT',
         headers: getAuthHeaders()
       });
-      if (!response.ok) throw new Error('Failed to publish job posting');
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || 'Không thể đăng tin tuyển dụng');
+      }
       return response.json();
     },
     
@@ -358,7 +364,10 @@ const hrService = {
         headers: getAuthHeaders(),
         body: JSON.stringify({ toStatusId, note })
       });
-      if (!response.ok) throw new Error('Failed to update application status');
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || 'Không thể cập nhật trạng thái hồ sơ');
+      }
       return response.json();
     }
   },

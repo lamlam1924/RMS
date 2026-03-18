@@ -11,8 +11,6 @@ import {
   Clock,
   Inbox,
   XCircle,
-  UserPlus,
-  X,
 } from "lucide-react";
 import ActionBanners from "../../../components/common/ActionBanners";
 import BulkActionBar, { BulkSelectAll } from "../../../components/common/BulkActionBar";
@@ -54,12 +52,6 @@ export default function HRJobRequestList() {
   // Quick review state
   const [showQuickReview, setShowQuickReview] = useState(false);
   const [quickReviewId, setQuickReviewId] = useState(null);
-
-  // Assign staff state
-  const [assignModal, setAssignModal] = useState({ open: false, requestId: null });
-  const [staffList, setStaffList] = useState([]);
-  const [assigningStaffId, setAssigningStaffId] = useState('');
-  const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
     loadJobRequests();
@@ -315,34 +307,6 @@ export default function HRJobRequestList() {
     setShowQuickReview(true);
   };
 
-  // Assign staff handlers
-  const handleOpenAssign = async (e, id) => {
-    e.stopPropagation();
-    setAssignModal({ open: true, requestId: id });
-    setAssigningStaffId('');
-    try {
-      const list = await hrService.jobPostings.getStaffList();
-      setStaffList(list || []);
-    } catch {
-      setStaffList([]);
-    }
-  };
-
-  const handleAssignSubmit = async () => {
-    if (!assigningStaffId) return;
-    try {
-      setAssigning(true);
-      await hrService.jobRequests.assignStaff(assignModal.requestId, parseInt(assigningStaffId));
-      toast.success('Đã gán HR Staff thành công');
-      setAssignModal({ open: false, requestId: null });
-      await loadJobRequests();
-    } catch (error) {
-      toast.error(error.message || 'Gán thất bại');
-    } finally {
-      setAssigning(false);
-    }
-  };
-
   const handleQuickReviewAction = async (id, actionType, note) => {
     try {
       if (actionType === 'forward') {
@@ -491,7 +455,6 @@ export default function HRJobRequestList() {
                   isSelected={selectedIds.has(request.id)}
                   onSelect={handleSelectOne}
                   onQuickReview={handleOpenQuickReview}
-                  onAssignStaff={handleOpenAssign}
                 />
               ))}
             </div>
@@ -562,48 +525,6 @@ export default function HRJobRequestList() {
         fetchDetails={hrService.jobRequests.getById}
       />
 
-      {/* Assign Staff Modal */}
-      {assignModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setAssignModal({ open: false, requestId: null })}>
-          <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <UserPlus className="w-5 h-5 text-green-600" />
-                Gán HR Staff
-              </h2>
-              <button onClick={() => setAssignModal({ open: false, requestId: null })} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-all">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <p className="text-sm text-slate-500 mb-4">Chọn HR Staff để xử lý yêu cầu tuyển dụng này.</p>
-            <select
-              value={assigningStaffId}
-              onChange={e => setAssigningStaffId(e.target.value)}
-              className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-green-500 focus:border-green-500 mb-6"
-            >
-              <option value="">-- Chọn HR Staff --</option>
-              {staffList.map(s => (
-                <option key={s.id} value={s.id}>{s.fullName}</option>
-              ))}
-            </select>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setAssignModal({ open: false, requestId: null })}
-                className="flex-1 py-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleAssignSubmit}
-                disabled={!assigningStaffId || assigning}
-                className="flex-1 py-3 rounded-xl bg-green-600 text-white text-sm font-bold hover:bg-green-700 disabled:opacity-50 transition-all"
-              >
-                {assigning ? 'Đang gán...' : 'Xác nhận gán'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

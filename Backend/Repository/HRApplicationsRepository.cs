@@ -42,6 +42,12 @@ public class HRApplicationsRepository : IHRApplicationsRepository
         return await _context.Applications
             .Include(a => a.Cvprofile)
                 .ThenInclude(cv => cv.Candidate)
+            .Include(a => a.Cvprofile)
+                .ThenInclude(cv => cv.Cvexperiences)
+            .Include(a => a.Cvprofile)
+                .ThenInclude(cv => cv.Cveducations)
+            .Include(a => a.Cvprofile)
+                .ThenInclude(cv => cv.Cvcertificates)
             .Include(a => a.JobRequest)
                 .ThenInclude(jr => jr.Position)
                     .ThenInclude(p => p.Department)

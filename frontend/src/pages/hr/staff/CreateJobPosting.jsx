@@ -24,6 +24,8 @@ export default function CreateJobPosting() {
     deadline: ''
   });
 
+  const todayString = new Date().toISOString().split('T')[0];
+
   useEffect(() => {
     if (jobRequestId) {
       loadJobRequest();
@@ -65,6 +67,23 @@ export default function CreateJobPosting() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!formData.deadline) {
+      notify.warning('Vui lòng chọn hạn nộp hồ sơ');
+      return;
+    }
+
+    if (formData.deadline < todayString) {
+      notify.warning('Hạn nộp hồ sơ không được ở quá khứ');
+      return;
+    }
+
+    const requestDeadline = (jobRequest?.deadlineDate || '').split('T')[0];
+    if (requestDeadline && formData.deadline > requestDeadline) {
+      notify.warning('Hạn nộp của Job Posting không được sau hạn của Job Request');
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -77,7 +96,7 @@ export default function CreateJobPosting() {
         salaryMin: parseFloat(formData.salaryMin),
         salaryMax: parseFloat(formData.salaryMax),
         location: formData.location,
-        deadline: formData.deadline ? new Date(formData.deadline).toISOString() : null
+        deadline: formData.deadline ? `${formData.deadline}T00:00:00` : null
       };
 
       await hrService.jobPostings.create(payload);
@@ -180,6 +199,7 @@ export default function CreateJobPosting() {
                   name="deadline"
                   value={formData.deadline ? formData.deadline.split('T')[0] : ''}
                   onChange={handleChange}
+                  min={todayString}
                   style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6 }}
                 />
               </div>

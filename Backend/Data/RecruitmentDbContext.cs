@@ -631,9 +631,6 @@ public partial class RecruitmentDbContext : DbContext
             entity.Property(e => e.PositionTitle).HasMaxLength(200);
             entity.Property(e => e.RequiredCount).HasDefaultValue(1);
             entity.Property(e => e.RespondedAt).HasColumnType("datetime");
-            entity.Property(e => e.Status)
-                .HasMaxLength(50)
-                .HasDefaultValue("PENDING");
             entity.Property(e => e.TimeRangeEnd).HasPrecision(2);
             entity.Property(e => e.TimeRangeStart).HasPrecision(2);
             entity.Property(e => e.TitleLabel).HasMaxLength(300);
@@ -655,6 +652,11 @@ public partial class RecruitmentDbContext : DbContext
                 .HasForeignKey(d => d.RequestedByUserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_PR_RequestedBy");
+
+            entity.HasOne(d => d.Status).WithMany()
+                .HasForeignKey(d => d.StatusId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_PR_Status");
 
             entity.HasMany(d => d.Interviews).WithMany(p => p.Requests)
                 .UsingEntity<Dictionary<string, object>>(

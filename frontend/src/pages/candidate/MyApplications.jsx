@@ -5,8 +5,8 @@ const STATUS_STYLE = {
   APPLIED:       { label: "Đã ứng tuyển",   cls: "bg-blue-100 text-blue-700" },
   SCREENING:     { label: "Đang sàng lọc",  cls: "bg-yellow-100 text-yellow-700" },
   INTERVIEWING:  { label: "Phỏng vấn",       cls: "bg-purple-100 text-purple-700" },
-  PASSED:        { label: "Đạt",             cls: "bg-green-100 text-green-700" },
-  REJECTED:      { label: "Không đạt",       cls: "bg-red-100 text-red-700" },
+  PASSED:        { label: "Đạt",             cls: "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200" },
+  REJECTED:      { label: "Không đạt",       cls: "bg-rose-100 text-rose-700 ring-1 ring-rose-200" },
 };
 
 function statusInfo(statusName) {
@@ -64,6 +64,11 @@ export default function MyApplications() {
                     <p className="text-xs text-slate-400 mt-1">
                       Nộp ngày: {new Date(app.appliedAt).toLocaleDateString("vi-VN")}
                     </p>
+                  )}
+                  {app.rejectionReason && (
+                    <div className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700">
+                      <strong>Lý do từ chối:</strong> {app.rejectionReason}
+                    </div>
                   )}
                 </div>
                 <div className="flex items-center gap-3 shrink-0">

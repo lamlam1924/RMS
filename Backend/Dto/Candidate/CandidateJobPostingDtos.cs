@@ -22,6 +22,7 @@ public class PublicJobPostingListDto
 public class PublicJobPostingDetailDto
 {
     public int Id { get; set; }
+    public int JobRequestId { get; set; }
     public string Title { get; set; } = "";
     public string Description { get; set; } = "";
     public string Requirements { get; set; } = "";

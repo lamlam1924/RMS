@@ -11,6 +11,8 @@ public interface IHRJobPostingsRepository
     Task<JobPosting> GetJobPostingByIdAsync(int id);
     Task<string?> GetJdFileUrlAsync(int jobRequestId);
     Task<int> GetApplicationCountAsync(int jobRequestId);
+    Task<bool> HasJobPostingByJobRequestIdAsync(int jobRequestId, int? excludeJobPostingId = null);
+    Task<JobRequest?> GetJobRequestByIdAsync(int jobRequestId);
     Task<int> CreateJobPostingAsync(JobPosting jobPosting);
     Task<bool> UpdateJobPostingAsync(JobPosting jobPosting);
     Task<bool> PublishJobPostingAsync(int jobPostingId, int userId);

@@ -288,6 +288,7 @@ public class HRJobRequestsRepository : IHRJobRequestsRepository
             .Include(jr => jr.RequestedByNavigation)
             .Where(jr => jr.AssignedStaffId == staffId
                       && approvedStatusIds.Contains(jr.StatusId)
+                      && !jr.JobPostings.Any(jp => jp.IsDeleted == false)
                       && jr.IsDeleted == false)
             .OrderByDescending(jr => jr.CreatedAt)
             .ToListAsync();

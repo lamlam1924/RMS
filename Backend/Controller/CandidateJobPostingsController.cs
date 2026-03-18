@@ -35,7 +35,7 @@ public class CandidateJobPostingsController : ControllerBase
                     .ThenInclude(jr => jr.Position)
                         .ThenInclude(p => p.Department)
                 .Where(jp => jp.StatusId == 7 && jp.IsDeleted == false)
-                .Where(jp => jp.DeadlineDate == null || jp.DeadlineDate >= today)
+                .Where(jp => jp.DeadlineDate != null && jp.DeadlineDate >= today)
                 .OrderByDescending(jp => jp.CreatedAt)
                 .Select(jp => new PublicJobPostingListDto
                 {
@@ -67,11 +67,13 @@ public class CandidateJobPostingsController : ControllerBase
     {
         try
         {
+            var today = DateOnly.FromDateTime(DateTimeHelper.Now);
             var jobPosting = await _context.JobPostings
                 .Include(jp => jp.JobRequest)
                     .ThenInclude(jr => jr.Position)
                         .ThenInclude(p => p.Department)
                 .Where(jp => jp.Id == id && jp.StatusId == 7 && jp.IsDeleted == false)
+                .Where(jp => jp.DeadlineDate != null && jp.DeadlineDate >= today)
                 .FirstOrDefaultAsync();
 
             if (jobPosting == null)
@@ -89,6 +91,7 @@ public class CandidateJobPostingsController : ControllerBase
             var dto = new PublicJobPostingDetailDto
             {
                 Id = jobPosting.Id,
+                JobRequestId = jobPosting.JobRequestId,
                 Title = jobPosting.Title,
                 Description = jobPosting.Description ?? "",
                 Requirements = jobPosting.Requirements ?? "",

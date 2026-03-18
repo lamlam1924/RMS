@@ -17,7 +17,7 @@ public partial class ParticipantRequest
 
     public string? Message { get; set; }
 
-    public string Status { get; set; } = null!;
+    public int StatusId { get; set; }
 
     public int? ForwardedToUserId { get; set; }
 
@@ -42,6 +42,8 @@ public partial class ParticipantRequest
     public virtual User? ForwardedToUser { get; set; }
 
     public virtual User RequestedByUser { get; set; } = null!;
+
+    public virtual Status Status { get; set; } = null!;
 
     public virtual ICollection<Interview> Interviews { get; set; } = new List<Interview>();
 }
