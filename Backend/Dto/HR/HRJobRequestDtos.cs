@@ -1,0 +1,44 @@
+using RMS.Dto.Common;
+
+namespace RMS.Dto.HR;
+
+public class JobRequestListDto
+{
+    public int Id { get; set; }
+    public string PositionTitle { get; set; } = "";
+    public string DepartmentName { get; set; } = "";
+    public string RequestedByName { get; set; } = "";
+    public int Quantity { get; set; }
+    public int Priority { get; set; }
+    public decimal? Budget { get; set; }
+    public string? Reason { get; set; }
+    public DateTime? ExpectedStartDate { get; set; }
+    public string CurrentStatus { get; set; } = "";
+    public string? JdFileUrl { get; set; }
+    public int StatusId { get; set; }
+    public StatusDto? Status { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public int? AssignedStaffId { get; set; }
+    public string? AssignedStaffName { get; set; }
+}
+
+public class AssignStaffToRequestDto
+{
+    public int StaffId { get; set; }
+}
+
+public class JobRequestDetailDto : JobRequestListDto
+{
+    public List<StatusHistoryDto> StatusHistory { get; set; } = new();
+}
+
+public class HRJobRequestReviewDto
+{
+    public string? Note { get; set; }
+}
+
+public class UpdateJobRequestStatusDto
+{
+    public int ToStatusId { get; set; }
+    public string Note { get; set; } = string.Empty;
+}
