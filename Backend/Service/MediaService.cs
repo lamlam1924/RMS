@@ -34,12 +34,13 @@ public class MediaService : IMediaService
             throw new Exception("FileType or EntityType code is invalid.");
         }
 
-        // JD files are stored locally to avoid Cloudinary free-plan PDF CDN restrictions.
-        if (fileTypeCode == "JOB_DESCRIPTION")
+        // JD and CV files are stored locally to avoid Cloudinary free-plan PDF CDN restrictions.
+        if (fileTypeCode == "JOB_DESCRIPTION" || fileTypeCode == "CV_PDF")
         {
             var ext = Path.GetExtension(fileName);
             var newFileName = Guid.NewGuid().ToString("N") + ext;
-            var relDir = Path.Combine("uploads", "jd", entityId.ToString());
+            var kindFolder = fileTypeCode == "JOB_DESCRIPTION" ? "jd" : "cv";
+            var relDir = Path.Combine("uploads", kindFolder, entityTypeCode.ToLower(), entityId.ToString());
             var absDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", relDir);
             Directory.CreateDirectory(absDir);
 
@@ -47,14 +48,14 @@ public class MediaService : IMediaService
             using (var writer = new FileStream(absPath, FileMode.Create, FileAccess.Write))
                 await fileStream.CopyToAsync(writer);
 
-            var localUrl = $"/uploads/jd/{entityId}/{newFileName}";
+            var localUrl = $"/uploads/{kindFolder}/{entityTypeCode.ToLower()}/{entityId}/{newFileName}";
             var localFile = new FileUploaded
             {
                 FileTypeId  = fileType.Id,
                 EntityTypeId = entityType.Id,
                 EntityId    = entityId,
                 StorageProvider = "Local",
-                PublicId    = $"uploads/jd/{entityId}/{newFileName}",
+                PublicId    = $"uploads/{kindFolder}/{entityTypeCode.ToLower()}/{entityId}/{newFileName}",
                 FileUrl     = localUrl,
                 UploadedAt  = DateTimeHelper.Now,
                 IsDeleted   = false

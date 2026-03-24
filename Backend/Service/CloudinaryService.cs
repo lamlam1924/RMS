@@ -81,6 +81,33 @@ public class CloudinaryService : ICloudinaryService
         if (response.IsSuccessStatusCode)
             return await response.Content.ReadAsByteArrayAsync();
 
+        // 2nd attempt: signed URLs for legacy/raw files that are no longer publicly readable.
+        if (_cloudinary != null && !string.IsNullOrWhiteSpace(publicId))
+        {
+            var signedCandidates = new List<string>
+            {
+                _cloudinary.Api.UrlImgUp
+                    .ResourceType("raw")
+                    .Type("upload")
+                    .Secure(true)
+                    .Signed(true)
+                    .BuildUrl(publicId),
+                _cloudinary.Api.UrlImgUp
+                    .ResourceType("raw")
+                    .Type("authenticated")
+                    .Secure(true)
+                    .Signed(true)
+                    .BuildUrl(publicId)
+            };
+
+            foreach (var signedUrl in signedCandidates.Distinct())
+            {
+                var signedResponse = await httpClient.GetAsync(signedUrl);
+                if (signedResponse.IsSuccessStatusCode)
+                    return await signedResponse.Content.ReadAsByteArrayAsync();
+            }
+        }
+
         throw new Exception($"Không thể tải file từ Cloudinary. Status: {(int)response.StatusCode}");
     }
 }

@@ -66,6 +66,9 @@ export default function DeptManagerInterviewDetail() {
   const badge = getStatusBadge(interview.statusCode);
 
   const cp = interview.candidateProfile;
+  const cvDownloadUrl = interview?.applicationId
+    ? `/api/files/application/${interview.applicationId}/cv`
+    : (cp?.cvFileUrl ? `/api/files/cv?url=${encodeURIComponent(cp.cvFileUrl)}` : '');
   const prevRounds = interview.previousRounds || [];
 
   const sectionCard = (title, children, mb = 12) => (
@@ -92,8 +95,8 @@ export default function DeptManagerInterviewDetail() {
                 {cp.yearsOfExperience} năm kinh nghiệm
               </span>
             )}
-            {cp.cvFileUrl && (
-              <a href={cp.cvFileUrl} target="_blank" rel="noreferrer"
+            {cvDownloadUrl && (
+              <a href={cvDownloadUrl} target="_blank" rel="noreferrer"
                 style={{ fontSize: 12, color: '#2563eb', fontWeight: 600, textDecoration: 'none', padding: '3px 10px', border: '1px solid #bfdbfe', borderRadius: 20, background: '#eff6ff' }}>
                 ↓ Tải xuống CV
               </a>

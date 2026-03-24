@@ -130,22 +130,31 @@ public class CandidateCvProfileController : ControllerBase
             if (file.Length > 10 * 1024 * 1024)
                 return BadRequest(new { message = "Kích thước file quá lớn (tối đa 10MB)" });
 
-            // Upload to Cloudinary
-            using var stream = file.OpenReadStream();
-            var fileName = $"cv_{candidateId}_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
-            var result = await _cloudinaryService.UploadAsync(stream, fileName, "cv-files");
-
-            // Update profile DB
             var profile = await _context.Cvprofiles.FirstOrDefaultAsync(c => c.CandidateId == candidateId);
-            if (profile != null)
+            if (profile == null)
+                return BadRequest(new { message = "Vui lòng tạo hồ sơ CV trước khi upload file CV." });
+
+            // Store locally to avoid Cloudinary PDF access restrictions.
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+            var newFileName = $"{Guid.NewGuid():N}{ext}";
+            var relDir = Path.Combine("uploads", "cv", "cv_profile", profile.Id.ToString());
+            var absDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", relDir);
+            Directory.CreateDirectory(absDir);
+
+            var absPath = Path.Combine(absDir, newFileName);
+            using (var stream = file.OpenReadStream())
+            using (var writer = new FileStream(absPath, FileMode.Create, FileAccess.Write))
             {
-                profile.CvFileUrl = result.SecureUrl;
-                await _context.SaveChangesAsync();
+                await stream.CopyToAsync(writer);
             }
+
+            var localUrl = $"/uploads/cv/cv_profile/{profile.Id}/{newFileName}";
+            profile.CvFileUrl = localUrl;
+            await _context.SaveChangesAsync();
 
             return Ok(new CvFileUploadResponseDto
             {
-                CvFileUrl = result.SecureUrl,
+                CvFileUrl = localUrl,
                 Message = "Tải file CV lên thành công"
             });
         }

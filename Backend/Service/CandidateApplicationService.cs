@@ -138,9 +138,19 @@ public class CandidateApplicationService : ICandidateApplicationService
             result.Add(new CandidateApplicationListDto
             {
                 Id = app.Id,
+                JobRequestId = app.JobRequestId,
                 JobTitle = jobTitle,
                 PositionTitle = app.JobRequest.Position.Title,
                 DepartmentName = app.JobRequest.Position.Department.Name,
+                Location = app.JobRequest.JobPostings
+                    .OrderByDescending(jp => jp.CreatedAt)
+                    .FirstOrDefault()?.Location,
+                SalaryMin = app.JobRequest.JobPostings
+                    .OrderByDescending(jp => jp.CreatedAt)
+                    .FirstOrDefault()?.SalaryMin,
+                SalaryMax = app.JobRequest.JobPostings
+                    .OrderByDescending(jp => jp.CreatedAt)
+                    .FirstOrDefault()?.SalaryMax,
                 StatusId = app.StatusId,
                 StatusName = app.Status.Name,
                 AppliedAt = app.AppliedAt,
@@ -173,6 +183,7 @@ public class CandidateApplicationService : ICandidateApplicationService
         return new CandidateApplicationDetailDto
         {
             Id = app.Id,
+            JobRequestId = app.JobRequestId,
             JobTitle = jobPosting?.Title ?? app.JobRequest.Position.Title,
             PositionTitle = app.JobRequest.Position.Title,
             DepartmentName = app.JobRequest.Position.Department.Name,

@@ -28,6 +28,15 @@ public class FileProxyController : ControllerBase
     [HttpGet("application/{applicationId:int}/cv")]
     public async Task<IActionResult> GetApplicationCv(int applicationId)
     {
+        var application = await _context.Applications
+            .Include(a => a.Cvprofile)
+            .FirstOrDefaultAsync(a => a.Id == applicationId && a.IsDeleted == false);
+
+        if (application == null)
+            return NotFound(new { message = "Không tìm thấy hồ sơ ứng tuyển." });
+
+        var app = application;
+
         // 1. Tìm file upload riêng cho application này
         var file = await _context.FileUploadeds
             .Where(f =>
@@ -43,34 +52,69 @@ public class FileProxyController : ControllerBase
         // 2. Fallback: lấy URL từ CV profile nếu không có file upload riêng
         if (string.IsNullOrEmpty(fileUrl))
         {
-            var application = await _context.Applications
-                .Include(a => a.Cvprofile)
-                .FirstOrDefaultAsync(a => a.Id == applicationId && a.IsDeleted == false);
-
             fileUrl = application?.Cvprofile?.CvFileUrl;
         }
 
         if (string.IsNullOrEmpty(fileUrl))
             return NotFound(new { message = "Không tìm thấy file CV." });
 
-        // 3. Fetch từ Cloudinary public URL, trả về với content-type pdf
-        //    → ASP.NET Core đặt Content-Disposition: inline tự động khi không có fileDownloadName
-        //    → Browser mở PDF viewer inline thay vì download
+        // 3. Ưu tiên file local nếu có
+        if (fileUrl.StartsWith("/uploads/"))
+        {
+            var absPath = System.IO.Path.Combine(
+                Directory.GetCurrentDirectory(), "wwwroot",
+                fileUrl.TrimStart('/').Replace('/', System.IO.Path.DirectorySeparatorChar));
+
+            if (!System.IO.File.Exists(absPath))
+                return NotFound(new { message = "File CV không tồn tại trên server." });
+
+            var localBytes = await System.IO.File.ReadAllBytesAsync(absPath);
+            return File(localBytes, "application/pdf");
+        }
+
+        // 4. Legacy Cloudinary URL
         try
         {
-            var httpClient = _httpClientFactory.CreateClient();
-            var response = await httpClient.GetAsync(fileUrl);
-
-            if (!response.IsSuccessStatusCode)
-                return StatusCode((int)response.StatusCode,
-                    new { message = $"Không thể tải file từ storage. Status: {(int)response.StatusCode}" });
-
-            var bytes = await response.Content.ReadAsByteArrayAsync();
+            var bytes = await _cloudinaryService.FetchFileAsync(fileUrl, file?.PublicId ?? string.Empty);
             return File(bytes, "application/pdf");
         }
-        catch (Exception ex)
+        catch
         {
-            return StatusCode(500, new { message = "Lỗi khi tải file.", error = ex.Message });
+            // 5. Last fallback: CV hiện tại trong profile (nếu khác URL đã thử).
+            var profileUrl = app.Cvprofile?.CvFileUrl;
+            if (!string.IsNullOrWhiteSpace(profileUrl) &&
+                !string.Equals(profileUrl, fileUrl, StringComparison.OrdinalIgnoreCase))
+            {
+                if (profileUrl.StartsWith("/uploads/"))
+                {
+                    var absPath = System.IO.Path.Combine(
+                        Directory.GetCurrentDirectory(), "wwwroot",
+                        profileUrl.TrimStart('/').Replace('/', System.IO.Path.DirectorySeparatorChar));
+
+                    if (System.IO.File.Exists(absPath))
+                    {
+                        var localBytes = await System.IO.File.ReadAllBytesAsync(absPath);
+                        return File(localBytes, "application/pdf");
+                    }
+                }
+
+                try
+                {
+                    var profileFile = await _context.FileUploadeds
+                        .Where(f => f.FileUrl == profileUrl && f.IsDeleted != true)
+                        .OrderByDescending(f => f.UploadedAt)
+                        .FirstOrDefaultAsync();
+
+                    var bytes = await _cloudinaryService.FetchFileAsync(profileUrl, profileFile?.PublicId ?? string.Empty);
+                    return File(bytes, "application/pdf");
+                }
+                catch
+                {
+                    // ignored - return message below
+                }
+            }
+
+            return StatusCode(410, new { message = "CV cũ không còn khả dụng từ storage. Vui lòng tải lại CV để tiếp tục xem." });
         }
     }
 
@@ -84,21 +128,32 @@ public class FileProxyController : ControllerBase
         if (string.IsNullOrEmpty(url))
             return BadRequest(new { message = "URL không hợp lệ." });
 
+        if (url.StartsWith("/uploads/"))
+        {
+            var absPath = System.IO.Path.Combine(
+                Directory.GetCurrentDirectory(), "wwwroot",
+                url.TrimStart('/').Replace('/', System.IO.Path.DirectorySeparatorChar));
+
+            if (!System.IO.File.Exists(absPath))
+                return NotFound(new { message = "File không tồn tại trên server." });
+
+            var localBytes = await System.IO.File.ReadAllBytesAsync(absPath);
+            return File(localBytes, "application/pdf");
+        }
+
         try
         {
-            var httpClient = _httpClientFactory.CreateClient();
-            var response = await httpClient.GetAsync(url);
+            var file = await _context.FileUploadeds
+                .Where(f => f.FileUrl == url && f.IsDeleted != true)
+                .OrderByDescending(f => f.UploadedAt)
+                .FirstOrDefaultAsync();
 
-            if (!response.IsSuccessStatusCode)
-                return StatusCode((int)response.StatusCode,
-                    new { message = $"Không thể tải file từ storage. Status: {(int)response.StatusCode}" });
-
-            var bytes = await response.Content.ReadAsByteArrayAsync();
+            var bytes = await _cloudinaryService.FetchFileAsync(url, file?.PublicId ?? string.Empty);
             return File(bytes, "application/pdf");
         }
-        catch (Exception ex)
+        catch
         {
-            return StatusCode(500, new { message = "Lỗi khi tải file.", error = ex.Message });
+            return StatusCode(410, new { message = "CV này không còn khả dụng từ storage. Vui lòng tải lại CV mới." });
         }
     }
 

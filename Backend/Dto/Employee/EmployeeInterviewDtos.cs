@@ -37,6 +37,7 @@ public class EmployeeInterviewListDto
 public class EmployeeInterviewDetailDto
 {
     public int Id { get; set; }
+    public int ApplicationId { get; set; }
     public int RoundNo { get; set; }
     public DateTime StartTime { get; set; }
     public DateTime EndTime { get; set; }

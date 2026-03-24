@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using RMS.Common;
 using RMS.Data;
 using RMS.Dto.Candidate;
+using System.Security.Claims;
 
 namespace RMS.Controller;
 
@@ -92,6 +93,7 @@ public class CandidateJobPostingsController : ControllerBase
             {
                 Id = jobPosting.Id,
                 JobRequestId = jobPosting.JobRequestId,
+                IsApplied = false,
                 Title = jobPosting.Title,
                 Description = jobPosting.Description ?? "",
                 Requirements = jobPosting.Requirements ?? "",
@@ -105,6 +107,16 @@ public class CandidateJobPostingsController : ControllerBase
                 CreatedAt = jobPosting.CreatedAt ?? DateTimeHelper.Now,
                 JdFileUrl = jdFileUrl
             };
+
+            var candidateIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (int.TryParse(candidateIdClaim, out var candidateId) && candidateId > 0)
+            {
+                dto.IsApplied = await _context.Applications
+                    .AnyAsync(a =>
+                        a.Cvprofile.CandidateId == candidateId &&
+                        a.JobRequestId == jobPosting.JobRequestId &&
+                        a.IsDeleted == false);
+            }
 
             return Ok(dto);
         }

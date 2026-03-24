@@ -11,7 +11,7 @@ export const candidateService = {
   },
 
   async getJobDetail(id) {
-    const res = await fetch(`${API_BASE_URL}/candidate/job-postings/${id}`);
+    const res = await authFetch(`${API_BASE_URL}/candidate/job-postings/${id}`);
     if (!res.ok) {
       throw new Error("Job posting not found");
     }
