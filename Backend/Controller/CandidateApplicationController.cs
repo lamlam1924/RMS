@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RMS.Dto.Candidate;
+using RMS.Dto.Common;
 using RMS.Service.Interface;
 
 namespace RMS.Controller;
@@ -79,5 +80,22 @@ public class CandidateApplicationController : ControllerBase
             return NotFound(new { message = "Không tìm thấy đơn ứng tuyển." });
 
         return Ok(application);
+    }
+
+    /// <summary>
+    /// Lấy CV snapshot tại thời điểm nộp đơn của candidate
+    /// </summary>
+    [HttpGet("{id:int}/cv-snapshot")]
+    public async Task<ActionResult<ApplicationCvSnapshotDto>> GetMyApplicationCvSnapshot(int id)
+    {
+        var candidateId = GetCandidateId();
+        if (candidateId == null)
+            return Unauthorized(new { message = "Vui lòng đăng nhập với tài khoản ứng viên." });
+
+        var snapshot = await _service.GetMyApplicationCvSnapshotAsync(id, candidateId.Value);
+        if (snapshot == null)
+            return NotFound(new { message = "Không tìm thấy CV snapshot của đơn ứng tuyển." });
+
+        return Ok(snapshot);
     }
 }

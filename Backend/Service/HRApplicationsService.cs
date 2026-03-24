@@ -93,6 +93,66 @@ public class HRApplicationsService : IHRApplicationsService
         return dto;
     }
 
+    public async Task<ApplicationCvSnapshotDto?> GetApplicationCvSnapshotAsync(int id)
+    {
+        var entity = await _repository.GetApplicationByIdAsync(id);
+        if (entity == null) return null;
+
+        var fileUrl = await _repository.GetCvFileUrlAsync(id);
+
+        return new ApplicationCvSnapshotDto
+        {
+            ApplicationId = entity.Id,
+            CvprofileId = entity.CvprofileId,
+            AppliedAt = entity.AppliedAt,
+            CvFileUrl = fileUrl,
+            FullName = entity.Cvprofile.FullName,
+            Email = entity.Cvprofile.Email,
+            Phone = entity.Cvprofile.Phone,
+            Address = entity.Cvprofile.Address,
+            ProfessionalTitle = entity.Cvprofile.ProfessionalTitle,
+            Summary = entity.Cvprofile.Summary,
+            SkillsText = entity.Cvprofile.SkillsText,
+            ReferencesText = entity.Cvprofile.ReferencesText,
+            YearsOfExperience = entity.Cvprofile.YearsOfExperience,
+            Experiences = entity.Cvprofile.Cvexperiences
+                .OrderByDescending(e => e.StartDate)
+                .Select(e => new ApplicationCvSnapshotExperienceDto
+                {
+                    Id = e.Id,
+                    CompanyName = e.CompanyName,
+                    JobTitle = e.JobTitle,
+                    StartDate = e.StartDate,
+                    EndDate = e.EndDate,
+                    Description = e.Description
+                })
+                .ToList(),
+            Educations = entity.Cvprofile.Cveducations
+                .OrderByDescending(e => e.EndYear ?? e.StartYear ?? 0)
+                .Select(e => new ApplicationCvSnapshotEducationDto
+                {
+                    Id = e.Id,
+                    SchoolName = e.SchoolName,
+                    Degree = e.Degree,
+                    Major = e.Major,
+                    StartYear = e.StartYear,
+                    EndYear = e.EndYear,
+                    Gpa = e.Gpa
+                })
+                .ToList(),
+            Certificates = entity.Cvprofile.Cvcertificates
+                .OrderByDescending(c => c.IssuedYear ?? 0)
+                .Select(c => new ApplicationCvSnapshotCertificateDto
+                {
+                    Id = c.Id,
+                    CertificateName = c.CertificateName,
+                    Issuer = c.Issuer,
+                    IssuedYear = c.IssuedYear
+                })
+                .ToList()
+        };
+    }
+
     public async Task<ActionResponseDto> UpdateApplicationStatusAsync(UpdateApplicationStatusDto dto, int userId)
     {
         if (dto.ToStatusId == 11)

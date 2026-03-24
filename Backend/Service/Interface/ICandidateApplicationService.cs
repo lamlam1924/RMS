@@ -1,4 +1,5 @@
 using RMS.Dto.Candidate;
+using RMS.Dto.Common;
 
 namespace RMS.Service.Interface;
 
@@ -19,4 +20,14 @@ public interface ICandidateApplicationService
     /// Lấy chi tiết một đơn ứng tuyển của candidate
     /// </summary>
     Task<CandidateApplicationDetailDto?> GetMyApplicationByIdAsync(int id, int candidateId);
+
+    /// <summary>
+    /// Lấy CV snapshot theo application của candidate
+    /// </summary>
+    Task<ApplicationCvSnapshotDto?> GetMyApplicationCvSnapshotAsync(int id, int candidateId);
+
+    /// <summary>
+    /// Backfill CV snapshot cho các application cũ chưa snapshot
+    /// </summary>
+    Task<ApplicationCvSnapshotBackfillResultDto> BackfillApplicationCvSnapshotsAsync();
 }

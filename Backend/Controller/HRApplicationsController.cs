@@ -60,6 +60,27 @@ public class HRApplicationsController : ControllerBase
     }
 
     /// <summary>
+    /// Get CV snapshot by application ID
+    /// </summary>
+    [HttpGet("{id}/cv-snapshot")]
+    public async Task<ActionResult<ApplicationCvSnapshotDto>> GetApplicationCvSnapshot(int id)
+    {
+        try
+        {
+            var snapshot = await _hrApplicationsService.GetApplicationCvSnapshotAsync(id);
+            if (snapshot == null)
+            {
+                return NotFound(new { message = "Application CV snapshot not found" });
+            }
+            return Ok(snapshot);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Không thể tải CV snapshot của hồ sơ ứng tuyển", error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Update application status
     /// </summary>
     [HttpPut("{id}/status")]

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RMS.Common;
 using RMS.Data;
 using RMS.Dto.Candidate;
 using RMS.Entity;
@@ -17,6 +18,8 @@ namespace RMS.Controller;
 [Authorize(Roles = "CANDIDATE")]
 public class CandidateCvProfileController : ControllerBase
 {
+    private const string ApplicationSnapshotSource = "APPLICATION_SNAPSHOT";
+
     private readonly RecruitmentDbContext _context;
     private readonly ILogger<CandidateCvProfileController> _logger;
     private readonly ICloudinaryService _cloudinaryService;
@@ -52,7 +55,7 @@ public class CandidateCvProfileController : ControllerBase
             .Include(c => c.Cvexperiences)
             .Include(c => c.Cveducations)
             .Include(c => c.Cvcertificates)
-            .Where(c => c.CandidateId == candidateId)
+            .Where(c => c.CandidateId == candidateId && c.Source != ApplicationSnapshotSource)
             .OrderByDescending(c => c.CreatedAt)
             .FirstOrDefaultAsync();
 
@@ -130,9 +133,16 @@ public class CandidateCvProfileController : ControllerBase
             if (file.Length > 10 * 1024 * 1024)
                 return BadRequest(new { message = "Kích thước file quá lớn (tối đa 10MB)" });
 
-            var profile = await _context.Cvprofiles.FirstOrDefaultAsync(c => c.CandidateId == candidateId);
+            var profile = await _context.Cvprofiles
+                .Where(c => c.CandidateId == candidateId && c.Source != ApplicationSnapshotSource)
+                .OrderByDescending(c => c.CreatedAt)
+                .FirstOrDefaultAsync();
             if (profile == null)
                 return BadRequest(new { message = "Vui lòng tạo hồ sơ CV trước khi upload file CV." });
+
+            // Nếu profile hiện tại đang gắn vào bất kỳ đơn ứng tuyển nào,
+            // snapshot profile đó sang Application trước khi candidate sửa hồ sơ cá nhân.
+            await EnsureActiveApplicationsUseSnapshotAsync(profile.Id);
 
             // Store locally to avoid Cloudinary PDF access restrictions.
             var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
@@ -280,6 +290,13 @@ public class CandidateCvProfileController : ControllerBase
         if (profile == null)
             return NotFound(new { message = "CV profile not found" });
 
+        if (profile.Source == ApplicationSnapshotSource)
+            return BadRequest(new { message = "Không thể chỉnh sửa CV snapshot của đơn ứng tuyển." });
+
+        // Nếu profile hiện tại đang gắn vào bất kỳ đơn ứng tuyển nào,
+        // snapshot profile đó sang Application trước khi candidate sửa hồ sơ cá nhân.
+        await EnsureActiveApplicationsUseSnapshotAsync(profile.Id);
+
         profile.FullName = request.FullName.Trim();
         profile.Email = request.Email?.Trim();
         profile.Phone = request.Phone?.Trim();
@@ -394,6 +411,96 @@ public class CandidateCvProfileController : ControllerBase
         await _context.SaveChangesAsync();
 
         return Ok(await MapToDto(profile.Id));
+    }
+
+    private async Task EnsureActiveApplicationsUseSnapshotAsync(int profileId)
+    {
+        var activeApplications = await _context.Applications
+            .Where(a => a.CvprofileId == profileId
+                && a.IsDeleted == false)
+            .ToListAsync();
+
+        if (activeApplications.Count == 0)
+            return;
+
+        var sourceProfile = await _context.Cvprofiles
+            .Include(c => c.Cvexperiences)
+            .Include(c => c.Cveducations)
+            .Include(c => c.Cvcertificates)
+            .FirstAsync(c => c.Id == profileId);
+
+        await using var tx = await _context.Database.BeginTransactionAsync();
+
+        var snapshot = new Cvprofile
+        {
+            CandidateId = sourceProfile.CandidateId,
+            FullName = sourceProfile.FullName,
+            Email = sourceProfile.Email,
+            Phone = sourceProfile.Phone,
+            Summary = sourceProfile.Summary,
+            YearsOfExperience = sourceProfile.YearsOfExperience,
+            Source = ApplicationSnapshotSource,
+            CvFileUrl = sourceProfile.CvFileUrl,
+            Address = sourceProfile.Address,
+            ProfessionalTitle = sourceProfile.ProfessionalTitle,
+            SkillsText = sourceProfile.SkillsText,
+            ReferencesText = sourceProfile.ReferencesText,
+            CreatedAt = DateTimeHelper.Now
+        };
+
+        _context.Cvprofiles.Add(snapshot);
+        await _context.SaveChangesAsync();
+
+        if (sourceProfile.Cvexperiences.Count > 0)
+        {
+            _context.Cvexperiences.AddRange(sourceProfile.Cvexperiences.Select(e => new Cvexperience
+            {
+                CvprofileId = snapshot.Id,
+                CompanyName = e.CompanyName,
+                JobTitle = e.JobTitle,
+                StartDate = e.StartDate,
+                EndDate = e.EndDate,
+                Description = e.Description,
+                Location = e.Location
+            }));
+        }
+
+        if (sourceProfile.Cveducations.Count > 0)
+        {
+            _context.Cveducations.AddRange(sourceProfile.Cveducations.Select(e => new Cveducation
+            {
+                CvprofileId = snapshot.Id,
+                SchoolName = e.SchoolName,
+                Degree = e.Degree,
+                Major = e.Major,
+                StartYear = e.StartYear,
+                EndYear = e.EndYear,
+                Gpa = e.Gpa,
+                Location = e.Location
+            }));
+        }
+
+        if (sourceProfile.Cvcertificates.Count > 0)
+        {
+            _context.Cvcertificates.AddRange(sourceProfile.Cvcertificates.Select(c => new Cvcertificate
+            {
+                CvprofileId = snapshot.Id,
+                CertificateName = c.CertificateName,
+                Issuer = c.Issuer,
+                IssuedYear = c.IssuedYear
+            }));
+        }
+
+        await _context.SaveChangesAsync();
+
+        foreach (var app in activeApplications)
+        {
+            app.CvprofileId = snapshot.Id;
+            app.UpdatedAt = DateTimeHelper.Now;
+        }
+
+        await _context.SaveChangesAsync();
+        await tx.CommitAsync();
     }
 
     private async Task<CandidateCvProfileDto> MapToDto(int profileId)

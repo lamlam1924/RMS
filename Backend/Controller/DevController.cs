@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using RMS.Common;
+using RMS.Dto.Common;
+using RMS.Service.Interface;
 
 namespace RMS.Controller;
 
@@ -11,6 +13,15 @@ namespace RMS.Controller;
 [Route("api/[controller]")]
 public class DevController : ControllerBase
 {
+    private readonly ICandidateApplicationService _candidateApplicationService;
+    private readonly IWebHostEnvironment _environment;
+
+    public DevController(ICandidateApplicationService candidateApplicationService, IWebHostEnvironment environment)
+    {
+        _candidateApplicationService = candidateApplicationService;
+        _environment = environment;
+    }
+
     /// <summary>
     /// Hash a password - for testing only
     /// </summary>
@@ -29,6 +40,19 @@ public class DevController : ControllerBase
     {
         var isValid = PasswordHelper.VerifyPassword(request.Password, request.Hash);
         return Ok(new { isValid });
+    }
+
+    /// <summary>
+    /// Backfill CV snapshots for historical applications (development only)
+    /// </summary>
+    [HttpPost("backfill-application-cv-snapshots")]
+    public async Task<ActionResult<ApplicationCvSnapshotBackfillResultDto>> BackfillApplicationCvSnapshots()
+    {
+        if (!_environment.IsDevelopment())
+            return NotFound();
+
+        var result = await _candidateApplicationService.BackfillApplicationCvSnapshotsAsync();
+        return Ok(result);
     }
 }
 
