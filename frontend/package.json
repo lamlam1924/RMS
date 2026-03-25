@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:e2e": "PW_SLOWMO=1200 playwright test tests/e2e/auth.spec.js tests/e2e/candidate.spec.js --project=chromium --workers=1 --reporter=line --headed",
+    "test:e2e:auth-candidate": "playwright test tests/e2e/auth.spec.js tests/e2e/candidate.spec.js --project=chromium --workers=1 --reporter=line",
+    "test:e2e:ui": "PW_SLOWMO=1500 playwright test tests/e2e/auth.spec.js tests/e2e/candidate.spec.js --project=chromium --workers=1 --ui"
   },
   "dependencies": {
     "jspdf": "^4.0.0",
@@ -20,6 +23,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.24",
     "postcss": "^8.5.6",
