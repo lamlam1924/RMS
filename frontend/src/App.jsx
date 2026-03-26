@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { Toaster } from "sonner";
 import { DarkModeProvider } from "./contexts/DarkModeContext";
 import { ROLES } from "./constants/roles";
@@ -33,8 +33,6 @@ import WorkflowManagement from "./pages/admin/WorkflowManagement";
 import DirectorDashboard from "./pages/director/DirectorDashboard";
 import DirectorJobRequestList from "./pages/director/DirectorJobRequestList";
 import OfferApprovals from "./pages/director/OfferApprovals";
-import DirectorInterviewList from "./pages/director/DirectorInterviewList";
-import DirectorInterviewDetail from "./pages/director/DirectorInterviewDetail";
 import DirectorNominationList from "./pages/director/DirectorNominationList";
 
 // Department Manager Pages
@@ -43,8 +41,6 @@ import DeptManagerJobRequestList from "./pages/department-manager/DeptManagerJob
 import CreateJobRequest from "./pages/department-manager/DeptManagerJobRequestCreate";
 import DeptManagerJobRequestDetail from "./pages/department-manager/DeptManagerJobRequestDetail";
 import DeptManagerJobRequestEdit from "./pages/department-manager/DeptManagerJobRequestEdit";
-import DeptManagerInterviewList from "./pages/department-manager/DeptManagerInterviewList";
-import DeptManagerInterviewDetail from "./pages/department-manager/DeptManagerInterviewDetail";
 import DeptManagerNominationList from "./pages/department-manager/DeptManagerNominationList";
 
 // HR Manager Pages
@@ -75,8 +71,6 @@ import CreateJobPosting from "./pages/hr/staff/CreateJobPosting";
 import EditJobPosting from "./pages/hr/staff/EditJobPosting";
 
 // Employee Pages
-import EmployeeInterviewList from "./pages/employee/EmployeeInterviewList";
-import EmployeeInterviewDetail from "./pages/employee/EmployeeInterviewDetail";
 import EmployeeInterviewConfirm from "./pages/employee/EmployeeInterviewConfirm";
 import InterviewerInterviewList from "./pages/interviewer/InterviewerInterviewList";
 import InterviewerInterviewDetail from "./pages/interviewer/InterviewerInterviewDetail";
@@ -103,6 +97,16 @@ const STAFF_ROLES = [
   ROLES.DEPARTMENT_MANAGER,
   ROLES.EMPLOYEE,
 ];
+
+function LegacyInterviewIdRedirect({ baseTo }) {
+  const { id } = useParams();
+  return <Navigate to={`${baseTo}/${id}`} replace />;
+}
+
+function LegacyInterviewActionRedirect({ action }) {
+  const { id } = useParams();
+  return <Navigate to={`/staff/interviews/${id}/${action}`} replace />;
+}
 
 const INTERVIEWER_ROLES = [
   ROLES.DIRECTOR,
@@ -140,7 +144,7 @@ function RoleBasedRedirect() {
     return <Navigate to="/staff/dept-manager" replace />;
   }
   if (user.roles.includes(ROLES.EMPLOYEE)) {
-    return <Navigate to="/staff/employee/interviews" replace />;
+    return <Navigate to="/staff/interviews" replace />;
   }
   if (user.roles.includes(ROLES.CANDIDATE)) {
     return <Navigate to="/app/jobs" replace />;
@@ -404,7 +408,7 @@ export default function App() {
             path="director/my-interviews"
             element={
               <PrivateRoute roles={[ROLES.DIRECTOR]}>
-                <DirectorInterviewList />
+                <Navigate to="/staff/interviews" replace />
               </PrivateRoute>
             }
           />
@@ -412,7 +416,7 @@ export default function App() {
             path="director/my-interviews/:id"
             element={
               <PrivateRoute roles={[ROLES.DIRECTOR]}>
-                <DirectorInterviewDetail />
+                <LegacyInterviewIdRedirect baseTo="/staff/interviews" />
               </PrivateRoute>
             }
           />
@@ -470,7 +474,7 @@ export default function App() {
             path="dept-manager/interviews"
             element={
               <PrivateRoute roles={[ROLES.DEPARTMENT_MANAGER]}>
-                <DeptManagerInterviewList />
+                <Navigate to="/staff/interviews" replace />
               </PrivateRoute>
             }
           />
@@ -478,7 +482,7 @@ export default function App() {
             path="dept-manager/interviews/:id"
             element={
               <PrivateRoute roles={[ROLES.DEPARTMENT_MANAGER]}>
-                <DeptManagerInterviewDetail />
+                <LegacyInterviewIdRedirect baseTo="/staff/interviews" />
               </PrivateRoute>
             }
           />
@@ -496,7 +500,7 @@ export default function App() {
             path="employee/interviews"
             element={
               <PrivateRoute roles={[ROLES.EMPLOYEE]}>
-                <EmployeeInterviewList />
+                <Navigate to="/staff/interviews" replace />
               </PrivateRoute>
             }
           />
@@ -504,7 +508,7 @@ export default function App() {
             path="employee/interviews/:id/confirm"
             element={
               <PrivateRoute roles={[ROLES.EMPLOYEE, ROLES.DEPARTMENT_MANAGER, ROLES.DIRECTOR, ROLES.HR_MANAGER, ROLES.HR_STAFF]}>
-                <EmployeeInterviewConfirm />
+                <LegacyInterviewActionRedirect action="confirm" />
               </PrivateRoute>
             }
           />
@@ -512,7 +516,7 @@ export default function App() {
             path="employee/interviews/:id/decline"
             element={
               <PrivateRoute roles={[ROLES.EMPLOYEE, ROLES.DEPARTMENT_MANAGER, ROLES.DIRECTOR, ROLES.HR_MANAGER, ROLES.HR_STAFF]}>
-                <EmployeeInterviewConfirm />
+                <LegacyInterviewActionRedirect action="decline" />
               </PrivateRoute>
             }
           />
@@ -520,7 +524,25 @@ export default function App() {
             path="employee/interviews/:id"
             element={
               <PrivateRoute roles={[ROLES.EMPLOYEE]}>
-                <EmployeeInterviewDetail />
+                <LegacyInterviewIdRedirect baseTo="/staff/interviews" />
+              </PrivateRoute>
+            }
+          />
+
+          {/* Canonical interviewer confirm/decline deep links */}
+          <Route
+            path="interviews/:id/confirm"
+            element={
+              <PrivateRoute roles={INTERVIEWER_ROLES}>
+                <EmployeeInterviewConfirm />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="interviews/:id/decline"
+            element={
+              <PrivateRoute roles={INTERVIEWER_ROLES}>
+                <EmployeeInterviewConfirm />
               </PrivateRoute>
             }
           />

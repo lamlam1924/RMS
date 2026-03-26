@@ -19,4 +19,9 @@ public class DeptManagerInterviewListDto
     public bool HasMyFeedback { get; set; }
     public DateTime? MyConfirmedAt { get; set; }
     public DateTime? MyDeclinedAt { get; set; }
+    /// <summary>True when DM sees this row because they nominated someone but is not a participant (view-only in detail).</summary>
+    public bool IsReadOnlyNominatorAccess { get; set; }
+
+    /// <summary>Yêu cầu đề cử HR (batch): gom các buổi cùng block trên lịch.</summary>
+    public int? ParticipantRequestId { get; set; }
 }

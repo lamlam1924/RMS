@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft, Loader2, HelpCircle } from 'lucide-react';
 import { candidateService } from '../../services/candidateService';
 import notify from '../../utils/notification';
 
@@ -30,69 +31,67 @@ export default function CandidateInterviewConfirm() {
   };
 
   return (
-    <div style={{ padding: 24, minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ backgroundColor: 'white', borderRadius: 12, padding: 32, maxWidth: 400, width: '100%', textAlign: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-slate-50 to-slate-100 px-4 py-12">
+      <div className="w-full max-w-md rounded-2xl border border-slate-200/80 bg-white p-8 shadow-lg shadow-slate-200/50">
         {!done ? (
           <>
-            <h1 style={{ fontSize: 20, fontWeight: 700, color: '#111827', marginBottom: 12 }}>
+            <div
+              className={`mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl ${
+                isDecline ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'
+              }`}
+            >
+              <HelpCircle className="h-7 w-7" aria-hidden />
+            </div>
+            <h1 className="text-center text-xl font-bold tracking-tight text-slate-900">
               {isDecline ? 'Từ chối tham gia phỏng vấn?' : 'Xác nhận tham gia phỏng vấn?'}
             </h1>
-            <p style={{ fontSize: 14, color: '#6b7280', marginBottom: 24 }}>
+            <p className="mt-3 text-center text-sm leading-relaxed text-slate-600">
               {isDecline
-                ? 'Bạn chắc chắn muốn từ chối lịch phỏng vấn này? Bạn có thể ghi chú lý do hoặc đề xuất khung giờ khác để HR xem xét đổi lịch.'
-                : 'Bấm bên dưới để xác nhận bạn sẽ tham gia buổi phỏng vấn.'}
+                ? 'Bạn chắc chắn muốn từ chối? Có thể ghi chú lý do hoặc đề xuất khung giờ khác để HR xem xét đổi lịch.'
+                : 'Bấm nút bên dưới để xác nhận bạn sẽ tham gia buổi phỏng vấn.'}
             </p>
             {isDecline && (
-              <div style={{ marginBottom: 20, textAlign: 'left' }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
+              <div className="mt-6">
+                <label htmlFor="decline-note" className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Ghi chú cho HR (tùy chọn)
                 </label>
                 <textarea
+                  id="decline-note"
                   rows={3}
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   placeholder="Ví dụ: Em bận hôm đó, có thể đổi sang buổi chiều hôm sau được không?"
-                  style={{
-                    width: '100%',
-                    fontSize: 13,
-                    padding: 10,
-                    borderRadius: 8,
-                    border: '1px solid #d1d5db',
-                    resize: 'vertical',
-                    boxSizing: 'border-box',
-                  }}
+                  className="w-full resize-y rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 />
               </div>
             )}
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
               <button
                 type="button"
                 onClick={() => navigate('/app/interviews', { replace: true })}
-                style={{ padding: '10px 20px', border: '1px solid #d1d5db', borderRadius: 8, backgroundColor: 'white', cursor: 'pointer', fontWeight: 600 }}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
               >
+                <ArrowLeft className="h-4 w-4" />
                 Quay lại
               </button>
               <button
                 type="button"
                 onClick={handleSubmit}
                 disabled={submitting}
-                style={{
-                  padding: '10px 20px',
-                  borderRadius: 8,
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                  backgroundColor: isDecline ? '#dc2626' : '#16a34a',
-                  color: 'white',
-                  opacity: submitting ? 0.7 : 1
-                }}
+                className={`inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none ${
+                  isDecline ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'
+                }`}
               >
-                {submitting ? 'Đang xử lý...' : isDecline ? 'Từ chối tham gia' : 'Xác nhận tham gia'}
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {isDecline ? 'Xác nhận từ chối' : 'Xác nhận tham gia'}
               </button>
             </div>
           </>
         ) : (
-          <p style={{ fontSize: 16, color: '#16a34a', fontWeight: 600 }}>Đang chuyển hướng...</p>
+          <div className="py-6 text-center text-slate-600">
+            <Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-600" />
+            <p className="mt-3 text-sm font-medium">Đang chuyển trang...</p>
+          </div>
         )}
       </div>
     </div>

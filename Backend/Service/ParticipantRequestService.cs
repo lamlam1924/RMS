@@ -1,5 +1,6 @@
 using RMS.Common;
 using RMS.Dto.Common;
+using RMS.Dto.DepartmentManager;
 using RMS.Dto.HR;
 using RMS.Repository.Interface;
 using RMS.Service.Interface;
@@ -59,10 +60,17 @@ public class ParticipantRequestService : IParticipantRequestService
         if (!userIds.Any())
             return new ActionResponseDto { Success = false, Message = "Vui lòng chọn ít nhất một người tham gia" };
 
-        var ok = await _repo.NominateAsync(reqId, userIds, nominatorUserId);
-        return ok
-            ? new ActionResponseDto { Success = true, Message = "Đã đề cử người phỏng vấn thành công" }
-            : new ActionResponseDto { Success = false, Message = "Không tìm thấy yêu cầu hoặc không có quyền" };
+        try
+        {
+            var ok = await _repo.NominateAsync(reqId, userIds, nominatorUserId);
+            return ok
+                ? new ActionResponseDto { Success = true, Message = "Đã đề cử người phỏng vấn thành công" }
+                : new ActionResponseDto { Success = false, Message = "Không tìm thấy yêu cầu hoặc không có quyền" };
+        }
+        catch (ArgumentException ex)
+        {
+            return new ActionResponseDto { Success = false, Message = ex.Message };
+        }
     }
 
     public async Task<ActionResponseDto> ForwardToDirectorAsync(int reqId, int directorId, string? message, int fromUserId)
@@ -89,4 +97,10 @@ public class ParticipantRequestService : IParticipantRequestService
 
     public Task<List<SimpleUserDto>> GetAllDirectorsAsync()
         => _repo.GetAllDirectorsAsync();
+
+    public Task<List<DeptManagerNominationHistoryItemDto>> GetMyNominationHistoryAsync(int userId)
+        => _repo.GetNominationHistoryAsync(userId);
+        
+    public Task<List<SimpleUserDto>> GetDeptMembersAvailabilityAsync(int reqId, int userId)
+        => _repo.GetDeptMembersAvailabilityAsync(reqId, userId);
 }

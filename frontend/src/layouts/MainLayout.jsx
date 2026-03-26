@@ -100,11 +100,11 @@ const MENU_CONFIG = [
         label: "Phân công HR Staff",
         to: "/staff/hr-manager/staff-assignments",
       },
-      {
-        key: "hrManagerMyInterviews",
-        label: "Phỏng vấn của tôi",
-        to: "/staff/interviews",
-      },
+      // {
+      //   key: "hrManagerMyInterviews",
+      //   label: "Phỏng vấn của tôi",
+      //   to: "/staff/interviews",
+      // },
       {
         key: "hrManagerJobPostings",
         label: "Tin tuyển dụng",
@@ -134,11 +134,11 @@ const MENU_CONFIG = [
         label: "Yêu cầu Tuyển dụng",
         to: "/staff/hr-staff/job-requests",
       },
-      {
-        key: "hrStaffMyInterviews",
-        label: "Phỏng vấn của tôi",
-        to: "/staff/interviews",
-      },
+      // {
+      //   key: "hrStaffMyInterviews",
+      //   label: "Phỏng vấn của tôi",
+      //   to: "/staff/interviews",
+      // },
       {
         key: "hrStaffJobPostings",
         label: "Tin tuyển dụng",

@@ -29,6 +29,9 @@ public class EmployeeInterviewListDto
     // Xác nhận tham gia (từ Phỏng vấn của tôi hoặc link trong email)
     public DateTime? MyConfirmedAt { get; set; }
     public DateTime? MyDeclinedAt { get; set; }
+
+    /// <summary>Yêu cầu đề cử HR (batch): nhiều buổi PV cùng block — dùng gom lịch UI.</summary>
+    public int? ParticipantRequestId { get; set; }
 }
 
 /// <summary>
@@ -75,9 +78,12 @@ public class CandidateProfileDto
     public string? Phone { get; set; }
     public string? Summary { get; set; }
     public int? YearsOfExperience { get; set; }
+    public string? Source { get; set; }
+    public string? CvFileUrl { get; set; }
     
     public List<ExperienceDto> Experiences { get; set; } = new();
     public List<EducationDto> Educations { get; set; } = new();
+    public List<CertificateDto> Certificates { get; set; } = new();
 }
 
 public class ExperienceDto
@@ -94,7 +100,16 @@ public class EducationDto
     public string SchoolName { get; set; } = string.Empty;
     public string Degree { get; set; } = string.Empty;
     public string? Major { get; set; }
-    public DateOnly StartDate { get; set; }
-    public DateOnly? EndDate { get; set; }
+    public int? StartYear { get; set; }
+    public int? EndYear { get; set; }
+    public decimal? Gpa { get; set; }
+    public string? Location { get; set; }
+}
+
+public class CertificateDto
+{
+    public string CertificateName { get; set; } = string.Empty;
+    public string? Issuer { get; set; }
+    public int? IssuedYear { get; set; }
 }
 

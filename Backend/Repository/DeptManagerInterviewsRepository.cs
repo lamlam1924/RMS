@@ -11,6 +11,10 @@ public class DeptManagerInterviewsRepository : IDeptManagerInterviewsRepository
 {
     private readonly RecruitmentDbContext _context;
 
+    /// <summary>Matches ParticipantRequestRepository nomination log (EntityType INTERVIEW).</summary>
+    private const int EntityTypeInterview = 4;
+    private const string NominationHistoryType = "NOMINATION_PARTICIPANTS";
+
     public DeptManagerInterviewsRepository(RecruitmentDbContext context)
     {
         _context = context;
@@ -37,6 +41,8 @@ public class DeptManagerInterviewsRepository : IDeptManagerInterviewsRepository
                     .ThenInclude(p => p.InterviewRole)
             .Include(ip => ip.Interview)
                 .ThenInclude(i => i.InterviewFeedbacks)
+            .Include(ip => ip.Interview)
+                .ThenInclude(i => i.Requests)
             .Where(ip => ip.UserId == managerId && !ip.Interview.IsDeleted!.Value)
             .Select(ip => ip.Interview)
             .Distinct()
@@ -66,6 +72,8 @@ public class DeptManagerInterviewsRepository : IDeptManagerInterviewsRepository
                     .ThenInclude(p => p.InterviewRole)
             .Include(ip => ip.Interview)
                 .ThenInclude(i => i.InterviewFeedbacks)
+            .Include(ip => ip.Interview)
+                .ThenInclude(i => i.Requests)
             .Where(ip => ip.UserId == managerId && 
                          ip.Interview.StartTime > now &&
                          !ip.Interview.IsDeleted!.Value)
@@ -76,15 +84,39 @@ public class DeptManagerInterviewsRepository : IDeptManagerInterviewsRepository
             .ToListAsync();
     }
 
-    public async Task<Interview?> GetInterviewByIdAsync(int id, int managerId)
+    public async Task<List<int>> GetInterviewIdsNominatedByManagerAsync(int managerId)
     {
-        return await _context.Interviews
+        return await _context.StatusHistories
+            .AsNoTracking()
+            .Where(h => h.EntityTypeId == EntityTypeInterview
+                        && h.ChangedBy == managerId
+                        && h.Note != null
+                        && h.Note.Contains(NominationHistoryType))
+            .Select(h => h.EntityId)
+            .Distinct()
+            .ToListAsync();
+    }
+
+    public Task<bool> HasNominatedForInterviewAsync(int interviewId, int managerId)
+        => _context.StatusHistories
+            .AsNoTracking()
+            .AnyAsync(h => h.EntityTypeId == EntityTypeInterview
+                           && h.EntityId == interviewId
+                           && h.ChangedBy == managerId
+                           && h.Note != null
+                           && h.Note.Contains(NominationHistoryType));
+
+    private IQueryable<Interview> InterviewDetailGraph()
+        => _context.Interviews
             .Include(i => i.Application)
                 .ThenInclude(a => a.Cvprofile)
                     .ThenInclude(cv => cv.Cvexperiences)
             .Include(i => i.Application)
                 .ThenInclude(a => a.Cvprofile)
                     .ThenInclude(cv => cv.Cveducations)
+            .Include(i => i.Application)
+                .ThenInclude(a => a.Cvprofile)
+                    .ThenInclude(cv => cv.Cvcertificates)
             .Include(i => i.Application)
                 .ThenInclude(a => a.JobRequest)
                     .ThenInclude(jr => jr.Position)
@@ -95,9 +127,33 @@ public class DeptManagerInterviewsRepository : IDeptManagerInterviewsRepository
             .Include(i => i.InterviewParticipants)
                 .ThenInclude(p => p.InterviewRole)
             .Include(i => i.InterviewFeedbacks)
-            .FirstOrDefaultAsync(i => i.Id == id && 
-                                     i.InterviewParticipants.Any(p => p.UserId == managerId) &&
-                                     !i.IsDeleted!.Value);
+            .Include(i => i.Requests);
+
+    public async Task<List<Interview>> GetInterviewsByIdsAsync(List<int> interviewIds)
+    {
+        if (interviewIds == null || interviewIds.Count == 0)
+            return new List<Interview>();
+
+        var ids = interviewIds.Distinct().ToList();
+        return await InterviewDetailGraph()
+            .Where(i => ids.Contains(i.Id) && !i.IsDeleted!.Value)
+            .OrderByDescending(i => i.StartTime)
+            .ToListAsync();
+    }
+
+    public async Task<Interview?> GetInterviewByIdAsync(int id, int managerId)
+    {
+        var interview = await InterviewDetailGraph()
+            .FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted!.Value);
+        if (interview == null) return null;
+
+        var isParticipant = interview.InterviewParticipants.Any(p => p.UserId == managerId);
+        if (isParticipant) return interview;
+
+        if (await HasNominatedForInterviewAsync(id, managerId))
+            return interview;
+
+        return null;
     }
 
     public async Task<bool> IsInterviewParticipantAsync(int interviewId, int managerId)
@@ -105,6 +161,13 @@ public class DeptManagerInterviewsRepository : IDeptManagerInterviewsRepository
         return await _context.InterviewParticipants
             .AnyAsync(ip => ip.InterviewId == interviewId && ip.UserId == managerId);
     }
+
+    public Task<bool> ParticipantHasConfirmedParticipationAsync(int interviewId, int userId)
+        => _context.InterviewParticipants.AnyAsync(ip =>
+            ip.InterviewId == interviewId &&
+            ip.UserId == userId &&
+            ip.ConfirmedAt.HasValue &&
+            !ip.DeclinedAt.HasValue);
 
     public async Task<bool> RespondToParticipationAsync(int interviewId, int userId, bool confirm, string? declineNote = null)
     {

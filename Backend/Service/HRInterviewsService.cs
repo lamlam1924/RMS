@@ -140,6 +140,9 @@ public class HRInterviewsService : IHRInterviewsService
         if (!isParticipant)
             return ResponseHelper.CreateActionResponse(false, "", "Bạn không được phân công vào phỏng vấn này");
 
+        if (!await _repository.ParticipantHasConfirmedParticipationAsync(interviewId, userId))
+            return ResponseHelper.CreateActionResponse(false, "", "Chỉ có thể nộp đánh giá sau khi xác nhận tham gia buổi phỏng vấn");
+
         var hasFeedback = await _repository.HasFeedbackAsync(interviewId, userId);
         if (hasFeedback)
             return ResponseHelper.CreateActionResponse(false, "", "Bạn đã gửi đánh giá cho phỏng vấn này rồi");

@@ -38,6 +38,9 @@ public interface IHRInterviewsRepository
     /// <summary>Kiểm tra user có được phân công vào buổi phỏng vấn không</summary>
     Task<bool> IsInterviewParticipantAsync(int interviewId, int userId);
 
+    /// <summary>Participant đã xác nhận tham gia — bắt buộc để nộp feedback (HR tham gia với tư cách interviewer).</summary>
+    Task<bool> ParticipantHasConfirmedParticipationAsync(int interviewId, int userId);
+
     /// <summary>Kiểm tra user đã nộp feedback cho buổi phỏng vấn chưa</summary>
     Task<bool> HasFeedbackAsync(int interviewId, int userId);
 

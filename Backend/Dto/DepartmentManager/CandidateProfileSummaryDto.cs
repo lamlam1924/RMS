@@ -6,10 +6,12 @@ public class CandidateProfileSummaryDto
     public required string Email { get; set; }
     public string? Phone { get; set; }
     public string? Summary { get; set; }
+    public string? Source { get; set; }
     public int YearsOfExperience { get; set; }
     public string? CvFileUrl { get; set; }
     public List<CandidateCvExperienceDto> Experiences { get; set; } = new();
     public List<CandidateCvEducationDto> Educations { get; set; } = new();
+    public List<CandidateCertificateDto> Certificates { get; set; } = new();
 }
 
 public class CandidateCvExperienceDto
@@ -28,4 +30,13 @@ public class CandidateCvEducationDto
     public string? Major { get; set; }
     public int? StartYear { get; set; }
     public int? EndYear { get; set; }
+    public decimal? Gpa { get; set; }
+    public string? Location { get; set; }
+}
+
+public class CandidateCertificateDto
+{
+    public string CertificateName { get; set; } = "";
+    public string? Issuer { get; set; }
+    public int? IssuedYear { get; set; }
 }

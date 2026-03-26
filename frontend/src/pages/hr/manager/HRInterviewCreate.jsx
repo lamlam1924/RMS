@@ -165,7 +165,7 @@ export default function HRInterviewCreate() {
     }
   };
 
-  if (loading) return <div style={{ padding: 24 }}>Đang tải...</div>;
+  if (loading) return <div className="p-6 text-sm text-slate-600">Đang tải...</div>;
 
   const firstApplicationId = form.applicationIds?.[0];
   const currentApplicationInterviews = firstApplicationId
@@ -177,30 +177,14 @@ export default function HRInterviewCreate() {
     ? Math.max(...currentApplicationInterviews.map((item) => item.roundNo || 0))
     : 0;
   const nextRoundNo = lastRoundNo + 1;
-  const nextRoundLabel = `Vòng ${nextRoundNo}`;
 
   return (
-    <div
-      style={{ padding: 24, backgroundColor: "#f8fafc", minHeight: "100vh" }}
-    >
-      <div style={{ maxWidth: 760, margin: "0 auto" }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            marginBottom: 24,
-          }}
-        >
+    <div className="min-h-screen bg-slate-50 p-6">
+      <div className="mx-auto max-w-3xl">
+        <div className="mb-6 flex items-start gap-3">
           <button
             onClick={() => navigate("/staff/hr-manager/interviews")}
-            style={{
-              padding: "6px 14px",
-              border: "1px solid #d1d5db",
-              borderRadius: 6,
-              backgroundColor: "white",
-              cursor: "pointer",
-            }}
+            className="rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
           >
             ← Quay lại
           </button>
@@ -276,12 +260,12 @@ export default function HRInterviewCreate() {
         <form onSubmit={handleSubmit}>
           <InterviewSection
             step="Bước 1"
-            title="Chọn vị trí và hồ sơ cần xếp lịch"
-            description="Mỗi đơn ứng tuyển thuộc một vị trí. Chọn vị trí trước — các hồ sơ bên dưới chỉ thuộc vị trí đó. Cùng vị trí thường cùng người phỏng vấn; chọn nhiều hồ sơ sẽ tạo nhiều buổi nối tiếp, cùng địa điểm."
+            title="Vị trí và hồ sơ"
+            description="Chọn vị trí, sau đó chọn hồ sơ cần xếp lịch."
           >
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: "block", fontWeight: 600, fontSize: 13, marginBottom: 6 }}>
-                Vị trí tuyển dụng <span style={{ color: "#ef4444" }}>*</span>
+            <div className="mb-4">
+              <label className="mb-1.5 block text-xs font-semibold text-slate-700">
+                Vị trí tuyển dụng <span className="text-red-500">*</span>
               </label>
               <select
                 value={form.jobRequestId || ""}
@@ -289,14 +273,7 @@ export default function HRInterviewCreate() {
                   setForm((f) => ({ ...f, jobRequestId: e.target.value, applicationIds: [] }))
                 }
                 required
-                style={{
-                  width: "100%",
-                  padding: "8px 10px",
-                  borderRadius: 6,
-                  border: "1px solid #d1d5db",
-                  fontSize: 14,
-                  boxSizing: "border-box",
-                }}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
               >
                 <option value="">— Chọn vị trí —</option>
                 {jobOptions.map((job) => (
@@ -304,35 +281,23 @@ export default function HRInterviewCreate() {
                 ))}
               </select>
               {jobOptions.length === 0 && (
-                <div style={{ fontSize: 12, color: "#6b7280", marginTop: 6 }}>
+                <div className="mt-1.5 text-xs text-slate-500">
                   Chưa có hồ sơ nào ở trạng thái Sàng lọc. Cập nhật trạng thái hồ sơ tại trang quản lý ứng tuyển.
                 </div>
               )}
             </div>
 
-            <div style={{ marginBottom: 8 }}>
-              <label style={{ display: "block", fontWeight: 600, fontSize: 13, marginBottom: 8 }}>
-                Hồ sơ trong vị trí này <span style={{ color: "#ef4444" }}>*</span>
-                <span style={{ fontWeight: 400, color: "#6b7280", marginLeft: 6 }}>
-                  (sắp xếp theo ngày nộp mới nhất)
-                </span>
+            <div className="mb-2">
+              <label className="mb-2 block text-xs font-semibold text-slate-700">
+                Hồ sơ trong vị trí này <span className="text-red-500">*</span>
               </label>
-              <div
-                style={{
-                  maxHeight: 220,
-                  overflowY: "auto",
-                  border: "1px solid #e5e7eb",
-                  borderRadius: 8,
-                  padding: 8,
-                  backgroundColor: "#fff",
-                }}
-              >
+              <div className="max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-white p-2">
                 {!form.jobRequestId ? (
-                  <div style={{ padding: 12, color: "#6b7280", fontSize: 13 }}>
+                  <div className="px-3 py-2 text-sm text-slate-500">
                     Chọn vị trí ở trên để xem danh sách hồ sơ.
                   </div>
                 ) : filteredApplications.length === 0 ? (
-                  <div style={{ padding: 12, color: "#6b7280", fontSize: 13 }}>
+                  <div className="px-3 py-2 text-sm text-slate-500">
                     Không có hồ sơ Sàng lọc nào cho vị trí này.
                   </div>
                 ) : (
@@ -340,20 +305,10 @@ export default function HRInterviewCreate() {
                     const idStr = String(app.id);
                     const checked = (form.applicationIds || []).includes(idStr);
                     return (
-                      <label
-                        key={app.id}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 10,
-                          padding: "8px 10px",
-                          borderRadius: 6,
-                          cursor: "pointer",
-                          backgroundColor: checked ? "#eff6ff" : "transparent",
-                        }}
-                      >
+                      <label key={app.id} className={`mb-1 flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 ${checked ? "bg-blue-50" : "hover:bg-slate-50"}`}>
                         <input
                           type="checkbox"
+                          className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                           checked={checked}
                           onChange={() => {
                             setForm((f) => {
@@ -365,7 +320,7 @@ export default function HRInterviewCreate() {
                             });
                           }}
                         />
-                        <span style={{ fontSize: 13, flex: 1 }}>
+                        <span className="flex-1 text-sm text-slate-800">
                           <strong>#{app.id}</strong> {app.candidateName} · {app.positionTitle}
                           {app.departmentName && ` · ${app.departmentName}`}
                         </span>
@@ -377,21 +332,11 @@ export default function HRInterviewCreate() {
             </div>
 
             {selectedApplications.length > 0 && (
-              <div
-                style={{
-                  marginTop: 12,
-                  padding: "12px 14px",
-                  borderRadius: 8,
-                  border: "1px solid #bfdbfe",
-                  backgroundColor: "#eff6ff",
-                  fontSize: 13,
-                  color: "#1e3a8a",
-                }}
-              >
+              <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3.5 py-3 text-sm text-blue-800">
                 <strong>Đã chọn {selectedApplications.length} hồ sơ.</strong>
                 {selectedApplications.length === 1
-                  ? ` Sắp tạo 1 buổi phỏng vấn (${nextRoundLabel}).`
-                  : ` Sẽ tạo ${selectedApplications.length} buổi phỏng vấn nối tiếp, cùng địa điểm (mỗi buổi một khung giờ).`}
+                  ? ` Sắp tạo 1 buổi phỏng vấn (Vòng ${nextRoundNo}).`
+                  : ` Sẽ tạo ${selectedApplications.length} buổi phỏng vấn nối tiếp.`}
               </div>
             )}
           </InterviewSection>
@@ -404,103 +349,48 @@ export default function HRInterviewCreate() {
             slotCandidates={selectedApplicationsSorted}
           />
 
-          <InterviewSection
-            step="Bước 3"
-            title="Địa điểm và tạo lịch"
-            description="Điền địa điểm hoặc link họp (tùy chọn), rồi bấm tạo."
-          >
-            <div style={{ marginBottom: 16 }}>
-              <label
-                style={{
-                  display: "block",
-                  fontWeight: 600,
-                  fontSize: 13,
-                  marginBottom: 6,
-                }}
-              >
-                Địa điểm
-              </label>
-              <input
-                type="text"
-                value={form.location}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, location: e.target.value }))
-                }
-                placeholder="VD: Phòng họp A3, Tầng 5"
-                style={{
-                  width: "100%",
-                  padding: "8px 10px",
-                  borderRadius: 6,
-                  border: "1px solid #d1d5db",
-                  fontSize: 14,
-                  boxSizing: "border-box",
-                }}
-              />
+          <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="mb-3 text-sm font-semibold text-slate-900">Thông tin bổ sung (tùy chọn)</div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-700">Địa điểm</label>
+                <input
+                  type="text"
+                  value={form.location}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, location: e.target.value }))
+                  }
+                  placeholder="VD: Phòng họp A3, Tầng 5"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-700">Link họp trực tuyến</label>
+                <input
+                  type="url"
+                  value={form.meetingLink}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, meetingLink: e.target.value }))
+                  }
+                  placeholder="https://meet.google.com/..."
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                />
+              </div>
             </div>
+          </div>
 
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  fontWeight: 600,
-                  fontSize: 13,
-                  marginBottom: 6,
-                }}
-              >
-                Link họp trực tuyến
-              </label>
-              <input
-                type="url"
-                value={form.meetingLink}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, meetingLink: e.target.value }))
-                }
-                placeholder="https://meet.google.com/..."
-                style={{
-                  width: "100%",
-                  padding: "8px 10px",
-                  borderRadius: 6,
-                  border: "1px solid #d1d5db",
-                  fontSize: 14,
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
-          </InterviewSection>
-
-          <InterviewSection tone="info" title="Sau khi tạo" description="Trong trang chi tiết phỏng vấn bạn có thể gán người phỏng vấn hoặc gửi yêu cầu đề cử cho trưởng phòng, kiểm tra trùng lịch và nhắc nộp đánh giá.">
-            <div style={{ fontSize: 13, color: "#1e40af" }}>
-              Người phỏng vấn được thêm hoặc đề cử trong trang chi tiết — không cần nhập ở bước tạo lịch.
-            </div>
-          </InterviewSection>
-
-          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+          <div className="flex justify-end gap-2">
             <button
               type="button"
               onClick={() => navigate("/staff/hr-manager/interviews")}
-              style={{
-                padding: "10px 20px",
-                border: "1px solid #d1d5db",
-                borderRadius: 6,
-                backgroundColor: "white",
-                cursor: "pointer",
-              }}
+              className="rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
             >
               Hủy
             </button>
             <button
               type="submit"
               disabled={submitting}
-              style={{
-                padding: "10px 24px",
-                backgroundColor: "#3b82f6",
-                color: "white",
-                border: "none",
-                borderRadius: 6,
-                cursor: "pointer",
-                fontWeight: 600,
-                opacity: submitting ? 0.7 : 1,
-              }}
+              className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
             >
               {submitting
                 ? "Đang tạo..."

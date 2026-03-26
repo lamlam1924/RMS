@@ -1,15 +1,21 @@
 using Microsoft.EntityFrameworkCore;
 using RMS.Common;
 using RMS.Data;
+using RMS.Dto.Common;
+using RMS.Dto.DepartmentManager;
 using RMS.Dto.HR;
 using RMS.Entity;
 using RMS.Repository.Interface;
+using System.Text.Json;
 
 namespace RMS.Repository;
 
 public class ParticipantRequestRepository : IParticipantRequestRepository
 {
     private readonly RecruitmentDbContext _context;
+
+    private const int EntityTypeInterview = 4;
+    private const string NominationHistoryType = "NOMINATION_PARTICIPANTS";
 
     private Task<int> GetStatusIdAsync(string code)
         => _context.Statuses.Where(s => s.Code == code).Select(s => s.Id).FirstAsync();
@@ -149,6 +155,12 @@ public class ParticipantRequestRepository : IParticipantRequestRepository
             .FirstOrDefaultAsync(r => r.Id == reqId);
 
         if (request == null) return false;
+
+        var uniqueUserIds = (userIds ?? new List<int>()).Distinct().ToList();
+        if (request.RequiredCount > 0 && uniqueUserIds.Count != request.RequiredCount)
+            throw new ArgumentException($"Vui lòng đề cử đúng {request.RequiredCount} người.");
+
+        var oldRequestStatusId = request.StatusId;
         var canNominate = (request.AssignedToUserId == nominatorUserId && request.StatusId == pendingStatusId)
             || (request.ForwardedToUserId == nominatorUserId && request.StatusId == forwardedStatusId);
         if (!canNominate)
@@ -160,11 +172,57 @@ public class ParticipantRequestRepository : IParticipantRequestRepository
 
         if (!interviewIds.Any()) return false;
 
+        DateTime? minStart = request.TimeRangeStart;
+        DateTime? maxEnd = request.TimeRangeEnd;
+
+        if (!minStart.HasValue || !maxEnd.HasValue)
+        {
+            var interviewsForRange = request.Interviews.Any() 
+                ? request.Interviews.ToList() 
+                : (request.InterviewId.HasValue ? new List<Interview> { await _context.Interviews.FindAsync(request.InterviewId.Value) } : new List<Interview>());
+
+            var validInterviews = interviewsForRange.Where(i => i != null).ToList();
+            if (validInterviews.Any())
+            {
+                minStart ??= validInterviews.Min(i => i.StartTime);
+                maxEnd ??= validInterviews.Max(i => i.EndTime);
+            }
+        }
+        
+        if (minStart.HasValue && maxEnd.HasValue)
+        {
+            var cancelledStatusId = await GetStatusIdAsync("CANCELLED");
+            
+            var conflictingSchedules = await _context.InterviewParticipants
+                .Include(p => p.User)
+                .Include(p => p.Interview)
+                .Where(p => uniqueUserIds.Contains(p.UserId)
+                         && p.Interview.StartTime < maxEnd 
+                         && p.Interview.EndTime > minStart
+                         && !interviewIds.Contains(p.InterviewId)
+                         && p.Interview.StatusId != cancelledStatusId
+                         && p.DeclinedAt == null)
+                .Select(p => new { p.UserId, UserName = p.User.FullName })
+                .Distinct()
+                .ToListAsync();
+
+            if (conflictingSchedules.Any())
+            {
+                var names = string.Join(", ", conflictingSchedules.Select(x => x.UserName));
+                throw new ArgumentException($"Không thể đề cử, các nhân viên sau đã có lịch bận trong thời gian block này: {names}");
+            }
+        }
+
         var interviewerRole = await _context.InterviewRoles.FirstOrDefaultAsync(r => r.Code == "INTERVIEWER");
 
         foreach (var interviewId in interviewIds)
         {
-            foreach (var userId in userIds)
+            var interviewStatusId = await _context.Interviews
+                .Where(i => i.Id == interviewId)
+                .Select(i => (int?)i.StatusId)
+                .FirstOrDefaultAsync() ?? 0;
+
+            foreach (var userId in uniqueUserIds)
             {
                 var exists = await _context.InterviewParticipants
                     .AnyAsync(p => p.InterviewId == interviewId && p.UserId == userId);
@@ -178,12 +236,177 @@ public class ParticipantRequestRepository : IParticipantRequestRepository
                     });
                 }
             }
+
+            // Write nomination history on interview timeline (EntityTypeId=INTERVIEW)
+            // Note holds structured JSON so we can rebuild "DM nominated who" later.
+            // We keep ToStatusId = current interview status (no status change) to satisfy FK.
+            var note = JsonSerializer.Serialize(new
+            {
+                type = NominationHistoryType,
+                reqId,
+                interviewId,
+                userIds = uniqueUserIds
+            });
+            if (interviewStatusId > 0)
+            {
+                _context.StatusHistories.Add(new StatusHistory
+                {
+                    EntityTypeId = EntityTypeInterview,
+                    EntityId = interviewId,
+                    FromStatusId = interviewStatusId,
+                    ToStatusId = interviewStatusId,
+                    ChangedBy = nominatorUserId,
+                    ChangedAt = DateTimeHelper.Now,
+                    Note = note
+                });
+            }
         }
 
         request.StatusId = fulfilledStatusId;
         request.RespondedAt = DateTimeHelper.Now;
 
         return await _context.SaveChangesAsync() > 0;
+    }
+
+    public async Task<List<DeptManagerNominationHistoryItemDto>> GetNominationHistoryAsync(int nominatorUserId)
+    {
+        // Pull recent interview history logs created by this user and tagged as nomination events.
+        var raw = await _context.StatusHistories
+            .Where(h => h.EntityTypeId == EntityTypeInterview
+                        && h.ChangedBy == nominatorUserId
+                        && h.Note != null
+                        && h.Note.Contains(NominationHistoryType))
+            .OrderByDescending(h => h.ChangedAt)
+            .Take(300)
+            .Select(h => new
+            {
+                h.EntityId,
+                h.ChangedAt,
+                h.Note
+            })
+            .ToListAsync();
+
+        if (!raw.Any()) return new();
+
+        // Parse note JSON
+        var parsed = new List<(int interviewId, int? reqId, DateTime changedAt, string? note, List<int> userIds)>();
+        foreach (var h in raw)
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(h.Note!);
+                var root = doc.RootElement;
+                var type = root.TryGetProperty("type", out var t) ? t.GetString() : null;
+                if (!string.Equals(type, NominationHistoryType, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var reqId = root.TryGetProperty("reqId", out var r) && r.ValueKind == JsonValueKind.Number ? r.GetInt32() : (int?)null;
+                var ids = new List<int>();
+                if (root.TryGetProperty("userIds", out var u) && u.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var el in u.EnumerateArray())
+                        if (el.ValueKind == JsonValueKind.Number) ids.Add(el.GetInt32());
+                }
+
+                parsed.Add((h.EntityId, reqId, h.ChangedAt ?? DateTimeHelper.Now, h.Note, ids));
+            }
+            catch
+            {
+                // ignore malformed note
+            }
+        }
+
+        if (!parsed.Any()) return new();
+
+        var interviewIds = parsed.Select(p => p.interviewId).Distinct().ToList();
+        var userIdsAll = parsed.SelectMany(p => p.userIds).Distinct().ToList();
+
+        var interviews = await _context.Interviews
+            .Include(i => i.Application).ThenInclude(a => a.Cvprofile)
+            .Include(i => i.Application).ThenInclude(a => a.JobRequest!).ThenInclude(jr => jr.Position)
+            .Where(i => interviewIds.Contains(i.Id))
+            .Select(i => new
+            {
+                i.Id,
+                CandidateName = i.Application!.Cvprofile!.FullName,
+                PositionTitle = i.Application!.JobRequest!.Position!.Title,
+                i.StartTime,
+                i.EndTime
+            })
+            .ToDictionaryAsync(x => x.Id, x => x);
+
+        var users = await _context.Users
+            .Where(u => userIdsAll.Contains(u.Id))
+            .Select(u => new SimpleUserDto
+            {
+                Id = u.Id,
+                FullName = u.FullName,
+                Email = u.Email
+            })
+            .ToDictionaryAsync(x => x.Id, x => x);
+
+        // Participation responses for nominated users (confirmed/declined)
+        var participation = await _context.InterviewParticipants
+            .Where(p => interviewIds.Contains(p.InterviewId) && userIdsAll.Contains(p.UserId))
+            .Select(p => new
+            {
+                p.InterviewId,
+                p.UserId,
+                p.ConfirmedAt,
+                p.DeclinedAt,
+                p.DeclineNote
+            })
+            .ToListAsync();
+        var participationMap = participation
+            .GroupBy(x => (x.InterviewId, x.UserId))
+            .ToDictionary(g => g.Key, g => g.First());
+
+        var result = new List<DeptManagerNominationHistoryItemDto>();
+        foreach (var p in parsed)
+        {
+            if (!interviews.TryGetValue(p.interviewId, out var i))
+                continue;
+
+            result.Add(new DeptManagerNominationHistoryItemDto
+            {
+                InterviewId = p.interviewId,
+                RequestId = p.reqId,
+                CreatedAt = p.changedAt,
+                Note = p.note,
+                CandidateName = i.CandidateName ?? "",
+                PositionTitle = i.PositionTitle ?? "",
+                StartTime = i.StartTime,
+                EndTime = i.EndTime,
+                NominatedUsers = p.userIds
+                    .Distinct()
+                    .Where(id => users.ContainsKey(id))
+                    .Select(id =>
+                    {
+                        var baseUser = users[id];
+                        participationMap.TryGetValue((p.interviewId, id), out var part);
+                        var status = part?.DeclinedAt != null
+                            ? "DECLINED"
+                            : part?.ConfirmedAt != null
+                                ? "CONFIRMED"
+                                : "PENDING";
+                        return new DeptManagerNominationHistoryUserDto
+                        {
+                            Id = baseUser.Id,
+                            FullName = baseUser.FullName,
+                            Email = baseUser.Email,
+                            ParticipationStatus = status,
+                            ConfirmedAt = part?.ConfirmedAt,
+                            DeclinedAt = part?.DeclinedAt,
+                            DeclineNote = part?.DeclineNote
+                        };
+                    })
+                    .ToList()
+            });
+        }
+
+        return result
+            .OrderByDescending(x => x.CreatedAt)
+            .ToList();
     }
 
     public async Task<bool> ForwardToDirectorAsync(int reqId, int directorId, string? message, int fromUserId)
@@ -232,6 +455,69 @@ public class ParticipantRequestRepository : IParticipantRequestRepository
             })
             .Distinct()
             .ToListAsync();
+    }
+
+    public async Task<List<SimpleUserDto>> GetDeptMembersAvailabilityAsync(int reqId, int userId)
+    {
+        var members = await GetDeptMembersAsync(userId);
+        if (!members.Any()) return members;
+
+        var request = await _context.ParticipantRequests
+            .Include(r => r.Interviews)
+            .FirstOrDefaultAsync(r => r.Id == reqId);
+            
+        if (request == null) return members;
+        
+        DateTime? minStart = request.TimeRangeStart;
+        DateTime? maxEnd = request.TimeRangeEnd;
+
+        if (!minStart.HasValue || !maxEnd.HasValue)
+        {
+            var interviewsForRange = request.Interviews.Any() 
+                ? request.Interviews.ToList() 
+                : (request.InterviewId.HasValue 
+                    ? new List<Interview> { await _context.Interviews.FindAsync(request.InterviewId.Value) } 
+                    : new List<Interview>());
+
+            var validInterviews = interviewsForRange.Where(i => i != null).ToList();
+            if (validInterviews.Any())
+            {
+                minStart ??= validInterviews.Min(i => i.StartTime);
+                maxEnd ??= validInterviews.Max(i => i.EndTime);
+            }
+        }
+        
+        if (minStart.HasValue && maxEnd.HasValue)
+        {
+            var cancelledStatusId = await GetStatusIdAsync("CANCELLED");
+            var memberIds = members.Select(m => m.Id).ToList();
+            
+            var interviewIds = request.Interviews.Any()
+                ? request.Interviews.Select(i => i.Id).ToList()
+                : (request.InterviewId.HasValue ? new List<int> { request.InterviewId.Value } : new List<int>());
+            
+            var busyUserIds = await _context.InterviewParticipants
+                .Include(p => p.Interview)
+                .Where(p => memberIds.Contains(p.UserId)
+                         && p.Interview.StartTime < maxEnd 
+                         && p.Interview.EndTime > minStart
+                         && !interviewIds.Contains(p.InterviewId)
+                         && p.Interview.StatusId != cancelledStatusId
+                         && p.DeclinedAt == null)
+                .Select(p => p.UserId)
+                .Distinct()
+                .ToListAsync();
+
+            foreach (var m in members)
+            {
+                if (busyUserIds.Contains(m.Id))
+                {
+                    m.IsBusy = true;
+                }
+            }
+        }
+
+        return members;
     }
 
     /// <summary>Trưởng phòng ban (DEPARTMENT_MANAGER); có kèm tên phòng ban để HR biết chọn đúng người đề cử.</summary>

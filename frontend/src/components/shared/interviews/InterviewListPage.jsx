@@ -73,6 +73,9 @@ export default function InterviewListPage({
             {items.map((item, index) => {
               const card = getCardData(item);
               const badge = getStatusBadge(card.statusCode);
+              const override = card.statusBadgeOverride;
+              const pillBg = override?.bg ?? badge.bg;
+              const pillColor = override?.color ?? badge.color;
               const statusText = card.statusLabel || badge.label;
               const clickable = Boolean(onItemClick);
               const currentGroup = getGroupLabel ? getGroupLabel(item) : null;
@@ -114,7 +117,7 @@ export default function InterviewListPage({
                         <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', marginBottom: 4 }}>{card.title}</div>
                         {card.subtitle ? <div style={{ fontSize: 13, color: '#6b7280' }}>{card.subtitle}</div> : null}
                       </div>
-                      <span style={{ padding: '4px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, backgroundColor: badge.bg, color: badge.color }}>
+                      <span style={{ padding: '4px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, backgroundColor: pillBg, color: pillColor }}>
                         {statusText}
                       </span>
                     </div>

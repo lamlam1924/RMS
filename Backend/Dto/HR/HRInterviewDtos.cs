@@ -227,4 +227,5 @@ public class SimpleUserDto
     /// <summary>Trưởng phòng ban của phòng nào (chỉ có khi gọi GetAllDeptManagers/GetDirectors).</summary>
     public int? DepartmentId { get; set; }
     public string? DepartmentName { get; set; }
+    public bool IsBusy { get; set; }
 }

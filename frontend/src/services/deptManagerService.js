@@ -68,8 +68,10 @@ const deptManagerService = {
     getMyAssigned: () => api.get('/dept-manager/participant-requests'),
     getById: (reqId) => api.get(`/dept-manager/participant-requests/${reqId}`),
     getTeamMembers: () => api.get('/dept-manager/participant-requests/team-members'),
+    getTeamMembersAvailability: (reqId) => api.get(`/dept-manager/participant-requests/${reqId}/team-members-availability`),
     nominate: (reqId, userIds) =>
       api.post(`/dept-manager/participant-requests/${reqId}/nominate`, { userIds }),
+    getNominationHistory: () => api.get('/dept-manager/participant-requests/nomination-history'),
   },
 
   // Applications (for reference)

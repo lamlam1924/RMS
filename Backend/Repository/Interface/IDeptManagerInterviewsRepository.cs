@@ -11,11 +11,22 @@ public interface IDeptManagerInterviewsRepository
     /// <summary>Lấy danh sách phỏng vấn sắp diễn ra của user</summary>
     Task<List<Interview>> GetUpcomingInterviewsByManagerIdAsync(int managerId);
 
-    /// <summary>Lấy chi tiết buổi phỏng vấn (chỉ khi user được phân công)</summary>
+    /// <summary>Lấy chi tiết buổi phỏng vấn khi user là participant hoặc đã đề cử người tham gia (log StatusHistories).</summary>
     Task<Interview?> GetInterviewByIdAsync(int id, int managerId);
+
+    /// <summary>Interview ids where this manager logged a nomination (đề cử).</summary>
+    Task<List<int>> GetInterviewIdsNominatedByManagerAsync(int managerId);
+
+    Task<bool> HasNominatedForInterviewAsync(int interviewId, int managerId);
+
+    /// <summary>Load interviews by ids with same graph as list/detail (for nominator-only rows).</summary>
+    Task<List<Interview>> GetInterviewsByIdsAsync(List<int> interviewIds);
 
     /// <summary>Kiểm tra user có được phân công vào buổi phỏng vấn không</summary>
     Task<bool> IsInterviewParticipantAsync(int interviewId, int managerId);
+
+    /// <summary>Participant đã xác nhận tham gia (chưa từ chối) — bắt buộc để nộp feedback.</summary>
+    Task<bool> ParticipantHasConfirmedParticipationAsync(int interviewId, int userId);
 
     /// <summary>Ghi nhận xác nhận hoặc từ chối tham gia của interviewer. Khi từ chối có thể gửi declineNote để HR thương lượng/đổi lịch.</summary>
     Task<bool> RespondToParticipationAsync(int interviewId, int userId, bool confirm, string? declineNote = null);

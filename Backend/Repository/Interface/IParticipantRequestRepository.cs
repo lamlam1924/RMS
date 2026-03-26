@@ -15,9 +15,12 @@ public interface IParticipantRequestRepository
     Task<bool> NominateAsync(int reqId, List<int> userIds, int nominatorUserId);
     Task<bool> ForwardToDirectorAsync(int reqId, int directorId, string? message, int fromUserId);
     Task<bool> CancelAsync(int reqId, int requesterUserId);
+    /// <summary>Nomination history (who this user nominated for which interview)</summary>
+    Task<List<RMS.Dto.DepartmentManager.DeptManagerNominationHistoryItemDto>> GetNominationHistoryAsync(int nominatorUserId);
     Task<List<SimpleUserDto>> GetDeptMembersAsync(int userId);
     /// <summary>All users with DEPARTMENT_MANAGER role (for HR to pick whom to send request to)</summary>
     Task<List<SimpleUserDto>> GetAllDeptManagersAsync();
     /// <summary>All users with DIRECTOR role (for HR Manager to forward senior requests)</summary>
     Task<List<SimpleUserDto>> GetAllDirectorsAsync();
+    Task<List<SimpleUserDto>> GetDeptMembersAvailabilityAsync(int reqId, int userId);
 }

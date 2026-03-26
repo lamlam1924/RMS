@@ -11,6 +11,8 @@ public class DeptManagerInterviewsProfile : AutoMapper.Profile
     {
         // Entity to DTO mappings
         CreateMap<Interview, DeptManagerInterviewListDto>()
+            .ForMember(dest => dest.IsReadOnlyNominatorAccess, opt => opt.Ignore())
+            .ForMember(dest => dest.ParticipantRequestId, opt => opt.Ignore())
             .ForMember(dest => dest.CandidateName, opt => opt.MapFrom(src => src.Application.Cvprofile.FullName))
             .ForMember(dest => dest.PositionTitle, opt => opt.MapFrom(src => src.Application.JobRequest.Position.Title))
             .ForMember(dest => dest.StatusCode, opt => opt.MapFrom(src => src.Status.Code))
@@ -18,6 +20,7 @@ public class DeptManagerInterviewsProfile : AutoMapper.Profile
             .ForMember(dest => dest.Participants, opt => opt.MapFrom(src => src.InterviewParticipants.Where(p => !p.DeclinedAt.HasValue)));
 
         CreateMap<Interview, DeptManagerInterviewDetailDto>()
+            .ForMember(dest => dest.IsReadOnlyNominatorAccess, opt => opt.Ignore())
             .ForMember(dest => dest.CandidateName, opt => opt.MapFrom(src => src.Application.Cvprofile.FullName))
             .ForMember(dest => dest.PositionTitle, opt => opt.MapFrom(src => src.Application.JobRequest.Position.Title))
             .ForMember(dest => dest.StatusCode, opt => opt.MapFrom(src => src.Status.Code))
@@ -37,10 +40,13 @@ public class DeptManagerInterviewsProfile : AutoMapper.Profile
 
         CreateMap<Cvprofile, CandidateProfileSummaryDto>()
             .ForMember(dest => dest.Experiences, opt => opt.MapFrom(src => src.Cvexperiences))
-            .ForMember(dest => dest.Educations, opt => opt.MapFrom(src => src.Cveducations));
+            .ForMember(dest => dest.Educations, opt => opt.MapFrom(src => src.Cveducations))
+            .ForMember(dest => dest.Certificates, opt => opt.MapFrom(src => src.Cvcertificates))
+            .ForMember(dest => dest.Source, opt => opt.MapFrom(src => src.Source));
 
         CreateMap<Cvexperience, CandidateCvExperienceDto>();
         CreateMap<Cveducation, CandidateCvEducationDto>();
+        CreateMap<Cvcertificate, CandidateCertificateDto>();
 
         CreateMap<EvaluationCriterion, EvaluationCriterionDto>()
             .ForMember(dest => dest.CriteriaName, opt => opt.MapFrom(src => src.Name));

@@ -1,42 +1,70 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import {
+  ArrowLeft,
+  Calendar,
+  Clock,
+  MapPin,
+  Link2,
+  Users,
+  History,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  Loader2,
+  ExternalLink,
+  UserCircle2
+} from 'lucide-react';
 import { candidateService } from '../../services/candidateService';
 import notify from '../../utils/notification';
 import { formatDateTime } from '../../utils/formatters/display';
 
-const STATUS_MAP = {
-  SCHEDULED: { label: 'Đã lên lịch', color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
-  CONFIRMED: { label: 'Đã xác nhận', color: '#16a34a', bg: '#f0fdf4', border: '#86efac' },
-  RESCHEDULED: { label: 'Đổi lịch', color: '#92400e', bg: '#fffbeb', border: '#fcd34d' },
-  COMPLETED: { label: 'Đã hoàn thành', color: '#475569', bg: '#f8fafc', border: '#e2e8f0' },
-  CANCELLED: { label: 'Đã huỷ', color: '#dc2626', bg: '#fef2f2', border: '#fca5a5' },
-  DECLINED_BY_CANDIDATE: { label: 'Đã từ chối', color: '#dc2626', bg: '#fef2f2', border: '#fca5a5' },
-  NO_SHOW: { label: 'Vắng mặt', color: '#9ca3af', bg: '#f9fafb', border: '#e5e7eb' },
+const STATUS_STYLES = {
+  SCHEDULED: { label: 'Đã lên lịch', className: 'bg-blue-50 text-blue-800 ring-1 ring-inset ring-blue-200' },
+  CONFIRMED: { label: 'Đã xác nhận', className: 'bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200' },
+  RESCHEDULED: { label: 'Đổi lịch', className: 'bg-amber-50 text-amber-900 ring-1 ring-inset ring-amber-200' },
+  COMPLETED: { label: 'Đã hoàn thành', className: 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200' },
+  CANCELLED: { label: 'Đã huỷ', className: 'bg-red-50 text-red-800 ring-1 ring-inset ring-red-200' },
+  DECLINED_BY_CANDIDATE: { label: 'Đã từ chối', className: 'bg-red-50 text-red-800 ring-1 ring-inset ring-red-200' },
+  NO_SHOW: { label: 'Vắng mặt', className: 'bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200' }
 };
 
-const PREV_ROUND_STATUS = {
-  COMPLETED: { icon: '✓', color: '#16a34a' },
-  CANCELLED: { icon: '✕', color: '#dc2626' },
-  NO_SHOW: { icon: '—', color: '#9ca3af' },
-  SCHEDULED: { icon: '○', color: '#1d4ed8' },
-  CONFIRMED: { icon: '○', color: '#1d4ed8' },
+const PREV_ROUND_ICON = {
+  COMPLETED: { Icon: CheckCircle2, className: 'text-emerald-500' },
+  CANCELLED: { Icon: XCircle, className: 'text-red-500' },
+  NO_SHOW: { Icon: AlertCircle, className: 'text-slate-400' },
+  SCHEDULED: { Icon: Clock, className: 'text-blue-500' },
+  CONFIRMED: { Icon: Clock, className: 'text-blue-500' }
 };
 
-function SectionCard({ title, children, style }) {
+function Card({ title, icon: Icon, children, className = '' }) {
   return (
-    <div style={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: 8, padding: 20, marginBottom: 14, ...style }}>
-      {title && <h3 style={{ fontSize: 13, fontWeight: 700, color: '#374151', margin: '0 0 14px 0', textTransform: 'uppercase', letterSpacing: 0.5 }}>{title}</h3>}
+    <section
+      className={`rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 ${className}`}
+    >
+      {title && (
+        <div className="mb-4 flex items-center gap-2 border-b border-slate-100 pb-3">
+          {Icon && <Icon className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />}
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</h2>
+        </div>
+      )}
       {children}
-    </div>
+    </section>
   );
 }
 
-function InfoRow({ label, value }) {
-  if (!value) return null;
+function InfoItem({ icon: Icon, label, children }) {
   return (
-    <div style={{ display: 'flex', gap: 12, marginBottom: 10, alignItems: 'flex-start' }}>
-      <span style={{ fontSize: 12, color: '#6b7280', minWidth: 90, flexShrink: 0, paddingTop: 2 }}>{label}</span>
-      <span style={{ fontSize: 14, color: '#111827', lineHeight: 1.5 }}>{value}</span>
+    <div className="flex gap-3 sm:items-start">
+      {Icon && (
+        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-slate-500">
+          <Icon className="h-4 w-4" aria-hidden />
+        </span>
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium text-slate-500">{label}</p>
+        <div className="mt-0.5 text-sm font-medium text-slate-900">{children}</div>
+      </div>
     </div>
   );
 }
@@ -48,7 +76,9 @@ export default function CandidateInterviewDetail() {
   const [loading, setLoading] = useState(true);
   const [responding, setResponding] = useState(false);
 
-  useEffect(() => { loadDetail(); }, [id]);
+  useEffect(() => {
+    loadDetail();
+  }, [id]);
 
   const loadDetail = async () => {
     try {
@@ -84,142 +114,193 @@ export default function CandidateInterviewDetail() {
 
   if (loading) {
     return (
-      <div style={{ padding: 24, minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: '#6b7280', fontSize: 14 }}>Đang tải...</div>
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+        <div className="flex flex-col items-center gap-3 text-slate-500">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
+          <p className="text-sm font-medium">Đang tải chi tiết...</p>
+        </div>
       </div>
     );
   }
 
   if (!interview) return null;
 
-  const status = STATUS_MAP[interview.statusCode] || { label: interview.statusName, color: '#475569', bg: '#f8fafc', border: '#e5e7eb' };
+  const status = STATUS_STYLES[interview.statusCode] || {
+    label: interview.statusName,
+    className: 'bg-slate-100 text-slate-700 ring-1 ring-inset ring-slate-200'
+  };
   const canRespond = ['SCHEDULED', 'RESCHEDULED'].includes(interview.statusCode);
   const isDeclined = interview.statusCode === 'DECLINED_BY_CANDIDATE';
+  const placeLabel = interview.location?.trim();
+  const linkOnly = interview.meetingLink?.trim();
 
   return (
-    <div style={{ padding: '20px 16px', minHeight: '100vh', backgroundColor: '#f9fafb' }}>
-      <div style={{ maxWidth: 680, margin: '0 auto' }}>
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100/80 pb-16 pt-6 sm:pt-10">
+      <div className="mx-auto max-w-3xl px-4 sm:px-6">
+        <button
+          type="button"
+          onClick={() => navigate('/app/interviews')}
+          className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-slate-600 transition hover:text-slate-900"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden />
+          Quay lại danh sách
+        </button>
 
-        {/* Header */}
-        <div style={{ marginBottom: 20 }}>
-          <button
-            onClick={() => navigate('/app/interviews')}
-            style={{ fontSize: 13, color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: 4 }}
-          >
-            ← Quay lại danh sách
-          </button>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-            <div>
-              <h1 style={{ fontSize: 20, fontWeight: 700, color: '#111827', margin: '0 0 4px 0' }}>
+        {/* Hero */}
+        <header className="mb-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-sm text-slate-500">
+                {interview.departmentName}
+                <span className="mx-2 text-slate-300">·</span>
+                Vòng {interview.roundNo}
+              </p>
+              <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
                 {interview.positionTitle}
               </h1>
-              <div style={{ fontSize: 13, color: '#6b7280' }}>
-                {interview.departmentName} · Vòng {interview.roundNo}
-              </div>
             </div>
-            <span style={{ fontSize: 12, fontWeight: 700, padding: '4px 12px', borderRadius: 20, border: `1px solid ${status.border}`, backgroundColor: status.bg, color: status.color, whiteSpace: 'nowrap', flexShrink: 0 }}>
+            <span
+              className={`inline-flex w-fit shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${status.className}`}
+            >
               {status.label}
             </span>
           </div>
-        </div>
+        </header>
 
-        {/* Thời gian & Địa điểm */}
-        <SectionCard title="Thời gian & Địa điểm">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
-            <InfoRow label="Bắt đầu" value={formatDateTime(interview.startTime, 'vi-VN')} />
-            <InfoRow label="Kết thúc" value={formatDateTime(interview.endTime, 'vi-VN')} />
-          </div>
-          <InfoRow label="Địa điểm" value={interview.location || '—'} />
-          {interview.meetingLink && (
-            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-              <span style={{ fontSize: 12, color: '#6b7280', minWidth: 90, flexShrink: 0, paddingTop: 2 }}>Link họp</span>
-              <a
-                href={interview.meetingLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ fontSize: 14, color: '#2563eb', wordBreak: 'break-all' }}
-              >
-                {interview.meetingLink}
-              </a>
+        <div className="flex flex-col gap-5">
+          <Card title="Thời gian & địa điểm" icon={Calendar}>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <InfoItem icon={Clock} label="Bắt đầu">
+                {formatDateTime(interview.startTime, 'vi-VN')}
+              </InfoItem>
+              <InfoItem icon={Clock} label="Kết thúc">
+                {formatDateTime(interview.endTime, 'vi-VN')}
+              </InfoItem>
+            </div>
+            <div className="mt-5 border-t border-slate-100 pt-5">
+              {placeLabel ? (
+                <InfoItem icon={MapPin} label="Địa điểm">
+                  {placeLabel}
+                </InfoItem>
+              ) : linkOnly ? (
+                <InfoItem icon={Link2} label="Link họp">
+                  <a
+                    href={linkOnly}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 break-all text-blue-600 underline decoration-blue-200 underline-offset-2 transition hover:text-blue-700"
+                  >
+                    Tham gia buổi họp
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  </a>
+                </InfoItem>
+              ) : (
+                <InfoItem icon={MapPin} label="Địa điểm">
+                  —
+                </InfoItem>
+              )}
+            </div>
+          </Card>
+
+          <Card title="Ban phỏng vấn" icon={Users}>
+            {(interview.participants?.length ?? 0) > 0 ? (
+              <ul className="flex flex-col gap-2">
+                {interview.participants.map((p, idx) => (
+                  <li
+                    key={idx}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3"
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      <UserCircle2 className="h-5 w-5 shrink-0 text-slate-400" aria-hidden />
+                      <span className="truncate font-medium text-slate-900">{p.fullName}</span>
+                    </span>
+                    <span className="shrink-0 rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
+                      {p.role}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm leading-relaxed text-slate-600">
+                Chưa có người phỏng vấn nào xác nhận tham gia. Danh sách sẽ cập nhật khi họ xác nhận (người từ chối
+                hoặc chưa phản hồi không hiển thị).
+              </p>
+            )}
+          </Card>
+
+          {interview.previousRounds?.length > 0 && (
+            <Card title="Các vòng trước" icon={History}>
+              <ul className="flex flex-col gap-3">
+                {interview.previousRounds.map((round) => {
+                  const meta = PREV_ROUND_ICON[round.statusCode] || { Icon: Clock, className: 'text-slate-400' };
+                  const RIcon = meta.Icon;
+                  return (
+                    <li
+                      key={round.roundNo}
+                      className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3"
+                    >
+                      <RIcon className={`h-5 w-5 shrink-0 ${meta.className}`} aria-hidden />
+                      <div className="min-w-0 flex-1">
+                        <span className="font-semibold text-slate-900">Vòng {round.roundNo}</span>
+                        <span className="ml-2 text-sm text-slate-500">
+                          {formatDateTime(round.startTime, 'vi-VN')}
+                        </span>
+                      </div>
+                      <span className="shrink-0 text-xs font-semibold text-slate-600">{round.statusName}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </Card>
+          )}
+
+          {canRespond && (
+            <Card className="border-blue-200/80 bg-gradient-to-br from-blue-50/90 to-white">
+              {interview.statusCode === 'RESCHEDULED' && (
+                <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
+                  Lịch đã được cập nhật — vui lòng xác nhận lại tham gia.
+                </div>
+              )}
+              <p className="mb-5 text-sm leading-relaxed text-slate-700">
+                Vui lòng xác nhận hoặc từ chối lịch phỏng vấn để HR chuẩn bị buổi phỏng vấn phù hợp.
+              </p>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={() => handleRespond('CONFIRM')}
+                  disabled={responding}
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {responding ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                  Xác nhận tham dự
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleRespond('DECLINE')}
+                  disabled={responding}
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-5 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <XCircle className="h-4 w-4" />
+                  Từ chối
+                </button>
+              </div>
+            </Card>
+          )}
+
+          {interview.statusCode === 'CONFIRMED' && (
+            <div className="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/80 px-5 py-4 text-sm font-medium text-emerald-900">
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" aria-hidden />
+              <span>Bạn đã xác nhận tham dự. Hẹn gặp bạn tại buổi phỏng vấn!</span>
             </div>
           )}
-        </SectionCard>
 
-        {/* Ban phỏng vấn */}
-        {interview.participants?.length > 0 && (
-          <SectionCard title="Ban phỏng vấn">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {interview.participants.map((p, idx) => (
-                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', backgroundColor: '#f9fafb', borderRadius: 8, border: '1px solid #f1f5f9' }}>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>{p.fullName}</span>
-                  <span style={{ fontSize: 11, color: '#6b7280', padding: '2px 8px', backgroundColor: '#e5e7eb', borderRadius: 10 }}>{p.role}</span>
-                </div>
-              ))}
+          {isDeclined && (
+            <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50/80 px-5 py-4 text-sm text-red-900">
+              <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" aria-hidden />
+              <span>Bạn đã từ chối lịch phỏng vấn này. Nếu cần hỗ trợ, vui lòng liên hệ HR.</span>
             </div>
-          </SectionCard>
-        )}
-
-        {/* Lịch sử vòng trước */}
-        {interview.previousRounds?.length > 0 && (
-          <SectionCard title="Các vòng trước">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {interview.previousRounds.map((round) => {
-                const rs = PREV_ROUND_STATUS[round.statusCode] || { icon: '○', color: '#94a3b8' };
-                return (
-                  <div key={round.roundNo} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: rs.color, width: 20, textAlign: 'center', flexShrink: 0 }}>{rs.icon}</span>
-                    <div style={{ flex: 1 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Vòng {round.roundNo}</span>
-                      <span style={{ fontSize: 12, color: '#6b7280', marginLeft: 8 }}>{formatDateTime(round.startTime, 'vi-VN')}</span>
-                    </div>
-                    <span style={{ fontSize: 11, color: rs.color, fontWeight: 600 }}>{round.statusName}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </SectionCard>
-        )}
-
-        {/* Hành động */}
-        {canRespond && (
-          <SectionCard style={{ backgroundColor: '#f0f9ff', borderColor: '#bae6fd' }}>
-            {interview.statusCode === 'RESCHEDULED' && (
-              <div style={{ fontSize: 13, color: '#92400e', marginBottom: 12, padding: '8px 12px', backgroundColor: '#fffbeb', borderRadius: 6, border: '1px solid #fcd34d', fontWeight: 600 }}>
-                Lịch đã được cập nhật, vui lòng xác nhận lại tham gia.
-              </div>
-            )}
-            <div style={{ fontSize: 14, color: '#0c4a6e', marginBottom: 14, lineHeight: 1.6 }}>
-              Vui lòng xác nhận hoặc từ chối lịch phỏng vấn này để HR có thể chuẩn bị tốt hơn cho buổi phỏng vấn.
-            </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                onClick={() => handleRespond('CONFIRM')}
-                disabled={responding}
-                style={{ padding: '10px 24px', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 700, fontSize: 14, opacity: responding ? 0.7 : 1 }}
-              >
-                ✓ Xác nhận tham dự
-              </button>
-              <button
-                onClick={() => handleRespond('DECLINE')}
-                disabled={responding}
-                style={{ padding: '10px 24px', backgroundColor: 'white', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 14, opacity: responding ? 0.7 : 1 }}
-              >
-                Từ chối
-              </button>
-            </div>
-          </SectionCard>
-        )}
-
-        {interview.statusCode === 'CONFIRMED' && (
-          <div style={{ padding: '12px 16px', backgroundColor: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, fontSize: 13, color: '#16a34a', fontWeight: 600 }}>
-            ✓ Bạn đã xác nhận tham dự. Hẹn gặp bạn tại buổi phỏng vấn!
-          </div>
-        )}
-        {isDeclined && (
-          <div style={{ padding: '12px 16px', backgroundColor: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626' }}>
-            Bạn đã từ chối lịch phỏng vấn này. Nếu cần hỗ trợ, vui lòng liên hệ HR.
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

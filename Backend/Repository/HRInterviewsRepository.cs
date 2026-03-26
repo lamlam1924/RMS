@@ -396,6 +396,13 @@ public class HRInterviewsRepository : IHRInterviewsRepository
     public Task<bool> IsInterviewParticipantAsync(int interviewId, int userId)
         => _context.InterviewParticipants.AnyAsync(ip => ip.InterviewId == interviewId && ip.UserId == userId);
 
+    public Task<bool> ParticipantHasConfirmedParticipationAsync(int interviewId, int userId)
+        => _context.InterviewParticipants.AnyAsync(ip =>
+            ip.InterviewId == interviewId &&
+            ip.UserId == userId &&
+            ip.ConfirmedAt.HasValue &&
+            !ip.DeclinedAt.HasValue);
+
     public Task<bool> HasFeedbackAsync(int interviewId, int userId)
         => _context.InterviewFeedbacks.AnyAsync(f => f.InterviewId == interviewId && f.InterviewerId == userId);
 

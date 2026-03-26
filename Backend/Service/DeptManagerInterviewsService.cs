@@ -2,6 +2,7 @@ using AutoMapper;
 using RMS.Common;
 using RMS.Dto.Common;
 using RMS.Dto.DepartmentManager;
+using RMS.Entity;
 using RMS.Repository.Interface;
 using RMS.Service.Interface;
 
@@ -25,32 +26,57 @@ public class DeptManagerInterviewsService : IDeptManagerInterviewsService
 
     public async Task<List<DeptManagerInterviewListDto>> GetInterviewsAsync(int managerId)
     {
-        var entities = await _repository.GetInterviewsByManagerIdAsync(managerId);
-        var dtos = _mapper.Map<List<DeptManagerInterviewListDto>>(entities);
+        var asParticipant = await _repository.GetInterviewsByManagerIdAsync(managerId);
+        var nominatedIds = await _repository.GetInterviewIdsNominatedByManagerAsync(managerId);
+        var participantSet = asParticipant.Select(x => x.Id).ToHashSet();
+        var extraIds = nominatedIds.Where(id => !participantSet.Contains(id)).ToList();
+        var extra = extraIds.Count == 0
+            ? new List<Interview>()
+            : await _repository.GetInterviewsByIdsAsync(extraIds);
+
+        var merged = asParticipant.Concat(extra).OrderByDescending(i => i.StartTime).ToList();
+        var dtos = _mapper.Map<List<DeptManagerInterviewListDto>>(merged);
         foreach (var dto in dtos)
         {
-            var entity = entities.First(e => e.Id == dto.Id);
-            dto.HasMyFeedback = entity.InterviewFeedbacks.Any(f => f.InterviewerId == managerId);
-            var me = entity.InterviewParticipants?.FirstOrDefault(p => p.UserId == managerId);
-            dto.MyConfirmedAt = me?.ConfirmedAt;
-            dto.MyDeclinedAt = me?.DeclinedAt;
+            var entity = merged.First(e => e.Id == dto.Id);
+            FillListRow(dto, entity, managerId);
         }
         return dtos;
     }
 
     public async Task<List<DeptManagerInterviewListDto>> GetUpcomingInterviewsAsync(int managerId)
     {
-        var entities = await _repository.GetUpcomingInterviewsByManagerIdAsync(managerId);
-        var dtos = _mapper.Map<List<DeptManagerInterviewListDto>>(entities);
+        var participant = await _repository.GetUpcomingInterviewsByManagerIdAsync(managerId);
+        var nominatedIds = await _repository.GetInterviewIdsNominatedByManagerAsync(managerId);
+        var pid = participant.Select(p => p.Id).ToHashSet();
+        var missingIds = nominatedIds.Where(id => !pid.Contains(id)).ToList();
+        var extra = missingIds.Count == 0
+            ? new List<Interview>()
+            : await _repository.GetInterviewsByIdsAsync(missingIds);
+        var now = DateTimeHelper.Now;
+        var extraUpcoming = extra.Where(i => i.StartTime > now).ToList();
+        var merged = participant.Concat(extraUpcoming).OrderBy(i => i.StartTime).Take(10).ToList();
+
+        var dtos = _mapper.Map<List<DeptManagerInterviewListDto>>(merged);
         foreach (var dto in dtos)
         {
-            var entity = entities.First(e => e.Id == dto.Id);
-            dto.HasMyFeedback = entity.InterviewFeedbacks.Any(f => f.InterviewerId == managerId);
-            var me = entity.InterviewParticipants?.FirstOrDefault(p => p.UserId == managerId);
-            dto.MyConfirmedAt = me?.ConfirmedAt;
-            dto.MyDeclinedAt = me?.DeclinedAt;
+            var entity = merged.First(e => e.Id == dto.Id);
+            FillListRow(dto, entity, managerId);
         }
         return dtos;
+    }
+
+    private static void FillListRow(DeptManagerInterviewListDto dto, Interview entity, int managerId)
+    {
+        var isParticipant = entity.InterviewParticipants?.Any(p => p.UserId == managerId) ?? false;
+        dto.IsReadOnlyNominatorAccess = !isParticipant;
+        dto.HasMyFeedback = entity.InterviewFeedbacks.Any(f => f.InterviewerId == managerId);
+        var me = entity.InterviewParticipants?.FirstOrDefault(p => p.UserId == managerId);
+        dto.MyConfirmedAt = me?.ConfirmedAt;
+        dto.MyDeclinedAt = me?.DeclinedAt;
+        dto.ParticipantRequestId = entity.Requests != null && entity.Requests.Count > 0
+            ? entity.Requests.Min(r => r.Id)
+            : null;
     }
 
     public async Task<DeptManagerInterviewDetailDto?> GetInterviewDetailAsync(int id, int managerId)
@@ -60,17 +86,31 @@ public class DeptManagerInterviewsService : IDeptManagerInterviewsService
 
         var dto = _mapper.Map<DeptManagerInterviewDetailDto>(interview);
 
-        // Check if current manager has submitted feedback & expose summary for UI
-        var feedback = await _repository.GetFeedbackByInterviewerAsync(id, managerId);
-        dto.HasMyFeedback = feedback != null;
-        if (feedback != null)
+        var isParticipant = await _repository.IsInterviewParticipantAsync(id, managerId);
+        dto.IsReadOnlyNominatorAccess = !isParticipant;
+
+        if (dto.IsReadOnlyNominatorAccess)
         {
-            dto.MyFeedbackComment = feedback.Note;
-            dto.MyFeedbackRecommendation = feedback.Recommendation;
+            dto.HasMyFeedback = false;
+            dto.MyFeedbackComment = null;
+            dto.MyFeedbackRecommendation = null;
+            dto.MyConfirmedAt = null;
+            dto.MyDeclinedAt = null;
         }
-        var me = interview.InterviewParticipants?.FirstOrDefault(p => p.UserId == managerId);
-        dto.MyConfirmedAt = me?.ConfirmedAt;
-        dto.MyDeclinedAt = me?.DeclinedAt;
+        else
+        {
+            // Check if current manager has submitted feedback & expose summary for UI
+            var feedback = await _repository.GetFeedbackByInterviewerAsync(id, managerId);
+            dto.HasMyFeedback = feedback != null;
+            if (feedback != null)
+            {
+                dto.MyFeedbackComment = feedback.Note;
+                dto.MyFeedbackRecommendation = feedback.Recommendation;
+            }
+            var me = interview.InterviewParticipants?.FirstOrDefault(p => p.UserId == managerId);
+            dto.MyConfirmedAt = me?.ConfirmedAt;
+            dto.MyDeclinedAt = me?.DeclinedAt;
+        }
 
         // Get evaluation criteria for the position
         if (interview.Application?.JobRequest?.PositionId != null)
@@ -112,6 +152,9 @@ public class DeptManagerInterviewsService : IDeptManagerInterviewsService
     {
         if (!await _repository.IsInterviewParticipantAsync(interviewId, managerId))
             return ResponseHelper.CreateActionResponse(false, "", "Bạn không được phân công vào phỏng vấn này");
+
+        if (!await _repository.ParticipantHasConfirmedParticipationAsync(interviewId, managerId))
+            return ResponseHelper.CreateActionResponse(false, "", "Chỉ có thể nộp đánh giá sau khi xác nhận tham gia buổi phỏng vấn");
 
         if (await _repository.GetFeedbackByInterviewerAsync(interviewId, managerId) != null)
             return ResponseHelper.CreateActionResponse(false, "", "Bạn đã gửi đánh giá cho phỏng vấn này rồi");

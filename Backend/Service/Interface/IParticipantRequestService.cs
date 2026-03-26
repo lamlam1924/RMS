@@ -1,5 +1,6 @@
 using RMS.Common;
 using RMS.Dto.Common;
+using RMS.Dto.DepartmentManager;
 using RMS.Dto.HR;
 
 namespace RMS.Service.Interface;
@@ -36,6 +37,9 @@ public interface IParticipantRequestService
     /// <summary>Huỷ yêu cầu đề cử</summary>
     Task<ActionResponseDto> CancelAsync(int reqId, int userId);
 
+    /// <summary>Lịch sử đề cử của trưởng phòng: đã đề cử ai cho buổi interview nào</summary>
+    Task<List<DeptManagerNominationHistoryItemDto>> GetMyNominationHistoryAsync(int userId);
+
     /// <summary>Lấy danh sách thành viên trong phòng ban của user (để đề cử)</summary>
     Task<List<SimpleUserDto>> GetDeptMembersAsync(int userId);
 
@@ -44,4 +48,7 @@ public interface IParticipantRequestService
 
     /// <summary>Lấy danh sách tất cả Giám đốc</summary>
     Task<List<SimpleUserDto>> GetAllDirectorsAsync();
+
+    /// <summary>Lấy danh sách thành viên trong phòng ban kèm trạng thái bận lịch</summary>
+    Task<List<SimpleUserDto>> GetDeptMembersAvailabilityAsync(int reqId, int userId);
 }

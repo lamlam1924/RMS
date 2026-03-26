@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import employeeService from '../../services/employeeService';
+import interviewerService from '../../services/interviewerService';
 import notify from '../../utils/notification';
 
 /**
@@ -19,10 +19,10 @@ export default function EmployeeInterviewConfirm() {
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      await employeeService.interviews.respond(id, isDecline ? 'DECLINE' : 'CONFIRM', isDecline ? note : undefined);
+      await interviewerService.interviews.respond(id, isDecline ? 'DECLINE' : 'CONFIRM', isDecline ? note : undefined);
       setDone(true);
       notify.success(isDecline ? 'Đã ghi nhận từ chối tham gia' : 'Đã xác nhận tham gia phỏng vấn');
-      setTimeout(() => navigate('/staff/employee/interviews', { replace: true }), 800);
+      setTimeout(() => navigate('/staff/interviews', { replace: true }), 800);
     } catch (err) {
       notify.error(err?.message || 'Thao tác thất bại');
       setSubmitting(false);
@@ -67,7 +67,7 @@ export default function EmployeeInterviewConfirm() {
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
               <button
                 type="button"
-                onClick={() => navigate('/staff/employee/interviews', { replace: true })}
+                onClick={() => navigate('/staff/interviews', { replace: true })}
                 style={{ padding: '10px 20px', border: '1px solid #d1d5db', borderRadius: 8, backgroundColor: 'white', cursor: 'pointer', fontWeight: 600 }}
               >
                 Quay lại

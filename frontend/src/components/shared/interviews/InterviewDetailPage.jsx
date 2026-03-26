@@ -105,7 +105,7 @@ export default function InterviewDetailPage({
                       {participant.isMe ? <span style={{ fontSize: 11, color: '#6b7280' }}> (bạn)</span> : null}
                     </div>
                     <div style={{ fontSize: 12, color: '#6b7280' }}>
-                      {participant.email || (participant.role && participant.role.trim() ? participant.role : null) || '—'}
+                      {participant.email || '—'}
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -113,11 +113,7 @@ export default function InterviewDetailPage({
                       <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 12, backgroundColor: '#e0e7ff', color: '#3730a3', fontWeight: 600 }}>
                         {participant.role}
                       </span>
-                    ) : (
-                      <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 12, backgroundColor: '#f3f4f6', color: '#6b7280', fontWeight: 500 }}>
-                        Chưa gán vai trò
-                      </span>
-                    )}
+                    ) : null}
                     {participant.hasFeedback ? (
                       <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 12, backgroundColor: '#d1fae5', color: '#065f46', fontWeight: 600 }}>
                         Đã nộp

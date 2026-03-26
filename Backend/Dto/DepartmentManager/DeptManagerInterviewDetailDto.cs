@@ -26,6 +26,8 @@ public class DeptManagerInterviewDetailDto
     public string? MyFeedbackRecommendation { get; set; }
     public DateTime? MyConfirmedAt { get; set; }
     public DateTime? MyDeclinedAt { get; set; }
+    /// <summary>True when DM opened this interview because they nominated participants but is not an interview participant (read-only: no confirm, no feedback).</summary>
+    public bool IsReadOnlyNominatorAccess { get; set; }
     public List<PreviousRoundSummaryDto> PreviousRounds { get; set; } = new();
 }
 

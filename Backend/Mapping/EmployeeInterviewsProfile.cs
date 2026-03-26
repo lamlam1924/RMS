@@ -17,7 +17,8 @@ public class EmployeeInterviewsProfile : AutoMapper.Profile
             .ForMember(dest => dest.CandidateEmail, opt => opt.MapFrom(src => src.Application != null && src.Application.Cvprofile != null ? src.Application.Cvprofile.Email : ""))
             .ForMember(dest => dest.PositionTitle, opt => opt.MapFrom(src => src.Application != null && src.Application.JobRequest != null && src.Application.JobRequest.Position != null ? src.Application.JobRequest.Position.Title : ""))
             .ForMember(dest => dest.DepartmentName, opt => opt.MapFrom(src => src.Application != null && src.Application.JobRequest != null && src.Application.JobRequest.Position != null && src.Application.JobRequest.Position.Department != null ? src.Application.JobRequest.Position.Department.Name : ""))
-            .ForMember(dest => dest.HasMyFeedback, opt => opt.Ignore()); // Set in service
+            .ForMember(dest => dest.HasMyFeedback, opt => opt.Ignore()) // Set in service
+            .ForMember(dest => dest.ParticipantRequestId, opt => opt.Ignore());
 
         // Interview entity to detail DTO (null-safe)
         CreateMap<Interview, EmployeeInterviewDetailDto>()
@@ -34,10 +35,19 @@ public class EmployeeInterviewsProfile : AutoMapper.Profile
         // Candidate profile mapping
         CreateMap<Cvprofile, CandidateProfileDto>()
             .ForMember(dest => dest.Experiences, opt => opt.MapFrom(src => src.Cvexperiences))
-            .ForMember(dest => dest.Educations, opt => opt.MapFrom(src => src.Cveducations));
+            .ForMember(dest => dest.Educations, opt => opt.MapFrom(src => src.Cveducations))
+            .ForMember(dest => dest.Certificates, opt => opt.MapFrom(src => src.Cvcertificates))
+            .ForMember(dest => dest.Source, opt => opt.MapFrom(src => src.Source))
+            .ForMember(dest => dest.CvFileUrl, opt => opt.MapFrom(src => src.CvFileUrl));
 
         CreateMap<Cvexperience, ExperienceDto>();
-        CreateMap<Cveducation, EducationDto>();
+        CreateMap<Cveducation, EducationDto>()
+            .ForMember(dest => dest.StartYear, opt => opt.MapFrom(src => src.StartYear))
+            .ForMember(dest => dest.EndYear, opt => opt.MapFrom(src => src.EndYear))
+            .ForMember(dest => dest.Gpa, opt => opt.MapFrom(src => src.Gpa))
+            .ForMember(dest => dest.Location, opt => opt.MapFrom(src => src.Location));
+
+        CreateMap<Cvcertificate, CertificateDto>();
 
         // Interview participants mapping (using Common DTO)
         CreateMap<InterviewParticipant, InterviewParticipantDto>()

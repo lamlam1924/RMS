@@ -140,3 +140,34 @@ BEGIN
     ALTER TABLE Interviews ADD CandidateDeclineNote NVARCHAR(500) NULL;
 END
 GO
+
+//--------------------------------------------------------------
+// --------------------------------------------------------------
+// fix participant requets thêm statusid
+// --------------------------------------------------------------
+IF EXISTS (SELECT 1 FROM sys.tables WHERE name = 'ParticipantRequests')
+   AND NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('ParticipantRequests') AND name = 'StatusId')
+    ALTER TABLE ParticipantRequests ADD StatusId INT NULL;
+GO
+
+IF COL_LENGTH('ParticipantRequests', 'StatusId') IS NOT NULL
+BEGIN
+    UPDATE pr
+    SET pr.StatusId = COALESCE(
+        (SELECT TOP 1 s.Id
+         FROM Statuses s
+         INNER JOIN StatusTypes st ON st.Id = s.StatusTypeId
+         WHERE st.Code = N'PARTICIPANT_REQUEST' AND s.Code = N'PENDING'
+         ORDER BY s.Id),
+        29)
+    FROM ParticipantRequests pr
+    WHERE pr.StatusId IS NULL;
+    IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('ParticipantRequests') AND name = 'StatusId' AND is_nullable = 1)
+       AND NOT EXISTS (SELECT 1 FROM ParticipantRequests WHERE StatusId IS NULL)
+        ALTER TABLE ParticipantRequests ALTER COLUMN StatusId INT NOT NULL;
+    IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_PR_Status')
+        ALTER TABLE ParticipantRequests ADD CONSTRAINT FK_PR_Status
+            FOREIGN KEY (StatusId) REFERENCES Statuses (Id);
+    PRINT 'Ensured StatusId on ParticipantRequests';
+END
+GO

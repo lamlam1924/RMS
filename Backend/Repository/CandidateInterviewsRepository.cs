@@ -135,11 +135,15 @@ public class CandidateInterviewsRepository : ICandidateInterviewsRepository
             MeetingLink = interview.MeetingLink,
             StatusCode = interview.Status.Code,
             StatusName = interview.Status.Name,
-            Participants = interview.InterviewParticipants.Select(p => new CandidateInterviewParticipantDto
-            {
-                FullName = p.User.FullName,
-                Role = p.InterviewRole?.Name ?? "Người phỏng vấn"
-            }).ToList(),
+            Participants = interview.InterviewParticipants
+                .Where(p => p.ConfirmedAt != null)
+                .OrderBy(p => p.User.FullName)
+                .Select(p => new CandidateInterviewParticipantDto
+                {
+                    FullName = p.User.FullName,
+                    Role = p.InterviewRole?.Name ?? "Người phỏng vấn"
+                })
+                .ToList(),
             PreviousRounds = previousRounds
         };
     }

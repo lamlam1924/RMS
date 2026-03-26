@@ -34,6 +34,9 @@ public class EmployeeInterviewsService : IEmployeeInterviewsService
             var me = entity.InterviewParticipants?.FirstOrDefault(p => p.UserId == userId);
             dto.MyConfirmedAt = me?.ConfirmedAt;
             dto.MyDeclinedAt = me?.DeclinedAt;
+            dto.ParticipantRequestId = entity.Requests != null && entity.Requests.Count > 0
+                ? entity.Requests.Min(r => r.Id)
+                : null;
         }
         return dtos;
     }
@@ -49,6 +52,9 @@ public class EmployeeInterviewsService : IEmployeeInterviewsService
             var me = entity.InterviewParticipants?.FirstOrDefault(p => p.UserId == userId);
             dto.MyConfirmedAt = me?.ConfirmedAt;
             dto.MyDeclinedAt = me?.DeclinedAt;
+            dto.ParticipantRequestId = entity.Requests != null && entity.Requests.Count > 0
+                ? entity.Requests.Min(r => r.Id)
+                : null;
         }
         return dtos;
     }
@@ -99,6 +105,9 @@ public class EmployeeInterviewsService : IEmployeeInterviewsService
     {
         if (!await _repository.IsInterviewParticipantAsync(interviewId, userId))
             return ResponseHelper.CreateActionResponse(false, "", "Bạn không được phân công vào phỏng vấn này");
+
+        if (!await _repository.ParticipantHasConfirmedParticipationAsync(interviewId, userId))
+            return ResponseHelper.CreateActionResponse(false, "", "Chỉ có thể nộp đánh giá sau khi xác nhận tham gia buổi phỏng vấn");
 
         if (await _repository.GetFeedbackByInterviewerAsync(interviewId, userId) != null)
             return ResponseHelper.CreateActionResponse(false, "", "Bạn đã gửi đánh giá cho phỏng vấn này rồi");

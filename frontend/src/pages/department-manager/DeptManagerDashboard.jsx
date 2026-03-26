@@ -169,7 +169,7 @@ const DeptManagerDashboard = () => {
             📋 Xem tất cả yêu cầu
           </button>
           <button
-            onClick={() => navigate('/staff/dept-manager/interviews')}
+            onClick={() => navigate('/staff/interviews')}
             className="inline-flex items-center gap-2 px-6 py-3 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-all border border-gray-300 font-medium"
           >
             📅 Lịch phỏng vấn của tôi
@@ -251,7 +251,7 @@ const DeptManagerDashboard = () => {
                 Lịch phỏng vấn sắp tới
               </h2>
               <button
-                onClick={() => navigate('/staff/dept-manager/interviews')}
+                onClick={() => navigate('/staff/interviews')}
                 className="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors"
               >
                 Xem tất cả →
@@ -270,7 +270,7 @@ const DeptManagerDashboard = () => {
               {upcomingInterviews.map((interview) => (
                 <div
                   key={interview.id}
-                  onClick={() => navigate(`/staff/dept-manager/interviews/${interview.id}`)}
+                  onClick={() => navigate(`/staff/interviews/${interview.id}`)}
                   className="p-4 hover:bg-purple-50 cursor-pointer transition-all border-l-4 border-transparent hover:border-purple-600"
                 >
                   <div className="font-semibold text-gray-900 text-sm mb-2">

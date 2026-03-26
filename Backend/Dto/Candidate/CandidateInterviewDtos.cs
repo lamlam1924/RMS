@@ -26,7 +26,7 @@ public class CandidateInterviewDetailDto
     public string? MeetingLink { get; set; }
     public string StatusCode { get; set; } = "";
     public string StatusName { get; set; } = "";
-    /// <summary>Người phỏng vấn (chỉ tên và vai trò, không lộ email)</summary>
+    /// <summary>Người phỏng vấn đã xác nhận tham gia (chỉ tên và vai trò, không lộ email).</summary>
     public List<CandidateInterviewParticipantDto> Participants { get; set; } = new();
     public List<CandidatePreviousRoundDto> PreviousRounds { get; set; } = new();
 }
