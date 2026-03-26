@@ -299,4 +299,78 @@ public class InterviewEmailService : IInterviewEmailService
             throw;
         }
     }
+
+    public async Task SendOfferAcceptedNotificationToHRAsync(OfferAcceptedNotificationData data)
+    {
+        try
+        {
+            var subject = $"✅ Ứng viên chấp nhận thư mời - {data.CandidateName}";
+            var htmlBody = $@"
+                <p>Chào HR Staff,</p>
+                <p><strong>{data.CandidateName}</strong> đã chấp nhận thư mời nhận việc cho vị trí <strong>{data.PositionTitle}</strong>.</p>
+                <div style='background-color: #dcfce7; padding: 20px; border-radius: 8px; margin: 20px 0;'>
+                    <p><strong>Ứng viên:</strong> {data.CandidateName}</p>
+                    <p><strong>Vị trí:</strong> {data.PositionTitle}</p>
+                </div>
+                <p style='text-align: center;'>
+                    <a href='{data.OfferDetailLink}' style='display: inline-block; background-color: #10b981; color: #ffffff; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;'>
+                        Xem chi tiết thư mời
+                    </a>
+                </p>
+            ";
+
+            await _emailService.SendEmailAsync(data.HREmail, subject, htmlBody);
+
+            _logger.LogInformation("Offer accepted notification sent to HR Staff {Email}", data.HREmail);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send offer accepted notification to HR {Email}", data.HREmail);
+            throw;
+        }
+    }
+
+    public async Task SendAcceptedOffersToManagerAsync(AcceptedOffersToManagerData data)
+    {
+        if (data.ManagerEmails == null || !data.ManagerEmails.Any() || data.Items == null || !data.Items.Any())
+            return;
+
+        try
+        {
+            var rows = data.Items.Select((item, i) =>
+                $"<tr><td>{i + 1}</td><td>{item.CandidateName}</td><td>{item.PositionTitle}</td><td>{item.DepartmentName}</td><td>{item.Salary:N0} đ</td></tr>").ToList();
+            var tableRows = string.Join("", rows);
+
+            var subject = $"📋 Danh sách ứng viên đã chấp nhận thư mời ({data.Items.Count} ứng viên)";
+            var htmlBody = $@"
+                <p>Chào HR Manager,</p>
+                <p><strong>{data.SenderName}</strong> (HR Staff) đã gửi danh sách ứng viên đã chấp nhận thư mời nhận việc:</p>
+                <table style='border-collapse: collapse; width: 100%; margin: 20px 0;'>
+                    <thead>
+                        <tr style='background-color: #f3f4f6;'>
+                            <th style='border: 1px solid #d1d5db; padding: 10px; text-align: left;'>#</th>
+                            <th style='border: 1px solid #d1d5db; padding: 10px; text-align: left;'>Ứng viên</th>
+                            <th style='border: 1px solid #d1d5db; padding: 10px; text-align: left;'>Vị trí</th>
+                            <th style='border: 1px solid #d1d5db; padding: 10px; text-align: left;'>Phòng ban</th>
+                            <th style='border: 1px solid #d1d5db; padding: 10px; text-align: left;'>Mức lương</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {tableRows}
+                    </tbody>
+                </table>
+            ";
+
+            foreach (var email in data.ManagerEmails.Distinct())
+            {
+                await _emailService.SendEmailAsync(email, subject, htmlBody);
+                _logger.LogInformation("Accepted offers list sent to HR Manager {Email}", email);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send accepted offers to HR Managers");
+            throw;
+        }
+    }
 }

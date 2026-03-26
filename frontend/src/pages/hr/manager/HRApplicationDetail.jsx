@@ -10,8 +10,11 @@ export default function HRApplicationDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [application, setApplication] = useState(null);
+  const [offerForApplication, setOfferForApplication] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [sendingOffer, setSendingOffer] = useState(false);
+  const [notifyingStaff, setNotifyingStaff] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [newStatusId, setNewStatusId] = useState(null);
   const [note, setNote] = useState('');
@@ -19,6 +22,9 @@ export default function HRApplicationDetail() {
   // Determine current user role
   const userRoles = authService.getUserInfo()?.roles || [];
   const isHRManager = userRoles.includes('HR_MANAGER');
+  const isHRStaff = userRoles.includes('HR_STAFF');
+  const canManageOffers = isHRManager || isHRStaff;
+  const canCreateOffer = isHRStaff;
 
   const statusOptions = [
     { value: 9,  label: 'Applied',      color: '#06b6d4' },
@@ -55,6 +61,16 @@ export default function HRApplicationDetail() {
     loadApplication();
   }, [id]);
 
+  useEffect(() => {
+    if (application?.statusId === 12 && id) {
+      hrService.offers.getByApplicationId(id)
+        .then(setOfferForApplication)
+        .catch(() => setOfferForApplication(null));
+    } else {
+      setOfferForApplication(null);
+    }
+  }, [application?.statusId, id]);
+
   const loadApplication = async () => {
     try {
       setLoading(true);
@@ -64,6 +80,20 @@ export default function HRApplicationDetail() {
       console.error('Failed to load application:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSendOffer = async () => {
+    if (!offerForApplication?.id) return;
+    try {
+      setSendingOffer(true);
+      await hrService.offers.send(offerForApplication.id);
+      notify.success('Đã gửi thư mời cho ứng viên');
+      setOfferForApplication(prev => prev ? { ...prev, statusId: 18, currentStatus: 'SENT' } : null);
+    } catch (err) {
+      notify.error(err.message || 'Không thể gửi thư mời');
+    } finally {
+      setSendingOffer(false);
     }
   };
 
@@ -130,6 +160,22 @@ export default function HRApplicationDetail() {
   };
 
   const canScheduleInterview = application?.statusId === 10;
+  const hasNotifiedStaffToCreateOffer = (application?.statusHistory || []).some((history) =>
+    typeof history.note === 'string' && history.note.includes('[NOTIFY_HR_STAFF_CREATE_OFFER]')
+  );
+
+  const handleNotifyStaffCreateOffer = async () => {
+    try {
+      setNotifyingStaff(true);
+      const res = await hrService.applications.notifyStaffCreateOffer(id);
+      notify.success(res?.message || 'Đã gửi thông báo cho HR Staff tạo offer');
+      await loadApplication();
+    } catch (error) {
+      notify.error(error.message || 'Không thể gửi thông báo cho HR Staff');
+    } finally {
+      setNotifyingStaff(false);
+    }
+  };
 
   if (loading) {
     return <div style={{ padding: 40, textAlign: 'center' }}>Loading...</div>;
@@ -558,8 +604,31 @@ export default function HRApplicationDetail() {
                   Chỉ tạo lịch khi hồ sơ ở trạng thái Screening.
                 </div>
               )}
-              {/* Chỉ HR Manager thấy nút Create Offer, và chỉ khi ứng viên đã Passed */}
-              {isHRManager && application.statusId === 12 && (
+              {/* HR Manager: chỉ gửi thông báo cho HR Staff tạo offer */}
+              {isHRManager && application.statusId === 12 && !offerForApplication && (
+                <button
+                  onClick={handleNotifyStaffCreateOffer}
+                  disabled={notifyingStaff || hasNotifiedStaffToCreateOffer}
+                  style={{
+                    padding: '10px 16px',
+                    backgroundColor: (notifyingStaff || hasNotifiedStaffToCreateOffer) ? '#9ca3af' : '#0ea5e9',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 6,
+                    cursor: (notifyingStaff || hasNotifiedStaffToCreateOffer) ? 'not-allowed' : 'pointer',
+                    fontWeight: 500
+                  }}
+                >
+                  {notifyingStaff
+                    ? 'Đang gửi thông báo...'
+                    : hasNotifiedStaffToCreateOffer
+                      ? 'Đã gửi thông báo cho HR Staff'
+                      : 'Gửi thông báo cho HR Staff tạo offer'}
+                </button>
+              )}
+
+              {/* HR Staff: Create Offer khi ứng viên đã Passed, chưa có offer */}
+              {canCreateOffer && application.statusId === 12 && !offerForApplication && (
                 <button
                   onClick={() => navigate(`/staff/hr-manager/offers/create?applicationId=${id}`)}
                   style={{
@@ -573,6 +642,41 @@ export default function HRApplicationDetail() {
                   }}
                 >
                   Create Offer
+                </button>
+              )}
+              {/* HR Staff & Manager: Gửi cho Candidate khi offer DRAFT hoặc APPROVED (không cần Director duyệt) */}
+              {canManageOffers && application.statusId === 12 && (offerForApplication?.statusId === 14 || offerForApplication?.statusId === 15 || offerForApplication?.statusId === 16) && (
+                <button
+                  onClick={handleSendOffer}
+                  disabled={sendingOffer}
+                  style={{
+                    padding: '10px 16px',
+                    backgroundColor: sendingOffer ? '#9ca3af' : '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 6,
+                    cursor: sendingOffer ? 'not-allowed' : 'pointer',
+                    fontWeight: 500
+                  }}
+                >
+                  {sendingOffer ? 'Đang gửi...' : 'Gửi cho Candidate'}
+                </button>
+              )}
+              {/* Link đến chi tiết offer khi đã có offer đã SENT hoặc đang IN_REVIEW */}
+              {canManageOffers && application.statusId === 12 && offerForApplication && ![14, 15, 16, 18].includes(offerForApplication.statusId) && (
+                <button
+                  onClick={() => navigate(`/staff/hr-manager/offers/${offerForApplication.id}`)}
+                  style={{
+                    padding: '10px 16px',
+                    backgroundColor: '#6366f1',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    fontWeight: 500
+                  }}
+                >
+                  Xem thư mời ({offerForApplication.currentStatus})
                 </button>
               )}
             </div>

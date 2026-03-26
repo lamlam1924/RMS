@@ -21,12 +21,18 @@ INNER JOIN CVProfiles c ON c.Id = a.CVProfileId
 WHERE o.CandidateId IS NULL;
 GO
 
--- Make ApplicationId nullable (drop FK first if exists)
+-- Make ApplicationId nullable (drop index & FK first if exists)
+-- Index phải drop trước vì ALTER COLUMN không chạy được khi có index phụ thuộc
+IF EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID('Offers') AND name = 'IX_Offers_ApplicationId')
+    DROP INDEX IX_Offers_ApplicationId ON Offers;
+
 DECLARE @fk NVARCHAR(256);
 SELECT @fk = name FROM sys.foreign_keys 
 WHERE parent_object_id = OBJECT_ID('Offers') AND referenced_object_id = OBJECT_ID('Applications');
 IF @fk IS NOT NULL EXEC('ALTER TABLE Offers DROP CONSTRAINT ' + @fk);
+
 ALTER TABLE Offers ALTER COLUMN ApplicationId INT NULL;
+
 ALTER TABLE Offers ADD CONSTRAINT FK_Offers_Application FOREIGN KEY (ApplicationId) REFERENCES Applications(Id);
 GO
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using RMS.Entity;
@@ -55,12 +55,15 @@ public partial class RecruitmentDbContext : DbContext
     public virtual DbSet<Offer> Offers { get; set; }
 
     public virtual DbSet<OfferApproval> OfferApprovals { get; set; }
+    public virtual DbSet<OfferEditHistory> OfferEditHistories { get; set; }
 
     public virtual DbSet<ParticipantRequest> ParticipantRequests { get; set; }
 
     public virtual DbSet<Position> Positions { get; set; }
 
     public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
+
+    public virtual DbSet<RecruitmentReport> RecruitmentReports { get; set; }
 
     public virtual DbSet<Role> Roles { get; set; }
 
@@ -579,6 +582,7 @@ public partial class RecruitmentDbContext : DbContext
             entity.Property(e => e.IsDeleted).HasDefaultValue(false);
             entity.Property(e => e.ProposedSalary).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.SentAt).HasColumnType("datetime");
+            entity.Property(e => e.SentToManagerAt).HasColumnType("datetime");
             entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
 
             entity.HasOne(d => d.Application).WithMany(p => p.Offers)
@@ -618,6 +622,22 @@ public partial class RecruitmentDbContext : DbContext
                 .HasForeignKey(d => d.OfferId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__OfferAppr__Offer__2739D489");
+        });
+
+        modelBuilder.Entity<OfferEditHistory>(entity =>
+        {
+            entity.ToTable("OfferEditHistory");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.EditedAt).HasColumnType("datetime");
+            entity.Property(e => e.Salary).HasColumnType("decimal(18, 2)");
+
+            entity.HasOne(d => d.Offer).WithMany(p => p.OfferEditHistories)
+                .HasForeignKey(d => d.OfferId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(d => d.EditedByNavigation).WithMany(p => p.OfferEditHistories)
+                .HasForeignKey(d => d.EditedBy)
+                .OnDelete(DeleteBehavior.ClientSetNull);
         });
 
         modelBuilder.Entity<ParticipantRequest>(entity =>
@@ -708,6 +728,23 @@ public partial class RecruitmentDbContext : DbContext
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_RefreshTokens_Users");
+        });
+
+        modelBuilder.Entity<RecruitmentReport>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__Recruitm__3214EC07A7C62C4A");
+
+            entity.ToTable("Recruitment_Reports");
+
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.Note).HasMaxLength(1000);
+
+            entity.HasOne(d => d.Job).WithMany(p => p.RecruitmentReports)
+                .HasForeignKey(d => d.JobId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_RecruitmentReports_JobRequest");
         });
 
         modelBuilder.Entity<Role>(entity =>

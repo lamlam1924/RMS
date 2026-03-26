@@ -237,15 +237,9 @@ public class DirectorRepository : IDirectorRepository
         var offer = await _context.Offers.FindAsync(offerId);
         if (offer == null || offer.StatusId != 15) return false; // Must be IN_REVIEW
 
-        var approvedStatusId = 16; // APPROVED status
         var oldStatusId = offer.StatusId;
 
-        // Update offer status
-        offer.StatusId = approvedStatusId;
-        offer.UpdatedAt = DateTimeHelper.Now;
-        offer.UpdatedBy = directorId;
-
-        // Add approval record
+        // 1. Add approval record
         var approval = new OfferApproval
         {
             OfferId = offerId,
@@ -254,23 +248,40 @@ public class DirectorRepository : IDirectorRepository
             Comment = comment,
             ApprovedAt = DateTimeHelper.Now
         };
-
         _context.OfferApprovals.Add(approval);
 
-        var statusHistory = new StatusHistory
+        // 2. Status 15 -> 16 (APPROVED)
+        var statusHistoryApproved = new StatusHistory
         {
-            EntityTypeId = 4, // OFFER
+            EntityTypeId = 4,
             EntityId = offerId,
             FromStatusId = oldStatusId,
-            ToStatusId = approvedStatusId,
+            ToStatusId = 16,
             ChangedBy = directorId,
             ChangedAt = DateTimeHelper.Now,
             Note = comment
         };
+        _context.StatusHistories.Add(statusHistoryApproved);
 
-        _context.StatusHistories.Add(statusHistory);
+        // 3. Tự động gửi offer cho candidate (16 -> 18 SENT)
+        offer.StatusId = 18; // SENT - gửi thẳng cho ứng viên
+        offer.SentAt = DateTimeHelper.Now;
+        offer.UpdatedAt = DateTimeHelper.Now;
+        offer.UpdatedBy = directorId;
+
+        var statusHistorySent = new StatusHistory
+        {
+            EntityTypeId = 4,
+            EntityId = offerId,
+            FromStatusId = 16,
+            ToStatusId = 18,
+            ChangedBy = directorId,
+            ChangedAt = DateTimeHelper.Now,
+            Note = "Giám đốc duyệt - đã gửi thư mời cho ứng viên"
+        };
+        _context.StatusHistories.Add(statusHistorySent);
+
         await _context.SaveChangesAsync();
-
         return true;
     }
 

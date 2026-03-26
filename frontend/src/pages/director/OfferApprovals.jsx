@@ -52,8 +52,8 @@ const OfferApprovals = () => {
 
     try {
       if (approvalAction === "approve") {
-        await directorService.offers.approve(selectedOffer.id, comment);
-        notify.success("Đã phê duyệt offer thành công");
+        const result = await directorService.offers.approve(selectedOffer.id, comment);
+        notify.success(result?.message || "Đã duyệt và gửi thư mời cho ứng viên");
       } else {
         await directorService.offers.reject(selectedOffer.id, comment);
         notify.success("Đã từ chối offer thành công");

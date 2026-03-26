@@ -48,6 +48,9 @@ public interface IAuthRepository
     /// <summary>Lấy danh sách departments của user</summary>
     Task<List<string>> GetUserDepartmentsAsync(int userId);
 
+    /// <summary>Lấy danh sách email của users có role theo Code (vd: HR_MANAGER)</summary>
+    Task<List<string>> GetUserEmailsByRoleAsync(string roleCode);
+
     // ==================== Candidate Operations ====================
     /// <summary>Lấy candidate theo ID</summary>
     Task<Candidate?> GetCandidateByIdAsync(int id);

@@ -24,6 +24,7 @@ public class DeptManagerDashboardRepository : IDeptManagerDashboardRepository
     public async Task<int> GetPendingApprovalCountAsync(int managerId)
     {
         return await _context.JobRequests
+            .AsNoTracking() // Tối ưu: Không track changes cho read-only query
             .CountAsync(jr => jr.RequestedBy == managerId && 
                              !jr.IsDeleted!.Value &&
                              (jr.StatusId == 1 || jr.StatusId == 2 || jr.StatusId == 3)); // DRAFT, SUBMITTED, IN_REVIEW
@@ -33,6 +34,7 @@ public class DeptManagerDashboardRepository : IDeptManagerDashboardRepository
     {
         var now = DateTimeHelper.Now;
         return await _context.InterviewParticipants
+            .AsNoTracking() // Tối ưu: Không track changes
             .CountAsync(ip => ip.UserId == managerId && 
                              ip.Interview.StartTime > now &&
                              !ip.Interview.IsDeleted!.Value);
@@ -40,9 +42,10 @@ public class DeptManagerDashboardRepository : IDeptManagerDashboardRepository
 
     public async Task<int> GetActiveCandidatesCountAsync(int managerId)
     {
-        // Count unique candidates in upcoming interviews
+        // Tối ưu: Count unique candidates với AsNoTracking
         var now = DateTimeHelper.Now;
         return await _context.InterviewParticipants
+            .AsNoTracking()
             .Where(ip => ip.UserId == managerId && 
                         ip.Interview.StartTime > now &&
                         !ip.Interview.IsDeleted!.Value)

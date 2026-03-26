@@ -50,6 +50,7 @@ import DeptManagerNominationList from "./pages/department-manager/DeptManagerNom
 // HR Manager Pages
 import HRManagerDashboard from "./pages/hr/dashboard/HRManagerDashboard";
 import HRStaffDashboard from "./pages/hr/dashboard/HRStaffDashboard";
+import RecruitmentReportDashboard from "./pages/hr/dashboard/RecruitmentReportDashboard";
 import HRJobRequestList from "./pages/hr/manager/HRJobRequestList";
 import HRJobRequestDetail from "./pages/hr/manager/HRJobRequestDetail";
 import HRStaffAssignmentList from "./pages/hr/manager/HRStaffAssignmentList";
@@ -62,10 +63,13 @@ import HRInterviewCreate from "./pages/hr/manager/HRInterviewCreate";
 import HRInterviewBatchRequest from "./pages/hr/manager/HRInterviewBatchRequest";
 import HRInterviewNextRoundBatch from "./pages/hr/manager/HRInterviewNextRoundBatch";
 import HROfferList from "./pages/hr/manager/HROfferList";
+import HRManagerAcceptedEditedOffers from "./pages/hr/manager/HRManagerAcceptedEditedOffers";
 import HROfferCreate from "./pages/hr/manager/HROfferCreate";
 import HROfferDetail from "./pages/hr/manager/HROfferDetail";
 
 // HR Staff Pages
+import HRStaffJobRequestList from "./pages/hr/staff/HRStaffJobRequestList";
+import HRStaffJobRequestDetail from "./pages/hr/staff/HRStaffJobRequestDetail";
 import HRJobPostingList from "./pages/hr/staff/HRJobPostingList";
 import CreateJobPosting from "./pages/hr/staff/CreateJobPosting";
 import EditJobPosting from "./pages/hr/staff/EditJobPosting";
@@ -562,6 +566,14 @@ export default function App() {
               </PrivateRoute>
             }
           />
+          <Route
+            path="hr-manager/reports"
+            element={
+              <PrivateRoute roles={[ROLES.HR_MANAGER]}>
+                <RecruitmentReportDashboard />
+              </PrivateRoute>
+            }
+          />
 
           {/* HR Staff Routes (Staff Only) */}
           <Route
@@ -569,6 +581,22 @@ export default function App() {
             element={
               <PrivateRoute roles={[ROLES.HR_STAFF]}>
                 <HRStaffDashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="hr-staff/job-requests"
+            element={
+              <PrivateRoute roles={[ROLES.HR_STAFF]}>
+                <HRStaffJobRequestList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="hr-staff/job-requests/:id"
+            element={
+              <PrivateRoute roles={[ROLES.HR_STAFF]}>
+                <HRStaffJobRequestDetail />
               </PrivateRoute>
             }
           />
@@ -651,6 +679,14 @@ export default function App() {
             element={
               <PrivateRoute roles={[ROLES.HR_MANAGER, ROLES.HR_STAFF]}>
                 <HRInterviewDetail />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="hr-manager/accepted-edited-offers"
+            element={
+              <PrivateRoute roles={[ROLES.HR_MANAGER]}>
+                <HRManagerAcceptedEditedOffers />
               </PrivateRoute>
             }
           />

@@ -16,6 +16,8 @@ public class ApplicationListDto
     public int? Priority { get; set; }
     public DateTime AppliedDate { get; set; }
     public int? YearsOfExperience { get; set; }
+    public bool IsOfferCreationRequested { get; set; }
+    public DateTime? OfferCreationRequestedAt { get; set; }
 }
 
 public class ApplicationDetailDto : ApplicationListDto

@@ -104,4 +104,81 @@ public class HRApplicationsRepository : IHRApplicationsRepository
 
         return true;
     }
+
+    public async Task<(bool Success, string Message)> NotifyAssignedStaffCreateOfferAsync(int applicationId, int managerUserId)
+    {
+        var application = await _context.Applications
+            .Include(a => a.JobRequest)
+                .ThenInclude(jr => jr.AssignedStaff)
+                    .ThenInclude(u => u.Roles)
+            .FirstOrDefaultAsync(a => a.Id == applicationId && a.IsDeleted == false);
+
+        if (application == null)
+            return (false, "Hồ sơ ứng tuyển không tồn tại");
+
+        if (application.StatusId != 12) // PASSED
+            return (false, "Chỉ có thể gửi thông báo khi hồ sơ ở trạng thái PASSED");
+
+        var assignedStaff = application.JobRequest?.AssignedStaff;
+        if (assignedStaff == null)
+            return (false, "Job Request chưa được gán HR Staff");
+
+        var isHrStaff = assignedStaff.Roles.Any(r => r.Code == "HR_STAFF");
+        if (!isHrStaff)
+            return (false, "Người được gán hiện tại không phải HR Staff");
+
+        var note = $"[NOTIFY_HR_STAFF_CREATE_OFFER] ManagerId={managerUserId}; StaffId={assignedStaff.Id}; StaffEmail={assignedStaff.Email}";
+
+        var history = new StatusHistory
+        {
+            EntityTypeId = 3, // APPLICATION
+            EntityId = applicationId,
+            FromStatusId = application.StatusId,
+            ToStatusId = application.StatusId,
+            ChangedBy = managerUserId,
+            ChangedAt = DateTimeHelper.Now,
+            Note = note
+        };
+
+        _context.StatusHistories.Add(history);
+        await _context.SaveChangesAsync();
+        return (true, "Đã gửi thông báo cho HR Staff tạo offer");
+    }
+
+    public async Task<Dictionary<int, DateTime?>> GetOfferCreationRequestTimesAsync(List<int> applicationIds)
+    {
+        if (applicationIds == null || applicationIds.Count == 0)
+            return new Dictionary<int, DateTime?>();
+
+        return await _context.StatusHistories
+            .Where(s =>
+                s.EntityTypeId == 3 &&
+                applicationIds.Contains(s.EntityId) &&
+                s.Note != null &&
+                s.Note.Contains("[NOTIFY_HR_STAFF_CREATE_OFFER]"))
+            .GroupBy(s => s.EntityId)
+            .Select(g => new
+            {
+                ApplicationId = g.Key,
+                RequestedAt = g.Max(x => x.ChangedAt)
+            })
+            .ToDictionaryAsync(x => x.ApplicationId, x => x.RequestedAt);
+    }
+
+    public async Task<HashSet<int>> GetApplicationIdsHavingOfferAsync(List<int> applicationIds)
+    {
+        if (applicationIds == null || applicationIds.Count == 0)
+            return new HashSet<int>();
+
+        var ids = await _context.Offers
+            .Where(o =>
+                o.ApplicationId.HasValue &&
+                applicationIds.Contains(o.ApplicationId.Value) &&
+                o.IsDeleted != true)
+            .Select(o => o.ApplicationId!.Value)
+            .Distinct()
+            .ToListAsync();
+
+        return ids.ToHashSet();
+    }
 }

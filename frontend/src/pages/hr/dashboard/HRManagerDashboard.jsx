@@ -33,24 +33,20 @@ export default function HRManagerDashboard() {
     try {
       setLoading(true);
       
-      // Load statistics
-      const statsData = await hrService.statistics.getDashboard();
+      // Tối ưu: Load tất cả data song song thay vì tuần tự
+      const [statsData, funnel, jobRequests, interviews, offers] = await Promise.all([
+        hrService.statistics.getDashboard(),
+        hrService.statistics.getRecruitmentFunnel(),
+        hrService.jobRequests.getPending(),
+        hrService.interviews.getUpcoming(),
+        hrService.offers.getPending()
+      ]);
+
+      // Set data sau khi tất cả requests hoàn thành
       setStats(statsData);
-
-      // Load funnel
-      const funnel = await hrService.statistics.getRecruitmentFunnel();
       setFunnelData(funnel);
-
-      // Load recent job requests
-      const jobRequests = await hrService.jobRequests.getPending();
       setRecentJobRequests(jobRequests.slice(0, 5));
-
-      // Load upcoming interviews
-      const interviews = await hrService.interviews.getUpcoming();
       setUpcomingInterviews(interviews.slice(0, 5));
-
-      // Load pending offers
-      const offers = await hrService.offers.getPending();
       setPendingOffers(offers.slice(0, 6));
 
     } catch (error) {

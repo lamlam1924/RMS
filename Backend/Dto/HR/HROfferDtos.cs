@@ -16,6 +16,8 @@ public class OfferListDto
     public int StatusId { get; set; }
     public string CurrentStatus { get; set; } = "";
     public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public string? CandidateComment { get; set; }
 }
 
 public class OfferDetailDto : OfferListDto
@@ -27,12 +29,26 @@ public class OfferDetailDto : OfferListDto
     public string? CandidateComment { get; set; }
     public DateTime? SentAt { get; set; }
     public List<StatusHistoryDto> StatusHistory { get; set; } = new();
+    public List<OfferEditHistoryDto> EditHistory { get; set; } = new();
+}
+
+public class OfferEditHistoryDto
+{
+    public int Id { get; set; }
+    public int OfferId { get; set; }
+    public int EditedBy { get; set; }
+    public string EditedByName { get; set; } = "";
+    public DateTime EditedAt { get; set; }
+    public decimal? Salary { get; set; }
+    public string? Benefits { get; set; }
+    public DateOnly? StartDate { get; set; }
 }
 
 public class CreateOfferDto
 {
     public int CandidateId { get; set; }
     public int JobRequestId { get; set; }
+    public int? ApplicationId { get; set; }
     public decimal Salary { get; set; }
     public string? Benefits { get; set; }
     public DateOnly? StartDate { get; set; }
@@ -63,4 +79,15 @@ public class UpdateOfferAfterNegotiationDto
     public decimal ProposedSalary { get; set; }
     public string? Benefits { get; set; }
     public DateOnly? StartDate { get; set; }
+}
+
+public class SendAcceptedToManagerDto
+{
+    public List<int> OfferIds { get; set; } = new();
+}
+
+public class SendOffersToManagerDto
+{
+    public List<int> OfferIds { get; set; } = new();
+    public string Type { get; set; } = ""; // "accepted" or "declined"
 }

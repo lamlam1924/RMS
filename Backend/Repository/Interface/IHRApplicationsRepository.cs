@@ -9,4 +9,7 @@ public interface IHRApplicationsRepository
     Task<Application?> GetApplicationByIdAsync(int id);
     Task<string?> GetCvFileUrlAsync(int applicationId);
     Task<bool> UpdateApplicationStatusAsync(int applicationId, int toStatusId, int userId, string? note = null);
+    Task<(bool Success, string Message)> NotifyAssignedStaffCreateOfferAsync(int applicationId, int managerUserId);
+    Task<Dictionary<int, DateTime?>> GetOfferCreationRequestTimesAsync(List<int> applicationIds);
+    Task<HashSet<int>> GetApplicationIdsHavingOfferAsync(List<int> applicationIds);
 }

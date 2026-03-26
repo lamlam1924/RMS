@@ -369,6 +369,18 @@ const hrService = {
         throw new Error(err.message || 'Không thể cập nhật trạng thái hồ sơ');
       }
       return response.json();
+    },
+
+    notifyStaffCreateOffer: async (id) => {
+      const response = await authFetch(`${API_BASE_URL}/hr/applications/${id}/notify-staff-create-offer`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || 'Không thể gửi thông báo cho HR Staff');
+      }
+      return response.json();
     }
   },
 
@@ -756,12 +768,52 @@ const hrService = {
     }
   },
 
+  // ===== REPORTS =====
+  reports: {
+    getApplyDaily: async (jobId) => {
+      const suffix = jobId ? `?jobId=${jobId}` : '';
+      const response = await authFetch(`${API_BASE_URL}/reports/apply-daily${suffix}`, {
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error('Failed to fetch apply-daily report');
+      return response.json();
+    },
+    getSummary: async (jobId) => {
+      const suffix = jobId ? `?jobId=${jobId}` : '';
+      const response = await authFetch(`${API_BASE_URL}/reports/summary${suffix}`, {
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error('Failed to fetch summary report');
+      return response.json();
+    },
+    submit: async (payload) => {
+      const response = await authFetch(`${API_BASE_URL}/reports`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || 'Failed to submit report');
+      }
+      return response.json();
+    }
+  },
+
   // ===== OFFERS =====
   offers: {
     getById: async (id) => {
       const response = await authFetch(`${API_BASE_URL}/hr/offers/${id}`, {
         headers: getAuthHeaders()
       });
+      if (!response.ok) throw new Error('Failed to fetch offer');
+      return response.json();
+    },
+    getByApplicationId: async (applicationId) => {
+      const response = await authFetch(`${API_BASE_URL}/hr/offers/by-application/${applicationId}`, {
+        headers: getAuthHeaders()
+      });
+      if (response.status === 404) return null;
       if (!response.ok) throw new Error('Failed to fetch offer');
       return response.json();
     },
@@ -788,6 +840,105 @@ const hrService = {
       if (!response.ok) throw new Error('Failed to fetch approved offers');
       return response.json();
     },
+    getAcceptedForStaff: async () => {
+      const response = await authFetch(`${API_BASE_URL}/hr/offers/accepted-for-staff`, {
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error('Failed to fetch accepted offers');
+      return response.json();
+    },
+    getAcceptedForManager: async () => {
+      const response = await authFetch(`${API_BASE_URL}/hr/offers/accepted-for-manager`, {
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error('Failed to fetch accepted offers');
+      return response.json();
+    },
+    getDeclined: async () => {
+      const response = await authFetch(`${API_BASE_URL}/hr/offers/declined`, {
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error('Failed to fetch declined offers');
+      return response.json();
+    },
+    getEdited: async () => {
+      const response = await authFetch(`${API_BASE_URL}/hr/offers/edited`, {
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error('Failed to fetch edited offers');
+      return response.json();
+    },
+    getPendingHRManager: async () => {
+      const response = await authFetch(`${API_BASE_URL}/hr/offers/pending-hr-manager`, {
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error('Failed to fetch pending offers');
+      return response.json();
+    },
+    getNegotiating: async () => {
+      const response = await authFetch(`${API_BASE_URL}/hr/offers/negotiating`, {
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error('Failed to fetch negotiating offers');
+      return response.json();
+    },
+    saveInNegotiation: async (id, data) => {
+      const response = await authFetch(`${API_BASE_URL}/hr/offers/${id}/save-negotiation`, {
+        method: 'PUT',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          salary: data.salary,
+          benefits: data.benefits || null,
+          startDate: data.startDate || null
+        })
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || err.error || 'Failed to save offer');
+      }
+      return response.json();
+    },
+    submitToManager: async (id) => {
+      const response = await authFetch(`${API_BASE_URL}/hr/offers/${id}/submit-to-manager`, {
+        method: 'PUT',
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error('Failed to submit to manager');
+      return response.json();
+    },
+    forwardToDirector: async (id) => {
+      const response = await authFetch(`${API_BASE_URL}/hr/offers/${id}/forward-to-director`, {
+        method: 'PUT',
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error('Failed to forward to director');
+      return response.json();
+    },
+    sendAcceptedToManager: async (offerIds) => {
+      const response = await authFetch(`${API_BASE_URL}/hr/offers/send-accepted-to-manager`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ offerIds })
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || 'Không thể gửi cho HR Manager');
+      }
+      return response.json();
+    },
+
+    sendOffersToManager: async (offerIds, type) => {
+      const response = await authFetch(`${API_BASE_URL}/hr/offers/send-to-manager`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ offerIds, type })
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || 'Không thể gửi cho HR Manager');
+      }
+      return response.json();
+    },
     
     create: async (data) => {
       const response = await authFetch(`${API_BASE_URL}/hr/offers`, {
@@ -795,7 +946,10 @@ const hrService = {
         headers: getAuthHeaders(),
         body: JSON.stringify(data)
       });
-      if (!response.ok) throw new Error('Failed to create offer');
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || 'Failed to create offer');
+      }
       return response.json();
     },
     
@@ -838,13 +992,16 @@ const hrService = {
       return response.json();
     },
     
-    // HR Staff: APPROVED → SENT
+    // HR: DRAFT/APPROVED → SENT (gửi trực tiếp cho candidate)
     send: async (id) => {
-      const response = await fetch(`${API_BASE_URL}/hr/offers/${id}/send`, {
+      const response = await authFetch(`${API_BASE_URL}/hr/offers/${id}/send`, {
         method: 'PUT',
         headers: getAuthHeaders()
       });
-      if (!response.ok) throw new Error('Failed to send offer');
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || err.error || 'Không thể gửi thư mời');
+      }
       return response.json();
     },
 

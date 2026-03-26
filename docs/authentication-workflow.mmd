@@ -1,0 +1,54 @@
+%% ============================================
+%% RMS - Authentication Workflow (Mermaid)
+%% Chạy tại: https://mermaid.live hoặc app hỗ trợ Mermaid
+%% ============================================
+
+%% ========== 1. TỔNG QUAN AUTH FLOW ==========
+flowchart TB
+    subgraph Frontend["Frontend (React)"]
+        Login["Login.jsx"]
+        Register["Register.jsx"]
+        ForgotPwd["ForgotPassword.jsx"]
+        GoogleCB["GoogleCallback.jsx"]
+        PrivateRoute["PrivateRoute.jsx"]
+        authService["authService.js"]
+    end
+
+    subgraph Backend["Backend (.NET)"]
+        AuthCtrl["AuthController"]
+        AuthSvc["AuthService"]
+        JWT["JwtTokenHelper"]
+        AuthRepo["AuthRepository"]
+    end
+
+    subgraph Storage["Storage"]
+        localStorage["localStorage (rememberMe=true)"]
+        sessionStorage["sessionStorage (rememberMe=false)"]
+    end
+
+    subgraph External["External"]
+        Google["Google OAuth"]
+        Email["Email Service"]
+    end
+
+    Login -->|POST /api/auth/login| AuthCtrl
+    AuthCtrl --> AuthSvc
+    AuthSvc --> AuthRepo
+    AuthSvc --> JWT
+    AuthSvc --> Login
+    Login --> authService
+    authService --> Storage
+
+    Login -->|GET /api/auth/google/url| AuthCtrl
+    Login --> Google
+    Google --> GoogleCB
+    GoogleCB -->|POST /api/auth/google/callback| AuthCtrl
+    AuthSvc --> Google
+
+    Register --> AuthCtrl
+    AuthSvc --> Email
+
+    ForgotPwd --> AuthCtrl
+
+    PrivateRoute --> authService
+    authService --> Storage

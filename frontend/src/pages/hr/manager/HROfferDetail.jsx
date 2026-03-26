@@ -35,19 +35,6 @@ export default function HROfferDetail() {
     }
   };
 
-  const handleSubmitForReview = async () => {
-    try {
-      setActionLoading(true);
-      await hrService.offers.submitForReview(id);
-      notify.success('Đã chuyển thư mời sang trạng thái chờ Director duyệt');
-      loadOffer();
-    } catch (err) {
-      notify.error(err.message || 'Không thể gửi duyệt');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
   const handleSend = async () => {
     try {
       setActionLoading(true);
@@ -68,6 +55,30 @@ export default function HROfferDetail() {
       startDate: offer.startDate ? offer.startDate.slice(0, 10) : ''
     });
     setShowEditModal(true);
+  };
+
+  const handleSaveOnly = async () => {
+    const salary = parseFloat(editForm.salary) || 0;
+    if (!salary || salary <= 0) {
+      notify.error('Vui lòng nhập mức lương hợp lệ');
+      return;
+    }
+    const payload = {
+      salary,
+      benefits: editForm.benefits?.trim() || null,
+      startDate: editForm.startDate || null
+    };
+    try {
+      setActionLoading(true);
+      await hrService.offers.saveInNegotiation(id, payload);
+      notify.success('Đã lưu thay đổi và lịch sử chỉnh sửa');
+      setShowEditModal(false);
+      loadOffer();
+    } catch (err) {
+      notify.error(err.message || 'Lưu thất bại');
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const handleEditSubmit = async () => {
@@ -99,6 +110,32 @@ export default function HROfferDetail() {
     }
   };
 
+  const handleSubmitToManager = async () => {
+    try {
+      setActionLoading(true);
+      await hrService.offers.submitToManager(id);
+      notify.success('Đã gửi cho HR Manager.');
+      loadOffer();
+    } catch (err) {
+      notify.error(err.message || 'Gửi thất bại');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleForwardToDirector = async () => {
+    try {
+      setActionLoading(true);
+      await hrService.offers.forwardToDirector(id);
+      notify.success('Đã chuyển giám đốc duyệt.');
+      loadOffer();
+    } catch (err) {
+      notify.error(err.message || 'Chuyển thất bại');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const formatCurrency = (amount) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
   const formatDate = (d) => (d ? new Date(d).toLocaleDateString('vi-VN') : '—');
@@ -109,7 +146,7 @@ export default function HROfferDetail() {
   return (
     <div style={{ padding: 24, backgroundColor: '#f9fafb', minHeight: '100vh' }}>
       <button
-        onClick={() => navigate('/staff/hr-manager/offers')}
+        onClick={() => navigate(isHRManager ? '/staff/hr-manager/accepted-edited-offers' : '/staff/hr-manager/offers')}
         style={{
           padding: '8px 16px',
           border: '1px solid #d1d5db',
@@ -137,23 +174,61 @@ export default function HROfferDetail() {
             <p style={{ color: '#6b7280' }}>{offer.departmentName}</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {(offer.statusId === 14 || offer.statusId === 15 || offer.statusId === 21) && (isHRManager || isHRStaff) && (
-              <button
-                onClick={handleEditClick}
-                disabled={actionLoading}
-                style={{
-                  padding: '8px 16px',
-                  border: '1px solid #3b82f6',
-                  borderRadius: 6,
-                  background: 'white',
-                  color: '#3b82f6',
-                  cursor: 'pointer',
-                  fontWeight: 500,
-                  fontSize: 14
-                }}
-              >
-                {offer.statusId === 21 ? 'Chỉnh sửa và gửi lại' : 'Chỉnh sửa'}
-              </button>
+            {(offer.statusId === 14 || offer.statusId === 15 || offer.statusId === 21 || offer.statusId === 24) && (isHRManager || isHRStaff) && (
+              <>
+                <button
+                  onClick={handleEditClick}
+                  disabled={actionLoading}
+                  style={{
+                    padding: '8px 16px',
+                    border: '1px solid #3b82f6',
+                    borderRadius: 6,
+                    background: 'white',
+                    color: '#3b82f6',
+                    cursor: 'pointer',
+                    fontWeight: 500,
+                    fontSize: 14
+                  }}
+                >
+                  {offer.statusId === 21 ? 'Chỉnh sửa' : 'Chỉnh sửa'}
+                </button>
+                {offer.statusId === 21 && (
+                  <button
+                    onClick={handleSubmitToManager}
+                    disabled={actionLoading}
+                    style={{
+                      padding: '8px 16px',
+                      border: '1px solid #8b5cf6',
+                      borderRadius: 6,
+                      background: '#8b5cf6',
+                      color: 'white',
+                      cursor: 'pointer',
+                      fontWeight: 500,
+                      fontSize: 14
+                    }}
+                  >
+                    Gửi cho HR Manager
+                  </button>
+                )}
+                {offer.statusId === 24 && isHRManager && (
+                  <button
+                    onClick={handleForwardToDirector}
+                    disabled={actionLoading}
+                    style={{
+                      padding: '8px 16px',
+                      border: '1px solid #059669',
+                      borderRadius: 6,
+                      background: '#059669',
+                      color: 'white',
+                      cursor: 'pointer',
+                      fontWeight: 500,
+                      fontSize: 14
+                    }}
+                  >
+                    Gửi giám đốc duyệt
+                  </button>
+                )}
+              </>
             )}
             <span
             style={{
@@ -170,6 +245,8 @@ export default function HROfferDetail() {
                   ? '#dbeafe'
                   : offer.currentStatus === 'NEGOTIATING'
                   ? '#ede9fe'
+                  : offer.statusId === 24 || offer.currentStatus === 'PENDING_HR_MANAGER'
+                  ? '#d1fae5'
                   : '#f3f4f6',
               color: offer.currentStatus === 'IN_REVIEW' ? '#92400e' : '#374151'
             }}
@@ -215,43 +292,30 @@ export default function HROfferDetail() {
           </div>
         )}
 
-        {/* Actions - HR creates/submits/sends. Director handles approve/reject at Director portal. */}
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 24 }}>
-          {offer.statusId === 14 && (isHRManager || isHRStaff) && (
-            <button
-              onClick={handleSubmitForReview}
-              disabled={actionLoading}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: '#f59e0b',
-                color: 'white',
-                border: 'none',
-                borderRadius: 6,
-                cursor: 'pointer',
-                fontWeight: 500
-              }}
-            >
-              Gửi Director duyệt (IN_REVIEW)
-            </button>
-          )}
-
-          {offer.statusId === 15 && (
-            <div
-              style={{
-                padding: '10px 14px',
-                backgroundColor: '#fff7ed',
-                border: '1px solid #fed7aa',
-                borderRadius: 6,
-                color: '#9a3412',
-                fontWeight: 500,
-                fontSize: 14
-              }}
-            >
-              Offer đang chờ Director duyệt
+        {offer.editHistory && offer.editHistory.length > 0 && (
+          <div style={{ marginBottom: 24, padding: 16, backgroundColor: '#f9fafb', borderRadius: 8, border: '1px solid #e5e7eb' }}>
+            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: '#374151' }}>Lịch sử chỉnh sửa</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {offer.editHistory.map((h, i) => (
+                <div key={h.id} style={{ padding: 12, backgroundColor: 'white', borderRadius: 6, border: '1px solid #e5e7eb', fontSize: 13 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <span style={{ fontWeight: 500 }}>{h.editedByName}</span>
+                    <span style={{ color: '#6b7280' }}>{formatDate(h.editedAt)}</span>
+                  </div>
+                  <div style={{ color: '#374151' }}>
+                    {h.salary != null && <span>Lương: {formatCurrency(h.salary)}</span>}
+                    {h.benefits && <span> • Quyền lợi: {h.benefits}</span>}
+                    {h.startDate && <span> • Ngày bắt đầu: {formatDate(h.startDate)}</span>}
+                  </div>
+                </div>
+              ))}
             </div>
-          )}
+          </div>
+        )}
 
-          {offer.statusId === 16 && (isHRManager || isHRStaff) && (
+        {/* Actions - Gửi cho ứng viên: chỉ khi DRAFT (14) hoặc đã được Giám đốc duyệt (16). Không hiện khi IN_REVIEW (15) - đang chờ Giám đốc */}
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 24 }}>
+          {(offer.statusId === 14 || offer.statusId === 16) && (isHRManager || isHRStaff) && (
             <button
               onClick={handleSend}
               disabled={actionLoading}
@@ -267,6 +331,42 @@ export default function HROfferDetail() {
             >
               Gửi thư mời cho ứng viên
             </button>
+          )}
+          {offer.statusId === 24 && isHRManager && (
+            <div style={{
+              padding: '12px 16px',
+              backgroundColor: '#d1fae5',
+              borderRadius: 6,
+              fontSize: 14,
+              color: '#065f46',
+              fontWeight: 500
+            }}>
+              📤 HR Staff đã gửi. Nhấn &quot;Gửi giám đốc duyệt&quot; để chuyển cho Giám đốc.
+            </div>
+          )}
+          {offer.statusId === 24 && isHRStaff && (
+            <div style={{
+              padding: '12px 16px',
+              backgroundColor: '#fef3c7',
+              borderRadius: 6,
+              fontSize: 14,
+              color: '#92400e',
+              fontWeight: 500
+            }}>
+              ⏳ Đã gửi HR Manager. Đang chờ HR Manager chuyển giám đốc duyệt.
+            </div>
+          )}
+          {offer.statusId === 15 && (isHRManager || isHRStaff) && (
+            <div style={{
+              padding: '12px 16px',
+              backgroundColor: '#fef3c7',
+              borderRadius: 6,
+              fontSize: 14,
+              color: '#92400e',
+              fontWeight: 500
+            }}>
+              ⏳ Đang chờ Giám đốc duyệt. Sau khi duyệt mới có thể gửi thư mời cho ứng viên.
+            </div>
           )}
         </div>
       </div>
@@ -328,19 +428,36 @@ export default function HROfferDetail() {
                 style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 6, resize: 'vertical' }}
               />
             </div>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <button
                 onClick={() => setShowEditModal(false)}
-              style={{
+                style={{
                   padding: '8px 16px',
                   border: '1px solid #d1d5db',
-                borderRadius: 6,
+                  borderRadius: 6,
                   background: 'white',
                   cursor: 'pointer'
-              }}
-            >
+                }}
+              >
                 Huỷ
               </button>
+              {offer.statusId === 21 && (
+                <button
+                  onClick={handleSaveOnly}
+                  disabled={actionLoading}
+                  style={{
+                    padding: '8px 16px',
+                    border: '1px solid #8b5cf6',
+                    borderRadius: 6,
+                    background: 'white',
+                    color: '#8b5cf6',
+                    cursor: 'pointer',
+                    fontWeight: 500
+                  }}
+                >
+                  {actionLoading ? 'Đang xử lý...' : 'Lưu'}
+                </button>
+              )}
               <button
                 onClick={handleEditSubmit}
                 disabled={actionLoading}
@@ -354,7 +471,7 @@ export default function HROfferDetail() {
                   fontWeight: 500
                 }}
               >
-                {actionLoading ? 'Đang xử lý...' : offer.statusId === 21 ? 'Cập nhật và gửi lại' : 'Lưu thay đổi'}
+                {actionLoading ? 'Đang xử lý...' : offer.statusId === 21 ? 'Gửi lại cho ứng viên' : 'Lưu thay đổi'}
               </button>
             </div>
           </div>

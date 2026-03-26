@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace RMS.Entity;
@@ -56,6 +56,7 @@ public partial class User
     public virtual ICollection<JobRequest> JobRequestRequestedByNavigations { get; set; } = new List<JobRequest>();
 
     public virtual ICollection<OfferApproval> OfferApprovals { get; set; } = new List<OfferApproval>();
+    public virtual ICollection<OfferEditHistory> OfferEditHistories { get; set; } = new List<OfferEditHistory>();
 
     public virtual ICollection<ParticipantRequest> ParticipantRequestAssignedToUsers { get; set; } = new List<ParticipantRequest>();
 

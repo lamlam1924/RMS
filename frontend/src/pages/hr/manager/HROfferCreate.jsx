@@ -6,6 +6,7 @@ import notify from '../../../utils/notification';
 export default function HROfferCreate() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const applicationId = searchParams.get('applicationId');
   const [candidates, setCandidates] = useState([]);
   const [jobRequests, setJobRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,6 +18,17 @@ export default function HROfferCreate() {
     benefits: '',
     startDate: ''
   });
+  const isFromApplication = Boolean(applicationId);
+
+  const formatCurrencyInput = (rawValue) => {
+    const digits = String(rawValue || '').replace(/\D/g, '');
+    if (!digits) return '';
+    return new Intl.NumberFormat('vi-VN').format(Number(digits));
+  };
+
+  const parseCurrencyInput = (formattedValue) => {
+    return String(formattedValue || '').replace(/\D/g, '');
+  };
 
   useEffect(() => {
     loadData();
@@ -33,6 +45,21 @@ export default function HROfferCreate() {
       }));
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (applicationId) {
+      hrService.applications.getById(applicationId)
+        .then(app => {
+          setForm(prev => ({
+            ...prev,
+            candidateId: String(app.candidateId || prev.candidateId),
+            jobRequestId: String(app.jobRequestId || prev.jobRequestId),
+            salary: app.expectedSalary ? String(app.expectedSalary) : prev.salary
+          }));
+        })
+        .catch(() => {});
+    }
+  }, [applicationId]);
 
   const loadData = async () => {
     try {
@@ -67,17 +94,30 @@ export default function HROfferCreate() {
       return;
     }
 
+    const selectedJobRequest = jobRequests.find(j => String(j.id) === String(jobRequestId));
+    const maxInterviewSalary = selectedJobRequest?.budget ? Number(selectedJobRequest.budget) : null;
+    if (maxInterviewSalary && salary > maxInterviewSalary) {
+      notify.error(`Mức lương không được vượt quá mức tối đa phỏng vấn: ${maxInterviewSalary.toLocaleString('vi-VN')} VNĐ`);
+      return;
+    }
+
     try {
       setSubmitting(true);
-      const result = await hrService.offers.create({
+      const payload = {
         candidateId,
         jobRequestId,
         salary,
         benefits: form.benefits || undefined,
         startDate: form.startDate || undefined
-      });
+      };
+      if (applicationId) payload.applicationId = parseInt(applicationId, 10);
+      await hrService.offers.create(payload);
       notify.success('Tạo thư mời thành công');
-      navigate('/staff/hr-manager/offers');
+      if (applicationId) {
+        navigate(`/staff/hr-manager/applications/${applicationId}`);
+      } else {
+        navigate('/staff/hr-manager/offers');
+      }
     } catch (err) {
       notify.error(err.message || 'Tạo thư mời thất bại');
     } finally {
@@ -90,6 +130,16 @@ export default function HROfferCreate() {
       <div style={{ padding: 40, textAlign: 'center' }}>Đang tải...</div>
     );
   }
+
+  const candidateOptions = isFromApplication
+    ? candidates.filter(c => String(c.id) === String(form.candidateId))
+    : candidates;
+
+  const jobRequestOptions = isFromApplication
+    ? jobRequests.filter(j => String(j.id) === String(form.jobRequestId))
+    : jobRequests;
+  const selectedJobRequest = jobRequests.find(j => String(j.id) === String(form.jobRequestId));
+  const maxInterviewSalary = selectedJobRequest?.budget ? Number(selectedJobRequest.budget) : null;
 
   return (
     <div style={{ padding: 24, backgroundColor: '#f9fafb', minHeight: '100vh' }}>
@@ -109,7 +159,9 @@ export default function HROfferCreate() {
         </button>
         <h1 style={{ fontSize: 24, fontWeight: 700, color: '#111827' }}>Tạo thư mời nhận việc</h1>
         <p style={{ color: '#6b7280', marginTop: 8 }}>
-          Chọn ứng viên và vị trí tuyển dụng để gửi thư mời (ứng viên không cần nộp CV)
+          {isFromApplication
+            ? 'Tạo offer theo hồ sơ ứng tuyển đã chọn (không cho đổi ứng viên/vị trí).'
+            : 'Chọn ứng viên và vị trí tuyển dụng để gửi thư mời (ứng viên không cần nộp CV)'}
         </p>
       </div>
 
@@ -126,16 +178,19 @@ export default function HROfferCreate() {
             name="candidateId"
             value={form.candidateId}
             onChange={handleChange}
+            disabled={isFromApplication}
             required
             style={{
               width: '100%',
               padding: '10px 12px',
               border: '1px solid #d1d5db',
-              borderRadius: 6
+              borderRadius: 6,
+              backgroundColor: isFromApplication ? '#f3f4f6' : 'white',
+              cursor: isFromApplication ? 'not-allowed' : 'pointer'
             }}
           >
             <option value="">-- Chọn ứng viên --</option>
-            {candidates.map(c => (
+            {candidateOptions.map(c => (
               <option key={c.id} value={c.id}>
                 {c.fullName} ({c.email})
               </option>
@@ -149,16 +204,19 @@ export default function HROfferCreate() {
             name="jobRequestId"
             value={form.jobRequestId}
             onChange={handleChange}
+            disabled={isFromApplication}
             required
             style={{
               width: '100%',
               padding: '10px 12px',
               border: '1px solid #d1d5db',
-              borderRadius: 6
+              borderRadius: 6,
+              backgroundColor: isFromApplication ? '#f3f4f6' : 'white',
+              cursor: isFromApplication ? 'not-allowed' : 'pointer'
             }}
           >
             <option value="">-- Chọn vị trí --</option>
-            {jobRequests.map(j => (
+            {jobRequestOptions.map(j => (
               <option key={j.id} value={j.id}>
                 {j.positionTitle} - {j.departmentName}
               </option>
@@ -169,12 +227,15 @@ export default function HROfferCreate() {
         <div style={{ marginBottom: 20 }}>
           <label style={{ display: 'block', fontWeight: 600, marginBottom: 8 }}>Mức lương (VNĐ) *</label>
           <input
-            type="number"
+            type="text"
             name="salary"
-            value={form.salary}
-            onChange={handleChange}
-            placeholder="VD: 15000000"
-            min="1"
+            value={formatCurrencyInput(form.salary)}
+            onChange={(e) => {
+              const raw = parseCurrencyInput(e.target.value);
+              setForm(prev => ({ ...prev, salary: raw }));
+            }}
+            placeholder="VD: 15.000.000"
+            inputMode="numeric"
             required
             style={{
               width: '100%',
@@ -183,6 +244,11 @@ export default function HROfferCreate() {
               borderRadius: 6
             }}
           />
+          {maxInterviewSalary && (
+            <div style={{ marginTop: 8, fontSize: 13, color: '#6b7280' }}>
+              Mức tối đa theo phỏng vấn/vị trí: {maxInterviewSalary.toLocaleString('vi-VN')} VNĐ
+            </div>
+          )}
         </div>
 
         <div style={{ marginBottom: 20 }}>

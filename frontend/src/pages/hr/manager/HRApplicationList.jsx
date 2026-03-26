@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import hrService from '../../../services/hrService';
+import { authService } from '../../../services/authService';
 import notify from '../../../utils/notification';
 import ApplicationProgressBar from '../../../components/hr/ApplicationProgressBar';
 import { formatDate, formatCurrency } from '../../../utils/formatters/display';
@@ -12,6 +13,9 @@ export default function HRApplicationList() {
   const [statusFilter, setStatusFilter] = useState(null);
   const [searchText, setSearchText] = useState('');
   const [focusMode, setFocusMode] = useState('all');
+  const userRoles = authService.getUserInfo()?.roles || [];
+  const isHRStaff = userRoles.includes('HR_STAFF');
+
   const [selectedIds, setSelectedIds] = useState([]);
 
   const statusOptions = [
@@ -74,7 +78,8 @@ export default function HRApplicationList() {
     const total = applications.length;
     const interviewing = applications.filter((item) => item.statusId === 11).length;
     const highPriority = applications.filter((item) => (item.priority ?? 3) <= 2).length;
-    return { total, interviewing, highPriority };
+    const needCreateOffer = applications.filter((item) => item.isOfferCreationRequested && item.statusId === 12).length;
+    return { total, interviewing, highPriority, needCreateOffer };
   }, [applications]);
 
   const filteredApplications = useMemo(() => {
@@ -82,6 +87,7 @@ export default function HRApplicationList() {
     return applications.filter((app) => {
       if (focusMode === 'interviewing' && app.statusId !== 11) return false;
       if (focusMode === 'priority' && (app.priority ?? 3) > 2) return false;
+      if (focusMode === 'offer-requested' && !(app.isOfferCreationRequested && app.statusId === 12)) return false;
 
       if (!keyword) return true;
 
@@ -184,7 +190,8 @@ export default function HRApplicationList() {
         {[
           { id: 'all', label: 'Tất cả' },
           { id: 'interviewing', label: 'Cần xếp lịch' },
-          { id: 'priority', label: 'Ưu tiên cao' }
+          { id: 'priority', label: 'Ưu tiên cao' },
+          ...(isHRStaff ? [{ id: 'offer-requested', label: `Cần tạo offer (${stats.needCreateOffer})` }] : [])
         ].map((mode) => (
           <button
             key={mode.id}
@@ -301,6 +308,19 @@ export default function HRApplicationList() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  {isHRStaff && app.isOfferCreationRequested && app.statusId === 12 && (
+                    <span style={{
+                      padding: '4px 10px',
+                      backgroundColor: '#fee2e2',
+                      color: '#b91c1c',
+                      borderRadius: 16,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      border: '1px solid #fecaca'
+                    }}>
+                      Cần tạo offer
+                    </span>
+                  )}
                   {getPriorityBadge(app.priority ?? 3)}
                   <span style={{
                     padding: '4px 12px',

@@ -138,7 +138,9 @@ INSERT INTO Candidates (FullName, Email, Phone)
 VALUES
 (N'Nguyễn Văn An', 'annguyen@gmail.com', '0901000001'),
 (N'Trần Thị Bình', 'binhtran@gmail.com', '0901000002'),
-(N'Lê Minh Cường', 'cuongle@gmail.com', '0901000003');
+(N'Lê Minh Cường', 'cuongle@gmail.com', '0901000003'),
+(N'Phạm Thu Hà', 'hapham@gmail.com', '0901000004'),
+(N'Đỗ Quang Huy', 'huydo@gmail.com', '0901000005');
 go 
 
 INSERT INTO CVProfiles (

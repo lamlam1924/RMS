@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace RMS.Entity;
@@ -35,6 +35,8 @@ public partial class Offer
 
     public DateTime? SentAt { get; set; }
 
+    public DateTime? SentToManagerAt { get; set; }
+
     public DateTime? UpdatedAt { get; set; }
 
     public int? UpdatedBy { get; set; }
@@ -50,6 +52,7 @@ public partial class Offer
     public virtual JobRequest? JobRequest { get; set; }
 
     public virtual ICollection<OfferApproval> OfferApprovals { get; set; } = new List<OfferApproval>();
+    public virtual ICollection<OfferEditHistory> OfferEditHistories { get; set; } = new List<OfferEditHistory>();
 
     public virtual Status Status { get; set; } = null!;
 }

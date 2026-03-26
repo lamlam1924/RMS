@@ -6,6 +6,13 @@ using RMS.Repository.Interface;
 
 namespace RMS.Repository;
 
+// Helper class cho raw SQL query
+public class FunnelStageCount
+{
+    public string Stage { get; set; } = string.Empty;
+    public int Count { get; set; }
+}
+
 public class HRStatisticsRepository : IHRStatisticsRepository
 {
     private readonly RecruitmentDbContext _context;
@@ -17,86 +24,38 @@ public class HRStatisticsRepository : IHRStatisticsRepository
 
     public async Task<HRDashboardStatsDto> GetDashboardStatisticsAsync()
     {
-        var stats = new HRDashboardStatsDto();
+        // Tối ưu: Gộp tất cả truy vấn thành 1 query duy nhất
+        var result = await _context.Database.SqlQueryRaw<HRDashboardStatsDto>(@"
+            SELECT 
+                (SELECT COUNT(*) FROM JobRequests WHERE StatusId IN (2, 3) AND IsDeleted = 0) AS PendingJobRequests,
+                (SELECT COUNT(*) FROM Applications WHERE StatusId BETWEEN 9 AND 13 AND IsDeleted = 0) AS TotalApplications,
+                (SELECT COUNT(*) FROM Applications WHERE StatusId = 10 AND IsDeleted = 0) AS ScreeningApplications,
+                (SELECT COUNT(*) FROM Applications WHERE StatusId = 11 AND IsDeleted = 0) AS InterviewingApplications,
+                (SELECT COUNT(*) FROM Interviews WHERE StartTime > GETDATE() AND IsDeleted = 0) AS UpcomingInterviews,
+                (SELECT COUNT(*) FROM Offers WHERE StatusId = 15 AND IsDeleted = 0) AS PendingOffers,
+                (SELECT COUNT(*) FROM JobRequests WHERE StatusId = 7 AND IsDeleted = 0) AS ActiveJobPostings,
+                (SELECT COUNT(*) FROM JobRequests WHERE StatusId = 21 AND IsDeleted = 0) AS ReturnedJobRequestsCount
+        ").FirstAsync();
 
-        // Pending Job Requests (SUBMITTED = 2, IN_REVIEW = 3)
-        stats.PendingJobRequests = await _context.JobRequests
-            .Where(jr => (jr.StatusId == 2 || jr.StatusId == 3) && jr.IsDeleted == false)
-            .CountAsync();
-
-        // Total Applications (APPLIED = 9 onwards, excluding final statuses)
-        stats.TotalApplications = await _context.Applications
-            .Where(a => a.StatusId >= 9 && a.StatusId <= 13 && a.IsDeleted == false)
-            .CountAsync();
-
-        // Screening Applications (SCREENING = 10)
-        stats.ScreeningApplications = await _context.Applications
-            .Where(a => a.StatusId == 10 && a.IsDeleted == false)
-            .CountAsync();
-
-        // Interviewing Applications (INTERVIEWING = 11)
-        stats.InterviewingApplications = await _context.Applications
-            .Where(a => a.StatusId == 11 && a.IsDeleted == false)
-            .CountAsync();
-
-        // Upcoming Interviews (future interviews)
-        stats.UpcomingInterviews = await _context.Interviews
-            .Where(i => i.StartTime > DateTimeHelper.Now && i.IsDeleted == false)
-            .CountAsync();
-
-        // Pending Offers (IN_REVIEW = 15)
-        stats.PendingOffers = await _context.Offers
-            .Where(o => o.StatusId == 15 && o.IsDeleted == false)
-            .CountAsync();
-
-        // Active Job Postings (PUBLISHED = 7)
-        stats.ActiveJobPostings = await _context.JobRequests
-            .Where(jr => jr.StatusId == 7 && jr.IsDeleted == false)
-            .CountAsync();
-
-        // Returned Job Requests (RETURNED = 21)
-        stats.ReturnedJobRequestsCount = await _context.JobRequests
-            .Where(jr => jr.StatusId == 21 && jr.IsDeleted == false)
-            .CountAsync();
-
-        return stats;
+        return result;
 
     }
 
     public async Task<List<RecruitmentFunnelDto>> GetRecruitmentFunnelAsync()
     {
-        var funnel = new List<RecruitmentFunnelDto>();
+        // Tối ưu: Gộp tất cả truy vấn funnel thành 1 query
+        var results = await _context.Database.SqlQueryRaw<FunnelStageCount>(@"
+            SELECT 'Job Requests' AS Stage, COUNT(*) AS Count FROM JobRequests WHERE StatusId IN (2, 3) AND IsDeleted = 0
+            UNION ALL
+            SELECT 'Applications' AS Stage, COUNT(*) AS Count FROM Applications WHERE StatusId BETWEEN 9 AND 13 AND IsDeleted = 0
+            UNION ALL
+            SELECT 'Screening' AS Stage, COUNT(*) AS Count FROM Applications WHERE StatusId = 10 AND IsDeleted = 0
+            UNION ALL
+            SELECT 'Interviewing' AS Stage, COUNT(*) AS Count FROM Applications WHERE StatusId = 11 AND IsDeleted = 0
+            UNION ALL
+            SELECT 'Offers' AS Stage, COUNT(*) AS Count FROM Offers WHERE StatusId BETWEEN 15 AND 18 AND IsDeleted = 0
+        ").ToListAsync();
 
-        // Job Requests (SUBMITTED + IN_REVIEW)
-        var jobRequestsCount = await _context.JobRequests
-            .Where(jr => (jr.StatusId == 2 || jr.StatusId == 3) && jr.IsDeleted == false)
-            .CountAsync();
-        funnel.Add(new RecruitmentFunnelDto { Stage = "Job Requests", Count = jobRequestsCount });
-
-        // Applications (All active)
-        var applicationsCount = await _context.Applications
-            .Where(a => a.StatusId >= 9 && a.StatusId <= 13 && a.IsDeleted == false)
-            .CountAsync();
-        funnel.Add(new RecruitmentFunnelDto { Stage = "Applications", Count = applicationsCount });
-
-        // Screening (SCREENING = 10)
-        var screeningCount = await _context.Applications
-            .Where(a => a.StatusId == 10 && a.IsDeleted == false)
-            .CountAsync();
-        funnel.Add(new RecruitmentFunnelDto { Stage = "Screening", Count = screeningCount });
-
-        // Interviewing (INTERVIEWING = 11)
-        var interviewingCount = await _context.Applications
-            .Where(a => a.StatusId == 11 && a.IsDeleted == false)
-            .CountAsync();
-        funnel.Add(new RecruitmentFunnelDto { Stage = "Interviewing", Count = interviewingCount });
-
-        // Offers (IN_REVIEW + APPROVED + SENT)
-        var offersCount = await _context.Offers
-            .Where(o => (o.StatusId >= 15 && o.StatusId <= 18) && o.IsDeleted == false)
-            .CountAsync();
-        funnel.Add(new RecruitmentFunnelDto { Stage = "Offers", Count = offersCount });
-
-        return funnel;
+        return results.Select(r => new RecruitmentFunnelDto { Stage = r.Stage, Count = r.Count }).ToList();
     }
 }

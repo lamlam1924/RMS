@@ -84,7 +84,10 @@ export default function MyOffers() {
 
   const formatSalary = (val) => {
     if (!val) return "Thỏa thuận";
-    return `${(val / 1000000).toFixed(0)} triệu VNĐ`;
+    const millions = val / 1000000;
+    // Hiển thị số thập phân khi có (vd: 15.1 triệu thay vì làm tròn 15 triệu)
+    const formatted = Number.isInteger(millions) ? millions.toFixed(0) : millions.toFixed(1);
+    return `${formatted} triệu VNĐ`;
   };
 
   const formatDate = (dateString) => {

@@ -72,6 +72,7 @@ public class EmailService : IEmailService
             using var smtpClient = new SmtpClient(smtpHost, smtpPort);
             smtpClient.EnableSsl = true;
             smtpClient.Credentials = new NetworkCredential(smtpUser, smtpPassword);
+            smtpClient.Timeout = 15000; // 15 giây - tránh treo lâu khi SMTP lỗi
 
             await smtpClient.SendMailAsync(message);
             _logger.LogInformation("Email sent successfully to {Email} with subject: {Subject}", toEmail, subject);

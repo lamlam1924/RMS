@@ -27,6 +27,7 @@ export default function HRStaffDashboard() {
       setLoading(true);
       setError('');
 
+      // Tối ưu: Load tất cả data song song
       const [jobRequests, jobPostings, interviews, approvedOffers] = await Promise.all([
         hrService.jobRequests.getApprovedForMe(),
         hrService.jobPostings.getMy(),

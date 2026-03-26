@@ -10,4 +10,5 @@ public interface IHRApplicationsService
     Task<ApplicationDetailDto?> GetApplicationByIdAsync(int id);
     Task<ApplicationCvSnapshotDto?> GetApplicationCvSnapshotAsync(int id);
     Task<ActionResponseDto> UpdateApplicationStatusAsync(UpdateApplicationStatusDto dto, int userId);
+    Task<ActionResponseDto> NotifyStaffCreateOfferAsync(int applicationId, int managerUserId);
 }

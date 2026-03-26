@@ -103,6 +103,19 @@ public class AuthRepository : IAuthRepository
         return departments;
     }
 
+    public async Task<List<string>> GetUserEmailsByRoleAsync(string roleCode)
+    {
+        var role = await _context.Roles
+            .Include(r => r.Users)
+            .FirstOrDefaultAsync(r => r.Code == roleCode);
+        if (role == null) return new List<string>();
+
+        return role.Users
+            .Where(u => u.IsDeleted != true && (u.IsActive == true || u.IsActive == null))
+            .Select(u => u.Email)
+            .ToList();
+    }
+
     public async Task<Candidate?> GetCandidateByEmailAsync(string email)
     {
         return await _context.Candidates

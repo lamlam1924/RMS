@@ -159,8 +159,8 @@ public class DirectorService : IDirectorService
         return new ApprovalActionResponseDto
         {
             Success = success,
-            Message = success ? "Offer approved successfully" : "Failed to approve offer",
-            NewStatus = success ? "APPROVED" : null
+            Message = success ? "Đã duyệt và gửi thư mời cho ứng viên" : "Failed to approve offer",
+            NewStatus = success ? "SENT" : null
         };
     }
 

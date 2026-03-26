@@ -25,10 +25,22 @@ public class HRApplicationsService : IHRApplicationsService
     {
         var entities = await _repository.GetApplicationsAsync(statusId, scopeByStaffId);
         var dtos = _mapper.Map<List<ApplicationListDto>>(entities);
+        var appIds = entities.Select(e => e.Id).ToList();
+        var offerRequestTimes = await _repository.GetOfferCreationRequestTimesAsync(appIds);
+        var appIdsHavingOffer = await _repository.GetApplicationIdsHavingOfferAsync(appIds);
 
         foreach (var dto in dtos)
         {
             dto.CurrentStatus = entities.First(e => e.Id == dto.Id).Status.Name;
+            offerRequestTimes.TryGetValue(dto.Id, out var requestedAt);
+            var shouldRequestOffer = dto.StatusId == 12 &&
+                                     !appIdsHavingOffer.Contains(dto.Id) &&
+                                     requestedAt.HasValue;
+            if (shouldRequestOffer)
+            {
+                dto.IsOfferCreationRequested = true;
+                dto.OfferCreationRequestedAt = requestedAt;
+            }
         }
 
         return dtos;
@@ -181,5 +193,11 @@ public class HRApplicationsService : IHRApplicationsService
             "Application status updated successfully", 
             "Failed to update application status"
         );
+    }
+
+    public async Task<ActionResponseDto> NotifyStaffCreateOfferAsync(int applicationId, int managerUserId)
+    {
+        var (success, message) = await _repository.NotifyAssignedStaffCreateOfferAsync(applicationId, managerUserId);
+        return ResponseHelper.CreateActionResponse(success, message, message);
     }
 }

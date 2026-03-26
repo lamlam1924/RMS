@@ -19,7 +19,11 @@ var config = builder.Configuration;
 builder.Services.AddDbContext<RecruitmentDbContext>(options =>
     options.UseSqlServer(config.GetConnectionString("DefaultConnection"), sqlOpts =>
     {
-        sqlOpts.CommandTimeout(60); // Tăng timeout cho truy vấn (mặc định 30s)
+        sqlOpts.CommandTimeout(10); // Giảm timeout xuống 10s để phát hiện query chậm
+        sqlOpts.EnableRetryOnFailure(
+            maxRetryCount: 3,
+            maxRetryDelay: TimeSpan.FromSeconds(5),
+            errorNumbersToAdd: null); // Retry khi connection timeout hoặc lỗi tạm thời
     }));
 
 // ======================= CONTROLLERS =======================

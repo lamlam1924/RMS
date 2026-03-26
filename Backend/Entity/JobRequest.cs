@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace RMS.Entity;
@@ -50,6 +50,8 @@ public partial class JobRequest
     public virtual ICollection<JobPosting> JobPostings { get; set; } = new List<JobPosting>();
 
     public virtual ICollection<Offer> Offers { get; set; } = new List<Offer>();
+
+    public virtual ICollection<RecruitmentReport> RecruitmentReports { get; set; } = new List<RecruitmentReport>();
 
     public virtual Position Position { get; set; } = null!;
 

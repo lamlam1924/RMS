@@ -103,4 +103,23 @@ public class HRApplicationsController : ControllerBase
             return StatusCode(500, new { message = "Không thể cập nhật trạng thái hồ sơ", error = ex.Message });
         }
     }
+
+    /// <summary>
+    /// HR Manager gửi thông báo cho HR Staff tạo offer khi hồ sơ đã PASSED
+    /// </summary>
+    [HttpPost("{id}/notify-staff-create-offer")]
+    [Authorize(Roles = "HR_MANAGER")]
+    public async Task<ActionResult<ActionResponseDto>> NotifyStaffCreateOffer(int id)
+    {
+        try
+        {
+            var managerUserId = CurrentUserHelper.GetCurrentUserId(this);
+            var result = await _hrApplicationsService.NotifyStaffCreateOfferAsync(id, managerUserId);
+            return result.Success ? Ok(result) : BadRequest(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Không thể gửi thông báo cho HR Staff", error = ex.Message });
+        }
+    }
 }

@@ -110,6 +110,11 @@ const MENU_CONFIG = [
         label: "Tin tuyển dụng",
         to: "/staff/hr-manager/job-postings",
       },
+      {
+        key: "hrManagerReports",
+        label: "Báo cáo tuyển dụng",
+        to: "/staff/hr-manager/reports",
+      },
     ],
   },
 
@@ -123,6 +128,11 @@ const MENU_CONFIG = [
         key: "hrStaffDashboard",
         label: "Tổng quan",
         to: "/staff/hr-staff",
+      },
+      {
+        key: "hrStaffJobRequests",
+        label: "Yêu cầu Tuyển dụng",
+        to: "/staff/hr-staff/job-requests",
       },
       {
         key: "hrStaffMyInterviews",
@@ -172,10 +182,16 @@ const MENU_CONFIG = [
     roles: [ROLES.HR_MANAGER, ROLES.HR_STAFF],
   },
   {
+    key: "hrManagerAcceptedEdited",
+    label: "Offer",
+    to: "/staff/hr-manager/accepted-edited-offers",
+    roles: [ROLES.HR_MANAGER],
+  },
+  {
     key: "sharedOffers",
     label: "Đề nghị Tuyển dụng",
     to: "/staff/hr-manager/offers",
-    roles: [ROLES.HR_MANAGER, ROLES.HR_STAFF],
+    roles: [ROLES.HR_STAFF],
   },
 ];
 

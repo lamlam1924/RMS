@@ -11,6 +11,33 @@ public interface IInterviewEmailService
     Task SendInterviewerAssignmentBulkAsync(InterviewerAssignmentBulkEmailData data);
     Task SendFeedbackReminderAsync(FeedbackReminderEmailData data);
     Task SendFeedbackSubmittedNotificationAsync(FeedbackSubmittedEmailData data);
+    /// <summary>Gửi thông báo cho HR Staff khi ứng viên chấp nhận thư mời.</summary>
+    Task SendOfferAcceptedNotificationToHRAsync(OfferAcceptedNotificationData data);
+    /// <summary>Gửi danh sách ứng viên đã chấp nhận offer cho HR Manager.</summary>
+    Task SendAcceptedOffersToManagerAsync(AcceptedOffersToManagerData data);
+}
+
+public class AcceptedOffersToManagerData
+{
+    public List<string> ManagerEmails { get; set; } = new();
+    public List<AcceptedOfferItem> Items { get; set; } = new();
+    public string SenderName { get; set; } = "";
+}
+
+public class AcceptedOfferItem
+{
+    public string CandidateName { get; set; } = "";
+    public string PositionTitle { get; set; } = "";
+    public string DepartmentName { get; set; } = "";
+    public decimal Salary { get; set; }
+}
+
+public class OfferAcceptedNotificationData
+{
+    public string HREmail { get; set; } = "";
+    public string CandidateName { get; set; } = "";
+    public string PositionTitle { get; set; } = "";
+    public string OfferDetailLink { get; set; } = "";
 }
 
 public class InterviewInvitationEmailData
