@@ -4,11 +4,6 @@ import directorService from "../../services/directorService";
 import { formatVND } from "../../utils/formatters/currency";
 import { formatDateDisplay } from "../../utils/formatters/date";
 
-/**
- * DirectorDashboard Component
- * Thiết kế cao cấp, hiện đại, tối giản nhưng đầy đủ thông tin chiến lược
- * Lấy cảm hứng từ phong cách LandingPageNew (Glassmorphism, Soft Shadows)
- */
 const DirectorDashboard = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState({
@@ -16,6 +11,12 @@ const DirectorDashboard = () => {
     pendingOffers: 0,
     urgentItems: 0,
     totalPending: 0,
+  });
+  const [pendingBreakdown, setPendingBreakdown] = useState({
+    urgentJobRequests: 0,
+    highJobRequests: 0,
+    normalJobRequests: 0,
+    pendingOffers: 0,
   });
   const [recruitmentStats, setRecruitmentStats] = useState({
     totalApplications: 0,
@@ -71,6 +72,8 @@ const DirectorDashboard = () => {
 
       const urgentJobs = jobRequests.filter((jr) => jr.priority === 1);
       const urgentOffers = offers.filter((o) => o.priority === 1);
+      const highJobs = jobRequests.filter((jr) => jr.priority === 2);
+      const normalJobs = jobRequests.filter((jr) => jr.priority === 3);
 
       // Dept Breakdown
       const deptMap = {};
@@ -86,8 +89,15 @@ const DirectorDashboard = () => {
         deptMap[jr.departmentName].budget += jr.budget || 0;
       });
 
+      const sortedJobRequests = [...jobRequests].sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
+      );
+      const sortedOffers = [...offers].sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
+      );
+
       const recentItems = [
-        ...jobRequests.slice(0, 3).map((jr) => ({
+        ...sortedJobRequests.slice(0, 3).map((jr) => ({
           type: "Job Request",
           title: jr.positionTitle,
           department: jr.departmentName,
@@ -95,7 +105,7 @@ const DirectorDashboard = () => {
           createdAt: jr.createdAt,
           id: jr.id,
         })),
-        ...offers.slice(0, 2).map((o) => ({
+        ...sortedOffers.slice(0, 2).map((o) => ({
           type: "Offer",
           title: o.candidateName,
           department: o.departmentName,
@@ -112,6 +122,12 @@ const DirectorDashboard = () => {
         pendingOffers: offers.length,
         urgentItems: urgentJobs.length + urgentOffers.length,
         totalPending: jobRequests.length + offers.length,
+      });
+      setPendingBreakdown({
+        urgentJobRequests: urgentJobs.length,
+        highJobRequests: highJobs.length,
+        normalJobRequests: normalJobs.length,
+        pendingOffers: offers.length,
       });
       setDepartmentBreakdown(Object.values(deptMap));
       setRecentActivity(recentItems);
@@ -137,90 +153,89 @@ const DirectorDashboard = () => {
   if (loading) return <LoadingSpinner />;
 
   return (
-    <div className="min-h-screen bg-[#fafbfc] py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-      {/* Background Orbs */}
-      <div className="fixed top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 to-indigo-600"></div>
-      <div className="fixed top-40 -left-20 w-80 h-80 bg-blue-50/50 rounded-full blur-3xl opacity-60 -z-10"></div>
-      <div className="fixed bottom-20 -right-20 w-96 h-96 bg-indigo-50/50 rounded-full blur-3xl opacity-60 -z-10"></div>
-
-      <div className="max-w-7xl mx-auto relative z-10">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16 animate-in fade-in slide-in-from-top-4 duration-700">
+    <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-white px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-6 rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm backdrop-blur">
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <span className="text-blue-500 font-bold text-[10px] uppercase tracking-[0.2em] mb-3 block px-1">
-              Management Hub
-            </span>
-            <h1 className="text-5xl font-extrabold text-slate-900 tracking-tight leading-tight">
-              Bảng Điều Khiển Chiến Lược
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Director Workspace</p>
+            <h1 className="mt-1 text-2xl font-bold text-slate-900 sm:text-3xl">
+              Dashboard Giám đốc
             </h1>
-            <p className="mt-2 text-slate-400 font-semibold text-xs uppercase tracking-widest pl-1">
-              Giám đốc • Tổng quan vận hành và phê duyệt
+            <p className="mt-1 text-sm text-slate-500">
+              Theo dõi các yêu cầu và offer đang chờ phê duyệt.
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-2">
             <button
               onClick={() => navigate("/staff/director/job-requests")}
-              className="px-6 py-3 bg-white border border-slate-100 rounded-2xl text-xs font-bold uppercase tracking-widest text-slate-600 hover:text-blue-600 hover:border-blue-100 transition-all shadow-sm active:scale-95"
+              className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 transition hover:-translate-y-0.5 hover:bg-blue-100"
             >
-              Yêu cầu
+              Xem yêu cầu
             </button>
             <button
               onClick={() => navigate("/staff/director/offers")}
-              className="px-6 py-3 bg-white border border-slate-100 rounded-2xl text-xs font-bold uppercase tracking-widest text-slate-600 hover:text-indigo-600 hover:border-indigo-100 transition-all shadow-sm active:scale-95"
+              className="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 transition hover:-translate-y-0.5 hover:bg-indigo-100"
             >
-              Offer
+              Xem offer
             </button>
           </div>
         </div>
+        </div>
 
         {loadWarning && (
-          <div className="mb-8 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
             {loadWarning}
           </div>
         )}
 
-        {/* Highlight Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-16 animate-in fade-in duration-700 delay-100">
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Yêu cầu chờ duyệt"
             value={stats.pendingJobRequests}
+            tone="blue"
             icon="📋"
-            color="blue"
           />
           <StatCard
             label="Offer chờ ký"
             value={stats.pendingOffers}
-            icon="📄"
-            color="indigo"
+            tone="indigo"
+            icon="📝"
           />
           <StatCard
             label="Vấn đề khẩn cấp"
             value={stats.urgentItems}
-            icon="🔥"
-            color="red"
-            isUrgent
+            tone="red"
+            icon="⚠️"
           />
           <StatCard
             label="Tổng đầu việc"
             value={stats.totalPending}
+            tone="slate"
             icon="📊"
-            color="slate"
           />
         </div>
 
-        {/* Recruitment Report Snapshot */}
-        <section className="bg-white rounded-[2.5rem] p-10 border border-slate-100 shadow-sm mb-12 animate-in fade-in duration-700 delay-150">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
-              <span className="w-1.5 h-6 bg-blue-600 rounded-full"></span>
-              Báo cáo tuyển dụng tổng quan
-            </h2>
-            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
-              Chỉ xem cho Giám đốc
-            </span>
+        <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-3 flex items-center justify-between gap-4">
+            <h2 className="text-base font-semibold text-blue-900">Nguồn số liệu đang chờ xử lý</h2>
+            <span className="text-xs text-slate-500">Realtime từ API Director</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <MiniStat label="JR mức 1 (khẩn)" value={pendingBreakdown.urgentJobRequests} />
+            <MiniStat label="JR mức 2 (cao)" value={pendingBreakdown.highJobRequests} />
+            <MiniStat label="JR mức 3 (thường)" value={pendingBreakdown.normalJobRequests} />
+            <MiniStat label="Offer chờ duyệt" value={pendingBreakdown.pendingOffers} />
+          </div>
+        </section>
+
+        <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-base font-semibold text-indigo-900">Báo cáo tuyển dụng tổng quan</h2>
+            <span className="text-xs text-slate-500">Dữ liệu chỉ xem</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <MiniStat label="Hồ sơ ứng tuyển" value={recruitmentStats.totalApplications} />
             <MiniStat label="Phỏng vấn sắp tới" value={recruitmentStats.upcomingInterviews} />
             <MiniStat label="Tin tuyển dụng đang mở" value={recruitmentStats.activeJobPostings} />
@@ -228,28 +243,21 @@ const DirectorDashboard = () => {
           </div>
 
           {funnelData.length > 0 && (
-            <div className="mt-10 space-y-6">
+            <div className="space-y-4">
               {funnelData.map((stage, idx) => {
                 const maxCount = Math.max(...funnelData.map(d => d.count || 0), 1);
                 const width = ((stage.count || 0) / maxCount) * 100;
                 return (
-                  <div key={idx} className="relative group/bar">
-                    <div className="flex justify-between items-center mb-2 px-1">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                        <span className="text-xs font-bold uppercase tracking-widest text-slate-500 group-hover/bar:text-blue-600 transition-colors">
-                          {stage.stage || "N/A"}
-                        </span>
-                      </div>
-                      <span className="text-sm font-black text-slate-900 bg-slate-50 px-3 py-1 rounded-lg">
-                        {stage.count || 0}
-                      </span>
+                  <div key={idx}>
+                    <div className="mb-1 flex items-center justify-between text-sm">
+                      <span className="font-medium text-slate-700">{stage.stage || "N/A"}</span>
+                      <span className="font-semibold text-slate-900">{stage.count || 0}</span>
                     </div>
-                    <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden p-0.5">
-                      <div 
-                        className="h-full bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 rounded-full transition-all duration-1000 ease-out shadow-sm"
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-600"
                         style={{ width: `${width}%` }}
-                      ></div>
+                      />
                     </div>
                   </div>
                 );
@@ -258,272 +266,143 @@ const DirectorDashboard = () => {
           )}
 
           {funnelData.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-4 text-sm text-slate-500">
+            <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
               Chưa có dữ liệu funnel trong thời điểm hiện tại.
             </div>
           )}
         </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-          {/* Left/Middle: Core Insights */}
-          <div className="lg:col-span-2 space-y-10 animate-in fade-in slide-in-from-left-4 duration-700 delay-200">
-            {/* Urgent Section */}
-            {urgentRequests.length > 0 && (
-              <section className="bg-white rounded-[2.5rem] p-10 border border-slate-50 shadow-xl shadow-slate-200/50">
-                <div className="flex items-center justify-between mb-8">
-                  <h2 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
-                    <span className="text-2xl">🚨</span> Ưu tiên xử lý ngay
-                  </h2>
-                  <span className="px-3 py-1 bg-red-50 text-red-500 rounded-full text-[10px] font-bold uppercase tracking-widest border border-red-100">
-                    {urgentRequests.length} tin mới
-                  </span>
-                </div>
-                <div className="space-y-4">
-                  {urgentRequests.map((item, idx) => (
-                    <UrgentRow
-                      key={idx}
-                      item={item}
-                      onClick={() =>
-                        navigate(
-                          item.positionTitle
-                              ? "/staff/director/job-requests"
-                              : "/staff/director/offers",
-                        )
-                      }
-                    />
-                  ))}
-                </div>
-              </section>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-base font-semibold text-rose-900">Cần ưu tiên xử lý</h2>
+              <span className="text-sm text-slate-500">{urgentRequests.length} mục</span>
+            </div>
+            {urgentRequests.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                Hiện không có mục khẩn cấp.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {urgentRequests.slice(0, 8).map((item, idx) => (
+                  <SimpleRow
+                    key={idx}
+                    title={item.positionTitle || item.candidateName}
+                    subtitle={item.departmentName || item.department}
+                    extra={item.priority ? `Mức ${item.priority}` : ""}
+                    onClick={() =>
+                      navigate(item.positionTitle ? "/staff/director/job-requests" : "/staff/director/offers")
+                    }
+                  />
+                ))}
+              </div>
             )}
+          </section>
 
-            {/* Department Analysis */}
-            <section className="bg-white rounded-[2.5rem] p-10 border border-slate-100 shadow-sm">
-              <h2 className="text-xl font-bold text-slate-900 tracking-tight mb-10 px-2 flex items-center gap-3">
-                <span className="w-1.5 h-6 bg-slate-900 rounded-full"></span>
-                Phân bổ theo Phòng ban
-              </h2>
-              {departmentBreakdown.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-4 text-sm text-slate-500">
-                  Chưa có yêu cầu nào đang chờ duyệt theo phòng ban.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {departmentBreakdown.map((dept, idx) => (
-                    <DeptProgress
-                      key={idx}
-                      dept={dept}
-                      maxPending={stats.pendingJobRequests}
-                    />
-                  ))}
-                </div>
-              )}
-            </section>
-          </div>
-
-          {/* Right: Recent & Feed */}
-          <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-700 delay-300">
-            <section className="bg-[#1e293b] rounded-[2.5rem] p-10 text-white shadow-2xl shadow-slate-300">
-              <h2 className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-10 border-b border-white/5 pb-4">
-                Hoạt động Gần đây
-              </h2>
-              <div className="space-y-10 relative">
-                <div className="absolute left-3 top-0 bottom-0 w-px bg-white/5"></div>
-                {recentActivity.length === 0 ? (
-                  <div className="pl-10 text-sm text-slate-400">
-                    Chưa có hoạt động gần đây để hiển thị.
-                  </div>
-                ) : (
-                  recentActivity.map((activity, idx) => (
-                    <ActivityItem
-                      key={idx}
-                      activity={activity}
-                      isLast={idx === recentActivity.length - 1}
-                      onClick={() =>
-                        navigate(
-                          activity.type === "Job Request"
-                              ? "/staff/director/job-requests"
-                              : "/staff/director/offers",
-                        )
-                      }
-                    />
-                  ))
-                )}
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-3 text-base font-semibold text-emerald-900">Phân bổ theo phòng ban</h2>
+            {departmentBreakdown.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                Chưa có yêu cầu chờ duyệt theo phòng ban.
               </div>
-            </section>
-
-            {/* Responsibilities */}
-            <section className="bg-indigo-50/50 rounded-[2rem] p-8 border border-indigo-100/50">
-              <h3 className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-6">
-                Trách nhiệm chiến lược
-              </h3>
-              <div className="space-y-4">
-                <FeaturePoint
-                  title="Tối ưu Ngân sách"
-                  desc="Thẩm định kỹ lưỡng chi phí tuyển dụng so với thị trường."
-                />
-                <FeaturePoint
-                  title="Đảm bảo Chất lượng"
-                  desc="Phê duyệt các vòng phỏng vấn cấp cao cuối cùng."
-                />
-                <FeaturePoint
-                  title="Định hướng Nhân sự"
-                  desc="Tuyển dụng bám sát kế hoạch phát triển của công ty."
-                />
+            ) : (
+              <div className="space-y-3">
+                {departmentBreakdown.map((dept, idx) => (
+                  <DeptProgress key={idx} dept={dept} maxPending={stats.pendingJobRequests} />
+                ))}
               </div>
-            </section>
-          </div>
+            )}
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
+            <h2 className="mb-3 text-base font-semibold text-violet-900">Hoạt động gần đây</h2>
+            {recentActivity.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                Chưa có hoạt động gần đây để hiển thị.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {recentActivity.map((activity, idx) => (
+                  <SimpleRow
+                    key={idx}
+                    title={`${activity.type}: ${activity.title}`}
+                    subtitle={`${activity.department} • ${formatDateDisplay(activity.createdAt)}`}
+                    extra={activity.priority ? `Mức ${activity.priority}` : ""}
+                    onClick={() =>
+                      navigate(activity.type === "Job Request" ? "/staff/director/job-requests" : "/staff/director/offers")
+                    }
+                  />
+                ))}
+              </div>
+            )}
+          </section>
         </div>
       </div>
-
-      <footer className="mt-24 text-center pb-8 opacity-20">
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.5em]">
-          Executive Management System © 2026
-        </p>
-      </footer>
     </div>
   );
 };
 
-// Sub-components
-const StatCard = ({ label, value, icon, color, isUrgent }) => {
-  const colors = {
-    blue: "bg-gradient-to-br from-blue-600 to-blue-700 shadow-blue-200/50 text-white",
-    indigo: "bg-gradient-to-br from-slate-800 to-slate-900 shadow-slate-300/50 text-white",
-    red: "bg-gradient-to-br from-rose-500 to-rose-600 shadow-rose-200/50 text-white",
-    slate: "bg-white border border-slate-100 shadow-slate-100 text-slate-900",
+const StatCard = ({ label, value, tone = "slate", icon = "📌" }) => {
+  const styles = {
+    blue: "border-blue-200 bg-gradient-to-br from-blue-50 to-white text-blue-900",
+    indigo: "border-indigo-200 bg-gradient-to-br from-indigo-50 to-white text-indigo-900",
+    red: "border-rose-200 bg-gradient-to-br from-rose-50 to-white text-rose-900",
+    slate: "border-slate-200 bg-gradient-to-br from-slate-50 to-white text-slate-900",
   };
 
   return (
-    <div
-      className={`group rounded-[2.5rem] p-8 transition-all duration-500 hover:-translate-y-2 cursor-default relative overflow-hidden shadow-2xl ${colors[color]}`}
-    >
-      <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-1000"></div>
-      <div className="relative z-10 flex flex-col justify-between h-full">
-        <div className="flex items-center justify-between mb-8">
-          <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-2xl shadow-inner">
-            {icon}
-          </div>
-          {isUrgent && (
-            <span className="flex h-3 w-3 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
-            </span>
-          )}
-        </div>
-        <div>
-          <p className="text-5xl font-black mb-1 tracking-tighter tabular-nums">
-            {value}
-          </p>
-          <p className={`text-[11px] font-bold uppercase tracking-[0.15em] ${color === "slate" ? "text-slate-400" : "text-white/70"}`}>
-            {label}
-          </p>
-        </div>
+    <div className={`rounded-2xl border p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow ${styles[tone] || styles.slate}`}>
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-sm font-medium text-slate-600">{label}</span>
+        <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white bg-white/80 text-base">
+          {icon}
+        </span>
       </div>
+      <p className="text-3xl font-bold tracking-tight">{value}</p>
     </div>
   );
 };
 
-const UrgentRow = ({ item, onClick }) => (
-  <div
-    onClick={onClick}
-    className="group flex items-center justify-between p-5 bg-white rounded-3xl border border-slate-100 hover:border-blue-200 hover:shadow-lg hover:shadow-slate-100 transition-all cursor-pointer"
-  >
-    <div className="flex items-center gap-4">
-      <div className="w-10 h-10 rounded-2xl bg-slate-50 text-slate-400 group-hover:bg-slate-900 group-hover:text-white transition-all flex items-center justify-center font-bold">
-        {item.type === "Job Request" ? "JR" : "OF"}
-      </div>
-      <div>
-        <h4 className="font-bold text-slate-900 text-[14px] group-hover:text-blue-600 transition-colors">
-          {item.positionTitle || item.candidateName}
-        </h4>
-        <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-tight">
-          {item.departmentName || item.department}
-        </p>
-      </div>
-    </div>
-    <span className="text-blue-500 font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-      XEM NGAY →
-    </span>
+const MiniStat = ({ label, value }) => (
+  <div className="rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50/80 to-white px-3 py-3">
+    <p className="text-xl font-semibold text-blue-900">{value}</p>
+    <p className="mt-1 text-xs text-blue-700">{label}</p>
   </div>
 );
 
-const MiniStat = ({ label, value }) => (
-  <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4">
-    <div className="text-2xl font-bold text-slate-900">{value}</div>
-    <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mt-1">
-      {label}
+const SimpleRow = ({ title, subtitle, extra, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-3 text-left transition hover:border-slate-300 hover:bg-slate-50"
+  >
+    <div>
+      <p className="text-sm font-medium text-slate-900">{title}</p>
+      <p className="text-xs text-slate-500">{subtitle}</p>
     </div>
-  </div>
+    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">{extra}</span>
+  </button>
 );
 
 const DeptProgress = ({ dept, maxPending }) => {
   const percentage = maxPending > 0 ? (dept.pending / maxPending) * 100 : 0;
   return (
-    <div className="space-y-3">
-      <div className="flex justify-between items-end">
-        <p className="text-[13px] font-bold text-slate-900">{dept.name}</p>
-        <span className="text-[11px] font-bold text-blue-600">
-          {dept.pending} ĐANG CHỜ
-        </span>
+    <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-sm font-medium text-slate-900">{dept.name}</p>
+        <span className="text-xs text-slate-600">{dept.pending} chờ duyệt</span>
       </div>
-      <div className="h-2 bg-slate-50 rounded-full overflow-hidden border border-slate-100/50">
-        <div
-          className="h-full bg-slate-900 rounded-full transition-all duration-1000 ease-out"
-          style={{ width: `${percentage}%` }}
-        ></div>
+      <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+        <div className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-600" style={{ width: `${percentage}%` }} />
       </div>
-      <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-tight">
-        Tổng ngân sách dự kiến: {formatVND(dept.budget)}
-      </p>
+      <p className="mt-2 text-xs text-slate-500">Ngân sách: {formatVND(dept.budget)}</p>
     </div>
   );
 };
 
-const ActivityItem = ({ activity, isLast, onClick }) => (
-  <div onClick={onClick} className="relative pl-10 cursor-pointer group">
-    <div className="absolute left-[9px] top-1.5 w-2 h-2 rounded-full bg-blue-500 ring-4 ring-blue-500/20 group-hover:scale-150 transition-transform"></div>
-    <div>
-      <div className="flex items-center gap-2 mb-1">
-        <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">
-          {activity.type}
-        </span>
-        <span
-          className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${activity.priority === 1 ? "bg-red-500 text-white" : "bg-white/10 text-slate-400"}`}
-        >
-          Mức {activity.priority}
-        </span>
-      </div>
-      <h4 className="font-bold text-[14px] text-white group-hover:text-blue-400 transition-colors mb-1">
-        {activity.title}
-      </h4>
-      <p className="text-[11px] text-slate-500 font-medium">
-        {activity.department} • {formatDateDisplay(activity.createdAt)}
-      </p>
-    </div>
-  </div>
-);
-
-const FeaturePoint = ({ title, desc }) => (
-  <div className="flex items-start gap-3">
-    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5"></div>
-    <div>
-      <p className="font-bold text-slate-900 text-[12px]">{title}</p>
-      <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
-        {desc}
-      </p>
-    </div>
-  </div>
-);
-
 const LoadingSpinner = () => (
-  <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-[#fafbfc]">
-    <div className="relative w-16 h-16">
-      <div className="absolute inset-0 border-4 border-slate-50 rounded-full"></div>
-      <div className="absolute inset-0 border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
-    </div>
-    <span className="text-slate-400 text-[10px] font-black uppercase tracking-[0.3em]">
-      Đang nạp dữ liệu quản trị...
-    </span>
+  <div className="flex min-h-screen items-center justify-center bg-slate-50">
+    <p className="text-sm text-slate-500">Đang tải dữ liệu...</p>
   </div>
 );
 

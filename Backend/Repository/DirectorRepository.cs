@@ -19,11 +19,21 @@ public class DirectorRepository : IDirectorRepository
 
     public async Task<List<JobRequest>> GetPendingJobRequestsAsync()
     {
+        var inReviewStatusIds = await _context.Statuses
+            .Where(s => s.Code == "IN_REVIEW")
+            .Select(s => s.Id)
+            .ToListAsync();
+
+        if (!inReviewStatusIds.Any())
+        {
+            return new List<JobRequest>();
+        }
+
         return await _context.JobRequests
             .Include(jr => jr.Position)
                 .ThenInclude(p => p.Department)
             .Include(jr => jr.RequestedByNavigation)
-            .Where(jr => jr.StatusId == 3 && jr.IsDeleted == false) // IN_REVIEW
+            .Where(jr => inReviewStatusIds.Contains(jr.StatusId) && jr.IsDeleted == false)
             .OrderBy(jr => jr.CreatedAt)
             .ToListAsync();
     }
@@ -185,6 +195,16 @@ public class DirectorRepository : IDirectorRepository
 
     public async Task<List<Offer>> GetPendingOffersAsync()
     {
+        var inReviewStatusIds = await _context.Statuses
+            .Where(s => s.Code == "IN_REVIEW")
+            .Select(s => s.Id)
+            .ToListAsync();
+
+        if (!inReviewStatusIds.Any())
+        {
+            return new List<Offer>();
+        }
+
         return await _context.Offers
             .Include(o => o.Application)
                 .ThenInclude(a => a.Cvprofile)
@@ -198,7 +218,7 @@ public class DirectorRepository : IDirectorRepository
                 .ThenInclude(jr => jr.Position)
                     .ThenInclude(p => p.Department)
             .Include(o => o.Status)
-            .Where(o => o.StatusId == 15 && o.IsDeleted == false) // IN_REVIEW
+            .Where(o => inReviewStatusIds.Contains(o.StatusId) && o.IsDeleted == false)
             .OrderBy(o => o.CreatedAt)
             .ToListAsync();
     }

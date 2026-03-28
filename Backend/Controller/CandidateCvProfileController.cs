@@ -415,92 +415,97 @@ public class CandidateCvProfileController : ControllerBase
 
     private async Task EnsureActiveApplicationsUseSnapshotAsync(int profileId)
     {
-        var activeApplications = await _context.Applications
-            .Where(a => a.CvprofileId == profileId
-                && a.IsDeleted == false)
-            .ToListAsync();
+        var executionStrategy = _context.Database.CreateExecutionStrategy();
 
-        if (activeApplications.Count == 0)
-            return;
-
-        var sourceProfile = await _context.Cvprofiles
-            .Include(c => c.Cvexperiences)
-            .Include(c => c.Cveducations)
-            .Include(c => c.Cvcertificates)
-            .FirstAsync(c => c.Id == profileId);
-
-        await using var tx = await _context.Database.BeginTransactionAsync();
-
-        var snapshot = new Cvprofile
+        await executionStrategy.ExecuteAsync(async () =>
         {
-            CandidateId = sourceProfile.CandidateId,
-            FullName = sourceProfile.FullName,
-            Email = sourceProfile.Email,
-            Phone = sourceProfile.Phone,
-            Summary = sourceProfile.Summary,
-            YearsOfExperience = sourceProfile.YearsOfExperience,
-            Source = ApplicationSnapshotSource,
-            CvFileUrl = sourceProfile.CvFileUrl,
-            Address = sourceProfile.Address,
-            ProfessionalTitle = sourceProfile.ProfessionalTitle,
-            SkillsText = sourceProfile.SkillsText,
-            ReferencesText = sourceProfile.ReferencesText,
-            CreatedAt = DateTimeHelper.Now
-        };
+            var activeApplications = await _context.Applications
+                .Where(a => a.CvprofileId == profileId
+                    && a.IsDeleted == false)
+                .ToListAsync();
 
-        _context.Cvprofiles.Add(snapshot);
-        await _context.SaveChangesAsync();
+            if (activeApplications.Count == 0)
+                return;
 
-        if (sourceProfile.Cvexperiences.Count > 0)
-        {
-            _context.Cvexperiences.AddRange(sourceProfile.Cvexperiences.Select(e => new Cvexperience
+            var sourceProfile = await _context.Cvprofiles
+                .Include(c => c.Cvexperiences)
+                .Include(c => c.Cveducations)
+                .Include(c => c.Cvcertificates)
+                .FirstAsync(c => c.Id == profileId);
+
+            await using var tx = await _context.Database.BeginTransactionAsync();
+
+            var snapshot = new Cvprofile
             {
-                CvprofileId = snapshot.Id,
-                CompanyName = e.CompanyName,
-                JobTitle = e.JobTitle,
-                StartDate = e.StartDate,
-                EndDate = e.EndDate,
-                Description = e.Description,
-                Location = e.Location
-            }));
-        }
+                CandidateId = sourceProfile.CandidateId,
+                FullName = sourceProfile.FullName,
+                Email = sourceProfile.Email,
+                Phone = sourceProfile.Phone,
+                Summary = sourceProfile.Summary,
+                YearsOfExperience = sourceProfile.YearsOfExperience,
+                Source = ApplicationSnapshotSource,
+                CvFileUrl = sourceProfile.CvFileUrl,
+                Address = sourceProfile.Address,
+                ProfessionalTitle = sourceProfile.ProfessionalTitle,
+                SkillsText = sourceProfile.SkillsText,
+                ReferencesText = sourceProfile.ReferencesText,
+                CreatedAt = DateTimeHelper.Now
+            };
 
-        if (sourceProfile.Cveducations.Count > 0)
-        {
-            _context.Cveducations.AddRange(sourceProfile.Cveducations.Select(e => new Cveducation
+            _context.Cvprofiles.Add(snapshot);
+            await _context.SaveChangesAsync();
+
+            if (sourceProfile.Cvexperiences.Count > 0)
             {
-                CvprofileId = snapshot.Id,
-                SchoolName = e.SchoolName,
-                Degree = e.Degree,
-                Major = e.Major,
-                StartYear = e.StartYear,
-                EndYear = e.EndYear,
-                Gpa = e.Gpa,
-                Location = e.Location
-            }));
-        }
+                _context.Cvexperiences.AddRange(sourceProfile.Cvexperiences.Select(e => new Cvexperience
+                {
+                    CvprofileId = snapshot.Id,
+                    CompanyName = e.CompanyName,
+                    JobTitle = e.JobTitle,
+                    StartDate = e.StartDate,
+                    EndDate = e.EndDate,
+                    Description = e.Description,
+                    Location = e.Location
+                }));
+            }
 
-        if (sourceProfile.Cvcertificates.Count > 0)
-        {
-            _context.Cvcertificates.AddRange(sourceProfile.Cvcertificates.Select(c => new Cvcertificate
+            if (sourceProfile.Cveducations.Count > 0)
             {
-                CvprofileId = snapshot.Id,
-                CertificateName = c.CertificateName,
-                Issuer = c.Issuer,
-                IssuedYear = c.IssuedYear
-            }));
-        }
+                _context.Cveducations.AddRange(sourceProfile.Cveducations.Select(e => new Cveducation
+                {
+                    CvprofileId = snapshot.Id,
+                    SchoolName = e.SchoolName,
+                    Degree = e.Degree,
+                    Major = e.Major,
+                    StartYear = e.StartYear,
+                    EndYear = e.EndYear,
+                    Gpa = e.Gpa,
+                    Location = e.Location
+                }));
+            }
 
-        await _context.SaveChangesAsync();
+            if (sourceProfile.Cvcertificates.Count > 0)
+            {
+                _context.Cvcertificates.AddRange(sourceProfile.Cvcertificates.Select(c => new Cvcertificate
+                {
+                    CvprofileId = snapshot.Id,
+                    CertificateName = c.CertificateName,
+                    Issuer = c.Issuer,
+                    IssuedYear = c.IssuedYear
+                }));
+            }
 
-        foreach (var app in activeApplications)
-        {
-            app.CvprofileId = snapshot.Id;
-            app.UpdatedAt = DateTimeHelper.Now;
-        }
+            await _context.SaveChangesAsync();
 
-        await _context.SaveChangesAsync();
-        await tx.CommitAsync();
+            foreach (var app in activeApplications)
+            {
+                app.CvprofileId = snapshot.Id;
+                app.UpdatedAt = DateTimeHelper.Now;
+            }
+
+            await _context.SaveChangesAsync();
+            await tx.CommitAsync();
+        });
     }
 
     private async Task<CandidateCvProfileDto> MapToDto(int profileId)

@@ -66,11 +66,11 @@ export default function Step4Review({ formData, positions }) {
         >
           <ReviewItem
             label="Ngân sách tháng"
-            value={`${formatCurrency(formData.budget)} VNĐ`}
+            value={`${formatCurrency(formData.budget)} VND`}
           />
           <ReviewItem
             label="Ước tính năm"
-            value={`${formatCurrency((parseInt(formData.budget) * 12).toString())} VNĐ`}
+            value={`${formatCurrency((parseInt(formData.budget) * 12).toString())} VND`}
             className="text-emerald-600 dark:text-emerald-400 font-bold"
           />
         </ReviewCard>

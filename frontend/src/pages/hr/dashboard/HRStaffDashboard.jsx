@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import hrService from '../../../services/hrService';
-import interviewerService from '../../../services/interviewerService';
 
 export default function HRStaffDashboard() {
   const navigate = useNavigate();
@@ -27,13 +26,22 @@ export default function HRStaffDashboard() {
       setLoading(true);
       setError('');
 
-      // Tối ưu: Load tất cả data song song
-      const [jobRequests, jobPostings, interviews, approvedOffers] = await Promise.all([
+      const [jobRequestsResult, jobPostingsResult, interviewsResult, approvedOffersResult] = await Promise.allSettled([
         hrService.jobRequests.getApprovedForMe(),
         hrService.jobPostings.getMy(),
-        interviewerService.interviews.getUpcoming(),
+        hrService.interviews.getUpcoming(),
         hrService.offers.getApproved(),
       ]);
+
+      const jobRequests = jobRequestsResult.status === 'fulfilled' ? jobRequestsResult.value : [];
+      const jobPostings = jobPostingsResult.status === 'fulfilled' ? jobPostingsResult.value : [];
+      const interviews = interviewsResult.status === 'fulfilled' ? interviewsResult.value : [];
+      const approvedOffers = approvedOffersResult.status === 'fulfilled' ? approvedOffersResult.value : [];
+
+      if (jobRequestsResult.status === 'rejected' || jobPostingsResult.status === 'rejected'
+        || interviewsResult.status === 'rejected' || approvedOffersResult.status === 'rejected') {
+        setError('Một phần dữ liệu không tải được. Bạn có thể làm mới để thử lại.');
+      }
 
       setAssignedJobRequests(jobRequests.slice(0, 5));
       setMyJobPostings(jobPostings.slice(0, 5));
@@ -59,14 +67,14 @@ export default function HRStaffDashboard() {
   };
 
   if (loading) {
-    return <div style={{ padding: 24, textAlign: 'center' }}>Loading dashboard...</div>;
+    return <div style={{ padding: 24, textAlign: 'center' }}>Đang tải bảng điều khiển...</div>;
   }
 
   return (
     <div style={{ padding: 24, backgroundColor: '#f9fafb', minHeight: '100vh' }}>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 28, fontWeight: 700, color: '#111827', marginBottom: 8 }}>
-          HR Staff Dashboard
+          Bảng điều khiển Nhân viên Nhân sự
         </h1>
         <p style={{ color: '#6b7280' }}>
           Theo dõi công việc được giao và tiến độ thực thi hằng ngày
@@ -80,9 +88,9 @@ export default function HRStaffDashboard() {
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <StatCard title="Yêu cầu được giao" value={stats.assignedJobRequests} hint="Yêu cầu tuyển dụng APPROVED được phân công" color="#2563eb" onClick={() => navigate('/staff/hr-staff/job-postings')} />
+        <StatCard title="Yêu cầu được giao" value={stats.assignedJobRequests} hint="Yêu cầu tuyển dụng đã được duyệt và giao cho bạn" color="#2563eb" onClick={() => navigate('/staff/hr-staff/job-requests')} />
         <StatCard title="Tin tuyển dụng của tôi" value={stats.myJobPostings} hint="Tin tuyển dụng được giao xử lý" color="#10b981" onClick={() => navigate('/staff/hr-staff/job-postings')} />
-        <StatCard title="Phỏng vấn sắp tới" value={stats.upcomingInterviews} hint="Lịch phỏng vấn được phân công cho bạn" color="#f59e0b" onClick={() => navigate('/staff/interviews')} />
+        <StatCard title="Phỏng vấn sắp tới" value={stats.upcomingInterviews} hint="Lịch phỏng vấn thuộc các yêu cầu bạn đang phụ trách" color="#f59e0b" onClick={() => navigate('/staff/hr-manager/interviews')} />
         <StatCard title="Offer chờ gửi" value={stats.approvedOffersToSend} hint="Offer đã duyệt, chờ gửi ứng viên" color="#7c3aed" onClick={() => navigate('/staff/hr-manager/offers')} />
       </div>
 
@@ -90,7 +98,7 @@ export default function HRStaffDashboard() {
         <Panel
           title="Yêu cầu tuyển dụng được giao"
           actionLabel="Xem tất cả"
-          onAction={() => navigate('/staff/hr-staff/job-postings')}
+          onAction={() => navigate('/staff/hr-staff/job-requests')}
           emptyText="Không có yêu cầu nào được giao"
           items={assignedJobRequests}
           renderItem={(item) => (
@@ -132,7 +140,7 @@ export default function HRStaffDashboard() {
         <Panel
           title="Phỏng vấn sắp tới"
           actionLabel="Xem lịch"
-          onAction={() => navigate('/staff/interviews')}
+          onAction={() => navigate('/staff/hr-manager/interviews')}
           emptyText="Không có lịch phỏng vấn sắp tới"
           items={upcomingInterviews}
           renderItem={(item) => (

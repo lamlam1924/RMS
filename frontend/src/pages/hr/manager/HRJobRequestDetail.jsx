@@ -268,12 +268,20 @@ export default function HRJobRequestDetail() {
 
           {jobRequest.status?.code === "APPROVED" && (
             <div className="flex gap-2 w-full md:w-auto">
-              <button
-                onClick={handleOpenAssignModal}
-                className="flex-1 md:flex-none px-8 py-2.5 rounded-xl bg-emerald-600 dark:bg-emerald-700 text-white font-bold hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-all text-xs shadow-xl shadow-emerald-200 dark:shadow-emerald-900/50 active:scale-95"
-              >
-                {jobRequest.assignedStaffName ? `✓ Đã gán: ${jobRequest.assignedStaffName}` : '👤 Gán cho HR Staff'}
-              </button>
+              {jobRequest.assignedStaffId ? (
+                <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700">
+                  <span className="text-emerald-700 dark:text-emerald-200 font-bold text-xs">
+                    ✓ Đã gán: {jobRequest.assignedStaffName} (đã khóa)
+                  </span>
+                </div>
+              ) : (
+                <button
+                  onClick={handleOpenAssignModal}
+                  className="flex-1 md:flex-none px-8 py-2.5 rounded-xl bg-emerald-600 dark:bg-emerald-700 text-white font-bold hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-all text-xs shadow-xl shadow-emerald-200 dark:shadow-emerald-900/50 active:scale-95"
+                >
+                  👤 Gán cho HR Staff
+                </button>
+              )}
             </div>
           )}
 

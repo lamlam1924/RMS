@@ -76,10 +76,15 @@ public class DirectorService : IDirectorService
         // Lấy JD Link từ repository
         dto.JdFileUrl = await _repository.GetJdFileUrlAsync(id);
 
-        // Lấy ghi chú gần nhất từ HR (khi chuyển cho Director)
-        // Trạng thái IN_REVIEW (ID 3)
+        // Lấy ghi chú gần nhất từ HR (khi chuyển cho Director, trạng thái IN_REVIEW)
+        var historyStatusIds = history.Select(h => h.ToStatusId).Distinct();
+        var historyStatusCodes = await _repository.GetStatusCodesAsync(historyStatusIds);
+
         var hrForwardingHistory = history
-            .Where(h => h.ToStatusId == 3 && !string.IsNullOrEmpty(h.Note))
+            .Where(h =>
+                historyStatusCodes.TryGetValue(h.ToStatusId, out var code)
+                && code == "IN_REVIEW"
+                && !string.IsNullOrEmpty(h.Note))
             .OrderByDescending(h => h.ChangedAt)
             .FirstOrDefault();
         

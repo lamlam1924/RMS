@@ -1040,6 +1040,28 @@ const hrService = {
       });
       if (!response.ok) throw new Error('Failed to fetch recruitment funnel');
       return response.json();
+    },
+
+    getStaffWorkload: async () => {
+      const response = await authFetch(`${API_BASE_URL}/hr/statistics/staff-workload`, {
+        headers: getAuthHeaders()
+      });
+      if (!response.ok) throw new Error('Failed to fetch HR staff workload');
+      return response.json();
+    },
+
+    getStaffWorkloadDetail: async (staffId, recentActivityLimit = 20) => {
+      const response = await authFetch(
+        `${API_BASE_URL}/hr/statistics/staff-workload/${staffId}?recentActivityLimit=${recentActivityLimit}`,
+        {
+          headers: getAuthHeaders()
+        }
+      );
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || 'Failed to fetch HR staff workload detail');
+      }
+      return response.json();
     }
   }
 };

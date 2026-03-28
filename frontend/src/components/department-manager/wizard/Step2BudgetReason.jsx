@@ -61,7 +61,7 @@ export default function Step2BudgetReason({ formData, errors, handleChange, posi
 
       {/* Budget Input */}
       <FormInput
-        label="Ngân sách dự kiến (VNĐ)"
+        label="Ngân sách dự kiến (VND)"
         error={errors.budget}
         required
         hint="Mức lương ước tính cho vị trí này (tính theo tháng)"
@@ -92,7 +92,7 @@ export default function Step2BudgetReason({ formData, errors, handleChange, posi
             placeholder="Vd: 15000000"
           />
           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 font-bold text-xs uppercase group-focus-within:text-emerald-500 dark:group-focus-within:text-emerald-400 transition-colors pointer-events-none">
-            VNĐ/tháng
+            VND/tháng
           </span>
         </div>
         {formData.budget && !errors.budget && (
@@ -190,7 +190,7 @@ function BudgetHelper({ amount }) {
           </span>
         </div>
         <p className="text-sm font-bold text-slate-900 dark:text-slate-100">
-          {formatCurrency(annual.toString())} VNĐ
+          {formatCurrency(annual.toString())} VND
         </p>
       </div>
 

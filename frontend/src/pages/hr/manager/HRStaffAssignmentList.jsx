@@ -45,7 +45,7 @@ export default function HRStaffAssignmentList() {
   const assignmentCandidates = useMemo(() => {
     const q = search.trim().toLowerCase();
     const list = requests
-      .filter((item) => !postingByJobRequestId.has(item.id))
+      .filter((item) => !postingByJobRequestId.has(item.id) && !item.assignedStaffId)
       .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
     if (!q) return list;
@@ -93,7 +93,7 @@ export default function HRStaffAssignmentList() {
       <div style={{ marginBottom: 16 }}>
         <h1 style={{ fontSize: 26, fontWeight: 700, color: '#111827', margin: 0 }}>Phân công HR Staff</h1>
         <p style={{ color: '#6b7280', marginTop: 6, fontSize: 14 }}>
-          Chỉ hiển thị các Job Request đã APPROVED và chưa có Job Posting.
+          Chỉ hiển thị các Job Request đã APPROVED, chưa gán Staff và chưa có Job Posting.
         </p>
       </div>
 
@@ -154,7 +154,7 @@ export default function HRStaffAssignmentList() {
                         fontWeight: 600
                       }}
                     >
-                      {item.assignedStaffId ? 'Gán lại' : 'Gán HR Staff'}
+                      Gán HR Staff
                     </button>
                   </td>
                 </tr>

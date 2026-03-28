@@ -237,6 +237,10 @@ public class HRJobRequestsRepository : IHRJobRequestsRepository
         if (jobRequest == null)
             return (false, "Job request not found");
 
+        // Business rule: HR Manager can assign only once; reassignment is locked.
+        if (jobRequest.AssignedStaffId.HasValue)
+            return (false, "Yêu cầu này đã được gán HR Staff trước đó và không thể gán lại");
+
         // Check if job posting already exists - cannot reassign if posting created
         var hasPosting = await _context.JobPostings
             .AnyAsync(jp => jp.JobRequestId == jobRequestId && jp.IsDeleted == false);
@@ -244,33 +248,9 @@ public class HRJobRequestsRepository : IHRJobRequestsRepository
         if (hasPosting)
             return (false, "Cannot reassign: HR Staff has already created a job posting for this request");
 
-        var oldStaffId = jobRequest.AssignedStaffId;
-        var isReassignment = oldStaffId.HasValue && oldStaffId.Value != staffId;
-
         // Update assignment
         jobRequest.AssignedStaffId = staffId;
         await _context.SaveChangesAsync();
-
-        // Log history for reassignment
-        if (isReassignment)
-        {
-            var oldStaffName = jobRequest.AssignedStaff?.FullName ?? "Unknown";
-            var newStaff = await _context.Users.FindAsync(staffId);
-            var newStaffName = newStaff?.FullName ?? "Unknown";
-
-            var historyNote = $"Reassigned from {oldStaffName} to {newStaffName}";
-            var statusHistory = new StatusHistory
-            {
-                EntityTypeId = 1, // JobRequest
-                EntityId = jobRequestId,
-                ToStatusId = jobRequest.StatusId,
-                ChangedBy = managerId,
-                ChangedAt = DateTimeHelper.Now,
-                Note = historyNote
-            };
-            _context.StatusHistories.Add(statusHistory);
-            await _context.SaveChangesAsync();
-        }
 
         return (true, "");
     }

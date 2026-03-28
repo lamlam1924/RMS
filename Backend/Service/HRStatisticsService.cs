@@ -22,4 +22,14 @@ public class HRStatisticsService : IHRStatisticsService
     {
         return await _repository.GetRecruitmentFunnelAsync();
     }
+
+    public async Task<List<HRStaffTaskSummaryDto>> GetHRStaffTaskSummariesAsync()
+    {
+        return await _repository.GetHRStaffTaskSummariesAsync();
+    }
+
+    public async Task<HRStaffTaskDetailDto?> GetHRStaffTaskDetailAsync(int staffId, int recentActivityLimit = 20)
+    {
+        return await _repository.GetHRStaffTaskDetailAsync(staffId, recentActivityLimit);
+    }
 }

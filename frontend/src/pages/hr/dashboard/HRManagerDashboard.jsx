@@ -2,10 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import hrService from '../../../services/hrService';
 import notify from '../../../utils/notification';
-import WorkflowOverviewWidget from '../../../components/hr/WorkflowOverviewWidget';
-import PhaseOverviewPanel from '../../../components/hr/interviews/PhaseOverviewPanel';
-import { formatCurrency, formatDate, formatDateRelative, formatTime } from '../../../utils/formatters/display';
-import { PriorityBadge } from '../../../components/shared/Badge';
 
 export default function HRManagerDashboard() {
   const navigate = useNavigate();
@@ -19,10 +15,15 @@ export default function HRManagerDashboard() {
     activeJobPostings: 0,
     returnedJobRequestsCount: 0
   });
-  const [funnelData, setFunnelData] = useState([]);
-  const [recentJobRequests, setRecentJobRequests] = useState([]);
-  const [upcomingInterviews, setUpcomingInterviews] = useState([]);
-  const [pendingOffers, setPendingOffers] = useState([]);
+
+  const [staffWorkloads, setStaffWorkloads] = useState([]);
+  const [staffKeyword, setStaffKeyword] = useState('');
+  const [staffDepartmentFilter, setStaffDepartmentFilter] = useState('ALL');
+  const [selectedStaffId, setSelectedStaffId] = useState(null);
+  const [selectedStaffDetail, setSelectedStaffDetail] = useState(null);
+  const [staffDetailLoading, setStaffDetailLoading] = useState(false);
+  const [staffDetailCache, setStaffDetailCache] = useState({});
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,23 +33,39 @@ export default function HRManagerDashboard() {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      
-      // Tối ưu: Load tất cả data song song thay vì tuần tự
-      const [statsData, funnel, jobRequests, interviews, offers] = await Promise.all([
+
+      const [statsResult, workloadResult, pendingManagerOffersResult] = await Promise.allSettled([
         hrService.statistics.getDashboard(),
-        hrService.statistics.getRecruitmentFunnel(),
-        hrService.jobRequests.getPending(),
-        hrService.interviews.getUpcoming(),
-        hrService.offers.getPending()
+        hrService.statistics.getStaffWorkload(),
+        hrService.offers.getPendingHRManager()
       ]);
 
-      // Set data sau khi tất cả requests hoàn thành
-      setStats(statsData);
-      setFunnelData(funnel);
-      setRecentJobRequests(jobRequests.slice(0, 5));
-      setUpcomingInterviews(interviews.slice(0, 5));
-      setPendingOffers(offers.slice(0, 6));
+      if (statsResult.status === 'fulfilled') {
+        const baseStats = statsResult.value || {};
+        const pendingManagerOffers = pendingManagerOffersResult.status === 'fulfilled'
+          ? (Array.isArray(pendingManagerOffersResult.value) ? pendingManagerOffersResult.value.length : 0)
+          : (baseStats.pendingOffers || 0);
 
+        setStats({
+          ...baseStats,
+          pendingOffers: pendingManagerOffers
+        });
+      } else {
+        notify.error('Không thể tải thống kê tổng quan');
+      }
+
+      if (workloadResult.status === 'fulfilled') {
+        const workload = Array.isArray(workloadResult.value) ? workloadResult.value : [];
+        setStaffWorkloads(workload);
+
+        const firstStaffId = workload[0]?.staffId;
+        if (firstStaffId) {
+          loadStaffDetail(firstStaffId, true);
+        }
+      } else {
+        setStaffWorkloads([]);
+        notify.error('Không thể tải dữ liệu theo dõi HR Staff');
+      }
     } catch (error) {
       console.error('Failed to load dashboard:', error);
       notify.error(error?.message || 'Không thể tải dữ liệu dashboard');
@@ -60,49 +77,99 @@ export default function HRManagerDashboard() {
     }
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+  const normalize = (text) => (text || '').toString().toLowerCase().trim();
+
+  const getDepartmentOptions = () => {
+    if (!selectedStaffDetail) return [];
+    const names = new Set();
+    (selectedStaffDetail.pendingJobRequests || []).forEach((item) => {
+      if (item?.departmentName) names.add(item.departmentName);
+    });
+    (selectedStaffDetail.pendingOffers || []).forEach((item) => {
+      if (item?.departmentName) names.add(item.departmentName);
+    });
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
   };
 
-  const formatDate = (date) => {
-    const d = new Date(date);
-    const now = new Date();
-    const diff = Math.floor((now - d) / (1000 * 60 * 60 * 24));
-    
-    if (diff === 0) return 'Today';
-    if (diff === 1) return 'Yesterday';
-    if (diff < 7) return `${diff} days ago`;
-    return d.toLocaleDateString('vi-VN');
+  const getFilteredPendingJobRequests = () => {
+    const list = selectedStaffDetail?.pendingJobRequests || [];
+    if (staffDepartmentFilter === 'ALL') return list;
+    return list.filter((item) => item.departmentName === staffDepartmentFilter);
   };
 
-  const safeDate = (value) => (value ? new Date(value).toLocaleDateString('vi-VN') : 'N/A');
+  const getFilteredPendingOffers = () => {
+    const list = selectedStaffDetail?.pendingOffers || [];
+    if (staffDepartmentFilter === 'ALL') return list;
+    return list.filter((item) => item.departmentName === staffDepartmentFilter);
+  };
 
-  const getPriorityBadge = (priority) => {
-    const styles = {
-      1: { bg: '#fee2e2', color: '#991b1b', label: 'Khẩn cấp' },
-      2: { bg: '#ffedd5', color: '#9a3412', label: 'Cao' },
-      3: { bg: '#dbeafe', color: '#1d4ed8', label: 'Bình thường' }
-    };
-    const style = styles[priority] || styles[3];
-    
+  const getSummaryValue = (item, key) => Number(item?.[key] || 0);
+
+  const getTotalDone = (item) => {
+    if (item?.totalDone !== undefined) return Number(item.totalDone || 0);
     return (
-      <span style={{
-        padding: '2px 8px',
-        borderRadius: 4,
-        fontSize: 11,
-        fontWeight: 600,
-        backgroundColor: style.bg,
-        color: style.color
-      }}>
-        {style.label}
-      </span>
+      getSummaryValue(item, 'jobPostingsCreated') +
+      getSummaryValue(item, 'offersCreated') +
+      getSummaryValue(item, 'offersSentToCandidate') +
+      getSummaryValue(item, 'offersSentToManager') +
+      getSummaryValue(item, 'negotiationsHandled')
     );
   };
+
+  const getTotalPending = (item) => {
+    if (item?.totalPending !== undefined) return Number(item.totalPending || 0);
+    return (
+      getSummaryValue(item, 'assignedApprovedRequestsWithoutPosting') +
+      getSummaryValue(item, 'acceptedDeclinedOffersPendingManager') +
+      getSummaryValue(item, 'negotiatingOffersPendingAction')
+    );
+  };
+
+  const loadStaffDetail = async (staffId, silent = false) => {
+    setSelectedStaffId(staffId);
+
+    if (staffDetailCache[staffId]) {
+      setSelectedStaffDetail(staffDetailCache[staffId]);
+      return;
+    }
+
+    try {
+      if (!silent) setStaffDetailLoading(true);
+      const detail = await hrService.statistics.getStaffWorkloadDetail(staffId, 20);
+      setSelectedStaffDetail(detail);
+      setStaffDetailCache((prev) => ({ ...prev, [staffId]: detail }));
+    } catch (error) {
+      notify.error(error?.message || 'Không thể tải chi tiết công việc của HR Staff');
+    } finally {
+      if (!silent) setStaffDetailLoading(false);
+    }
+  };
+
+  const filteredStaffWorkloads = staffWorkloads.filter((item) => {
+    if (!staffKeyword.trim()) return true;
+    const keyword = normalize(staffKeyword);
+    return (
+      normalize(item.staffName).includes(keyword) ||
+      normalize(item.staffEmail).includes(keyword)
+    );
+  });
+
+  const selectedSummary = selectedStaffDetail?.summary;
+  const departmentOptions = getDepartmentOptions();
+  const pendingJobRequestsByDept = getFilteredPendingJobRequests();
+  const pendingOffersByDept = getFilteredPendingOffers();
+
+  useEffect(() => {
+    if (staffDepartmentFilter === 'ALL') return;
+    if (!departmentOptions.includes(staffDepartmentFilter)) {
+      setStaffDepartmentFilter('ALL');
+    }
+  }, [staffDepartmentFilter, selectedStaffId]);
 
   if (loading) {
     return (
       <div style={{ padding: 24, textAlign: 'center' }}>
-        <p>Loading dashboard...</p>
+        <p>Đang tải bảng điều khiển...</p>
       </div>
     );
   }
@@ -112,10 +179,10 @@ export default function HRManagerDashboard() {
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 28, fontWeight: 700, color: '#111827', marginBottom: 8 }}>
-          HR Manager Dashboard
+          Bảng điều khiển Trưởng phòng Nhân sự
         </h1>
         <p style={{ color: '#6b7280' }}>
-          Strategic oversight and approval management
+          Theo dõi tiến độ tuyển dụng và quản lý hiệu suất HR Staff.
         </p>
       </div>
 
@@ -134,14 +201,14 @@ export default function HRManagerDashboard() {
           borderLeft: '4px solid #3b82f6'
         }}>
           <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 8 }}>
-            Pending Job Requests
+            Yêu cầu tuyển dụng chờ xử lý
           </div>
           <div style={{ fontSize: 32, fontWeight: 700, color: '#111827' }}>
             {stats.pendingJobRequests}
           </div>
           <div style={{ fontSize: 12, color: '#3b82f6', marginTop: 8, cursor: 'pointer' }}
                onClick={() => navigate('/staff/hr-manager/job-requests')}>
-            View all →
+            Xem chi tiết →
           </div>
         </div>
 
@@ -153,13 +220,13 @@ export default function HRManagerDashboard() {
           borderLeft: '4px solid #10b981'
         }}>
           <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 8 }}>
-            Total Applications
+            Tổng hồ sơ ứng tuyển
           </div>
           <div style={{ fontSize: 32, fontWeight: 700, color: '#111827' }}>
             {stats.totalApplications}
           </div>
           <div style={{ fontSize: 12, color: '#10b981', marginTop: 8 }}>
-            {stats.screeningApplications} screening, {stats.interviewingApplications} interviewing
+            Sàng lọc: {stats.screeningApplications} • Phỏng vấn: {stats.interviewingApplications}
           </div>
         </div>
 
@@ -171,14 +238,14 @@ export default function HRManagerDashboard() {
           borderLeft: '4px solid #f59e0b'
         }}>
           <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 8 }}>
-            Upcoming Interviews
+            Lịch phỏng vấn sắp tới
           </div>
           <div style={{ fontSize: 32, fontWeight: 700, color: '#111827' }}>
             {stats.upcomingInterviews}
           </div>
           <div style={{ fontSize: 12, color: '#f59e0b', marginTop: 8, cursor: 'pointer' }}
                onClick={() => navigate('/staff/hr-manager/interviews')}>
-            Manage →
+            Quản lý →
           </div>
         </div>
 
@@ -190,14 +257,14 @@ export default function HRManagerDashboard() {
           borderLeft: '4px solid #8b5cf6'
         }}>
           <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 8 }}>
-            Pending Offers
+            Offer chờ HR Manager xử lý
           </div>
           <div style={{ fontSize: 32, fontWeight: 700, color: '#111827' }}>
             {stats.pendingOffers}
           </div>
           <div style={{ fontSize: 12, color: '#8b5cf6', marginTop: 8, cursor: 'pointer' }}
                onClick={() => navigate('/staff/hr-manager/offers')}>
-            Review →
+            Xem danh sách →
           </div>
         </div>
 
@@ -209,294 +276,301 @@ export default function HRManagerDashboard() {
           borderLeft: '4px solid #ef4444'
         }}>
           <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 8 }}>
-            Returned Job Requests
+            Yêu cầu bị trả về
           </div>
           <div style={{ fontSize: 32, fontWeight: 700, color: '#111827' }}>
             {stats.returnedJobRequestsCount}
           </div>
           <div style={{ fontSize: 12, color: '#ef4444', marginTop: 8 }}>
-            Needs Dept Manager revision
+            Cần trưởng bộ phận chỉnh sửa
           </div>
         </div>
       </div>
 
-      {/* Cần xử lý từ chối / No-show / Feedback quá hạn */}
-      <PhaseOverviewPanel />
-
-      {/* Workflow Overview Widget */}
-      <div style={{ marginBottom: 32 }}>
-        <WorkflowOverviewWidget />
-      </div>
-
-      {/* Recruitment Funnel */}
-      <div style={{ 
-        background: 'white', 
-        padding: 24, 
+      {/* HR Staff Workload Monitoring */}
+      <div style={{
+        background: 'white',
+        padding: 24,
         borderRadius: 8,
         border: '1px solid #e5e7eb',
         marginBottom: 24
       }}>
-        <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16 }}>
-          Recruitment Funnel
-        </h2>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, height: 200 }}>
-          {funnelData.map((stage, index) => {
-            const maxCount = Math.max(...funnelData.map(s => s.count));
-            const height = (stage.count / maxCount) * 160;
-            const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
-            
-            return (
-              <div key={index} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <div style={{
-                  width: '100%',
-                  height: height,
-                  backgroundColor: colors[index % colors.length],
-                  borderRadius: '4px 4px 0 0',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'white',
-                  fontWeight: 600,
-                  fontSize: 18
-                }}>
-                  {stage.count}
-                </div>
-                <div style={{ 
-                  marginTop: 8, 
-                  fontSize: 12, 
-                  fontWeight: 500,
-                  color: '#6b7280',
-                  textAlign: 'center'
-                }}>
-                  {stage.stage}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Two Column Layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
-        {/* Recent Job Requests */}
-        <div style={{ 
-          background: 'white', 
-          padding: 24, 
-          borderRadius: 8,
-          border: '1px solid #e5e7eb'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 600 }}>Recent Job Requests</h2>
-            <button 
-              onClick={() => navigate('/staff/hr-manager/job-requests')}
-              style={{ 
-                fontSize: 12, 
-                color: '#3b82f6', 
-                background: 'none', 
-                border: 'none', 
-                cursor: 'pointer' 
-              }}>
-              View all →
-            </button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
+          <div>
+            <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: '#111827' }}>
+              Theo dõi hiệu suất HR Staff
+            </h2>
+            <p style={{ margin: '6px 0 0', color: '#6b7280', fontSize: 13 }}>
+              Quản lý đã làm gì và công việc còn tồn theo từng nhân sự.
+            </p>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {recentJobRequests.length === 0 ? (
-              <div style={{ color: '#9ca3af', textAlign: 'center', padding: 20 }}>
-                No pending job requests
-              </div>
-            ) : (
-              recentJobRequests.map((req) => (
-                <div 
-                  key={req.id}
-                  style={{ 
-                    padding: 12, 
-                    border: '1px solid #e5e7eb', 
-                    borderRadius: 6,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                  onClick={() => navigate(`/staff/hr-manager/job-requests/${req.id}`)}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 4 }}>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>{req.positionTitle}</div>
-                    {getPriorityBadge(req.priority)}
-                  </div>
-                  <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
-                    {req.departmentName} • {req.quantity} position{req.quantity > 1 ? 's' : ''}
-                  </div>
-                  <div style={{ fontSize: 11, color: '#9ca3af' }}>
-                    {formatDate(req.createdAt)}
-                  </div>
-                </div>
-              ))
-            )}
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <input
+              value={staffKeyword}
+              onChange={(e) => setStaffKeyword(e.target.value)}
+              placeholder="Lọc theo tên hoặc email HR Staff"
+              style={{
+                minWidth: 260,
+                border: '1px solid #d1d5db',
+                borderRadius: 8,
+                padding: '10px 12px',
+                fontSize: 13,
+                outline: 'none'
+              }}
+            />
+            <select
+              value={staffDepartmentFilter}
+              onChange={(e) => setStaffDepartmentFilter(e.target.value)}
+              style={{
+                minWidth: 220,
+                border: '1px solid #d1d5db',
+                borderRadius: 8,
+                padding: '10px 12px',
+                fontSize: 13,
+                background: 'white'
+              }}
+              title="Lọc theo phòng ban trong panel chi tiết"
+            >
+              <option value="ALL">Phòng ban: Tất cả</option>
+              {departmentOptions.map((dept) => (
+                <option key={dept} value={dept}>{dept}</option>
+              ))}
+            </select>
           </div>
         </div>
 
-        {/* Upcoming Interviews */}
-        <div style={{ 
-          background: 'white', 
-          padding: 24, 
-          borderRadius: 8,
-          border: '1px solid #e5e7eb'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 600 }}>Upcoming Interviews</h2>
-            <button 
-              onClick={() => navigate('/staff/hr-manager/interviews')}
-              style={{ 
-                fontSize: 12, 
-                color: '#3b82f6', 
-                background: 'none', 
-                border: 'none', 
-                cursor: 'pointer' 
-              }}>
-              View all →
-            </button>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {upcomingInterviews.length === 0 ? (
-              <div style={{ color: '#9ca3af', textAlign: 'center', padding: 20 }}>
-                No upcoming interviews
-              </div>
-            ) : (
-              upcomingInterviews.map((interview) => (
-                <div 
-                  key={interview.id}
-                  style={{ 
-                    padding: 12, 
-                    border: '1px solid #e5e7eb', 
-                    borderRadius: 6,
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => navigate(`/staff/hr-manager/interviews/${interview.id}`)}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
-                >
-                  <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
-                    {interview.candidateName}
-                  </div>
-                  <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
-                    {interview.positionTitle}
-                  </div>
-                  <div style={{ fontSize: 11, color: '#9ca3af' }}>
-                    📅 {new Date(interview.scheduledAt).toLocaleString('vi-VN')}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+        <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 780 }}>
+            <thead style={{ background: '#f8fafc' }}>
+              <tr>
+                <th style={{ textAlign: 'left', padding: 12, fontSize: 12, color: '#475569', borderBottom: '1px solid #e5e7eb' }}>HR Staff</th>
+                <th style={{ textAlign: 'right', padding: 12, fontSize: 12, color: '#475569', borderBottom: '1px solid #e5e7eb' }}>Đã làm</th>
+                <th style={{ textAlign: 'right', padding: 12, fontSize: 12, color: '#475569', borderBottom: '1px solid #e5e7eb' }}>Tồn đọng</th>
+                <th style={{ textAlign: 'left', padding: 12, fontSize: 12, color: '#475569', borderBottom: '1px solid #e5e7eb' }}>Chi tiết nhanh</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredStaffWorkloads.length === 0 ? (
+                <tr>
+                  <td colSpan={4} style={{ textAlign: 'center', color: '#9ca3af', padding: 20 }}>
+                    Không có HR Staff phù hợp bộ lọc.
+                  </td>
+                </tr>
+              ) : (
+                filteredStaffWorkloads.map((staff) => {
+                  const selected = selectedStaffId === staff.staffId;
+                  const totalDone = getTotalDone(staff);
+                  const totalPending = getTotalPending(staff);
+                  return (
+                    <tr
+                      key={staff.staffId}
+                      onClick={() => loadStaffDetail(staff.staffId)}
+                      style={{
+                        cursor: 'pointer',
+                        background: selected ? '#eff6ff' : 'white',
+                        borderBottom: '1px solid #f1f5f9'
+                      }}
+                    >
+                      <td style={{ padding: 12 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>{staff.staffName}</div>
+                        <div style={{ fontSize: 12, color: '#64748b' }}>{staff.staffEmail}</div>
+                      </td>
+                      <td style={{ padding: 12, textAlign: 'right' }}>
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minWidth: 40,
+                          height: 28,
+                          padding: '0 10px',
+                          borderRadius: 999,
+                          background: '#ecfdf3',
+                          color: '#166534',
+                          fontWeight: 700
+                        }}>
+                          {totalDone}
+                        </span>
+                      </td>
+                      <td style={{ padding: 12, textAlign: 'right' }}>
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minWidth: 40,
+                          height: 28,
+                          padding: '0 10px',
+                          borderRadius: 999,
+                          background: '#fef2f2',
+                          color: '#991b1b',
+                          fontWeight: 700
+                        }}>
+                          {totalPending}
+                        </span>
+                      </td>
+                      <td style={{ padding: 12 }}>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 11, color: '#0f766e', background: '#ccfbf1', borderRadius: 999, padding: '4px 8px' }}>
+                            Đăng tuyển: {staff.jobPostingsCreated || 0}
+                          </span>
+                          <span style={{ fontSize: 11, color: '#1d4ed8', background: '#dbeafe', borderRadius: 999, padding: '4px 8px' }}>
+                            Offer tạo: {staff.offersCreated || 0}
+                          </span>
+                          <span style={{ fontSize: 11, color: '#14532d', background: '#dcfce7', borderRadius: 999, padding: '4px 8px' }}>
+                            Đã gửi ứng viên: {staff.offersSentToCandidate || 0}
+                          </span>
+                          <span style={{ fontSize: 11, color: '#0f766e', background: '#ccfbf1', borderRadius: 999, padding: '4px 8px' }}>
+                            Đã gửi quản lý: {staff.offersSentToManager || 0}
+                          </span>
+                          <span style={{ fontSize: 11, color: '#0c4a6e', background: '#e0f2fe', borderRadius: 999, padding: '4px 8px' }}>
+                            Đã xử lý thương lượng: {staff.negotiationsHandled || 0}
+                          </span>
+                          <span style={{ fontSize: 11, color: '#9a3412', background: '#ffedd5', borderRadius: 999, padding: '4px 8px' }}>
+                            Tồn JR chưa đăng: {staff.assignedApprovedRequestsWithoutPosting || 0}
+                          </span>
+                          <span style={{ fontSize: 11, color: '#9a3412', background: '#ffedd5', borderRadius: 999, padding: '4px 8px' }}>
+                            Tồn phản hồi chưa gửi: {staff.acceptedDeclinedOffersPendingManager || 0}
+                          </span>
+                          <span style={{ fontSize: 11, color: '#9a3412', background: '#ffedd5', borderRadius: 999, padding: '4px 8px' }}>
+                            Tồn thương lượng: {staff.negotiatingOffersPendingAction || 0}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
-      </div>
 
-      {/* Pending Offers */}
-      <div style={{ 
-        background: 'white', 
-        padding: 24, 
-        borderRadius: 8,
-        border: '1px solid #e5e7eb',
-        marginBottom: 24
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 600 }}>Pending Offers for Review</h2>
-          <button 
-            onClick={() => navigate('/staff/hr-manager/offers')}
-            style={{ 
-              fontSize: 12, 
-              color: '#3b82f6', 
-              background: 'none', 
-              border: 'none', 
-              cursor: 'pointer' 
-            }}>
-            View all →
-          </button>
-        </div>
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-          gap: 16 
-        }}>
-          {pendingOffers.length === 0 ? (
-            <div style={{ color: '#9ca3af', textAlign: 'center', padding: 20, gridColumn: '1 / -1' }}>
-              No pending offers
+        <div style={{ marginTop: 16 }}>
+          {!selectedStaffId && (
+            <div style={{ color: '#64748b', fontSize: 13 }}>
+              Chọn một HR Staff trong bảng để xem chi tiết công việc.
             </div>
-          ) : (
-            pendingOffers.map((offer) => (
-              <div 
-                key={offer.id}
-                style={{ 
-                  padding: 16, 
-                  border: '1px solid #e5e7eb', 
-                  borderRadius: 6,
-                  cursor: 'pointer'
-                }}
-                onClick={() => navigate(`/staff/hr-manager/offers/${offer.id}`)}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
-              >
-                <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8 }}>
-                  {offer.candidateName}
-                </div>
-                <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>
-                  {offer.positionTitle}
-                </div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: '#10b981', marginBottom: 8 }}>
-                  {formatCurrency(offer.salary)}
-                </div>
-                <div style={{ fontSize: 11, color: '#9ca3af' }}>
-                  Start: {safeDate(offer.startDate)}
-                </div>
-              </div>
-            ))
           )}
-        </div>
-      </div>
 
-      {/* Key Responsibilities */}
-      <div style={{ 
-        background: 'white', 
-        padding: 24, 
-        borderRadius: 8,
-        border: '1px solid #e5e7eb'
-      }}>
-        <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16 }}>
-          Your Key Responsibilities
-        </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          <div style={{ padding: 16, backgroundColor: '#f0f9ff', borderRadius: 6 }}>
-            <div style={{ fontWeight: 600, marginBottom: 8, color: '#0369a1' }}>
-              📋 Job Request Approval
+          {selectedStaffId && staffDetailLoading && (
+            <div style={{ color: '#64748b', fontSize: 13 }}>
+              Đang tải chi tiết công việc...
             </div>
-            <div style={{ fontSize: 13, color: '#475569' }}>
-              Review requests submitted by departments and route them correctly in workflow.
+          )}
+
+          {selectedStaffId && !staffDetailLoading && selectedStaffDetail && (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+              gap: 16
+            }}>
+              <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 16 }}>
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ fontWeight: 700, color: '#111827' }}>{selectedStaffDetail.staffName}</div>
+                  <div style={{ fontSize: 12, color: '#64748b' }}>{selectedStaffDetail.staffEmail}</div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div style={{ background: '#f8fafc', borderRadius: 6, padding: 10 }}>
+                    <div style={{ fontSize: 11, color: '#64748b' }}>Tổng công việc đã hoàn thành</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: '#166534' }}>
+                      {getTotalDone(selectedSummary || {})}
+                    </div>
+                  </div>
+                  <div style={{ background: '#fff1f2', borderRadius: 6, padding: 10 }}>
+                    <div style={{ fontSize: 11, color: '#64748b' }}>Tổng công việc tồn đọng</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: '#b91c1c' }}>
+                      {getTotalPending(selectedSummary || {})}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 16 }}>
+                <div style={{ fontWeight: 700, color: '#111827', marginBottom: 10 }}>Job Request đang chờ</div>
+                {pendingJobRequestsByDept.length === 0 ? (
+                  <div style={{ fontSize: 12, color: '#94a3b8' }}>Không có yêu cầu tuyển dụng đang chờ.</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 260, overflowY: 'auto' }}>
+                    {pendingJobRequestsByDept.map((item) => (
+                      <button
+                        key={item.jobRequestId}
+                        onClick={() => navigate(`/staff/hr-manager/job-requests/${item.jobRequestId}`)}
+                        style={{
+                          textAlign: 'left',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: 6,
+                          background: '#f8fafc',
+                          padding: 10,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#1e293b' }}>
+                          JR #{item.jobRequestId} - {item.positionTitle}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#64748b' }}>{item.departmentName} • {item.currentStatus}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 16 }}>
+                <div style={{ fontWeight: 700, color: '#111827', marginBottom: 10 }}>Offer đang chờ xử lý</div>
+                {pendingOffersByDept.length === 0 ? (
+                  <div style={{ fontSize: 12, color: '#94a3b8' }}>Không có offer đang chờ xử lý.</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 260, overflowY: 'auto' }}>
+                    {pendingOffersByDept.map((item) => (
+                      <button
+                        key={item.offerId}
+                        onClick={() => navigate(`/staff/hr-manager/offers/${item.offerId}`)}
+                        style={{
+                          textAlign: 'left',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: 6,
+                          background: '#fff7ed',
+                          padding: 10,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#7c2d12' }}>
+                          Offer #{item.offerId} - {item.candidateName}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#9a3412' }}>
+                          {item.positionTitle} • {item.departmentName} • {item.currentStatus}
+                        </div>
+                        <div style={{ fontSize: 11, color: '#b45309' }}>{item.pendingReason}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 16 }}>
+                <div style={{ fontWeight: 700, color: '#111827', marginBottom: 10 }}>Hoạt động gần đây</div>
+                {(selectedStaffDetail.recentActivities || []).length === 0 ? (
+                  <div style={{ fontSize: 12, color: '#94a3b8' }}>Chưa có hoạt động gần đây.</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 260, overflowY: 'auto' }}>
+                    {(selectedStaffDetail.recentActivities || []).map((activity, idx) => (
+                      <div
+                        key={`${activity.entityType}-${activity.entityId}-${idx}`}
+                        style={{ border: '1px solid #e2e8f0', borderRadius: 6, padding: 10, background: '#f8fafc' }}
+                      >
+                        <div style={{ fontSize: 12, color: '#1e293b', fontWeight: 600 }}>
+                          [{activity.entityType}] #{activity.entityId} - {activity.action}
+                        </div>
+                        <div style={{ fontSize: 11, color: '#64748b' }}>
+                          {activity.changedAt ? new Date(activity.changedAt).toLocaleString('vi-VN') : 'Không xác định'}
+                        </div>
+                        {activity.note ? (
+                          <div style={{ fontSize: 11, color: '#475569', marginTop: 4 }}>{activity.note}</div>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-          <div style={{ padding: 16, backgroundColor: '#f0fdf4', borderRadius: 6 }}>
-            <div style={{ fontWeight: 600, marginBottom: 8, color: '#15803d' }}>
-              📄 Offer Management
-            </div>
-            <div style={{ fontSize: 13, color: '#475569' }}>
-              Oversee offer quality, monitor Director approvals, and handle exceptions.
-            </div>
-          </div>
-          <div style={{ padding: 16, backgroundColor: '#fef3c7', borderRadius: 6 }}>
-            <div style={{ fontWeight: 600, marginBottom: 8, color: '#92400e' }}>
-              🎯 Job Posting Control
-            </div>
-            <div style={{ fontSize: 13, color: '#475569' }}>
-              Supervise active postings and ensure closure when staffing targets are met.
-            </div>
-          </div>
-          <div style={{ padding: 16, backgroundColor: '#fef2f2', borderRadius: 6 }}>
-            <div style={{ fontWeight: 600, marginBottom: 8, color: '#991b1b' }}>
-              ❌ Rejection Authority
-            </div>
-            <div style={{ fontSize: 13, color: '#475569' }}>
-              Apply final HR governance decisions for unsuitable cases and returned items.
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

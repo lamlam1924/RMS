@@ -56,8 +56,15 @@ const DeptManagerDashboard = () => {
         activeCandidates: statsData.activeCandidates || 0,
       });
 
-      setRecentJobRequests(jobRequests.slice(0, 5));
-      setUpcomingInterviews(interviews.slice(0, 5));
+      const sortedJobRequests = [...jobRequests].sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
+      );
+      const sortedInterviews = [...interviews].sort(
+        (a, b) => new Date(a.startTime) - new Date(b.startTime),
+      );
+
+      setRecentJobRequests(sortedJobRequests.slice(0, 5));
+      setUpcomingInterviews(sortedInterviews.slice(0, 5));
       if (errors.length > 0) {
         setLoadWarning(`${errors.join(" • ")}. Các phần còn lại vẫn được hiển thị.`);
       }
@@ -97,15 +104,40 @@ const DeptManagerDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Dashboard Trưởng Bộ Phận
-        </h1>
-        <p className="text-gray-600">
-          Quản lý yêu cầu tuyển dụng và lịch phỏng vấn của bộ phận
-        </p>
+    <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-white px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+      <div className="mb-6 rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm backdrop-blur">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Department Manager Workspace</p>
+            <h1 className="mt-1 text-2xl font-bold text-slate-900 sm:text-3xl">
+              Dashboard Trưởng Bộ Phận
+            </h1>
+            <p className="mt-1 text-sm text-slate-500">
+              Quản lý yêu cầu tuyển dụng và lịch phỏng vấn của bộ phận.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => navigate('/staff/dept-manager/job-requests/new')}
+              className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 transition hover:-translate-y-0.5 hover:bg-blue-100"
+            >
+              Tạo yêu cầu mới
+            </button>
+            <button
+              onClick={() => navigate('/staff/dept-manager/job-requests')}
+              className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 transition hover:-translate-y-0.5 hover:bg-emerald-100"
+            >
+              Quản lý yêu cầu
+            </button>
+            <button
+              onClick={() => navigate('/staff/interviews')}
+              className="rounded-lg border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-medium text-violet-700 transition hover:-translate-y-0.5 hover:bg-violet-100"
+            >
+              Lịch phỏng vấn
+            </button>
+          </div>
+        </div>
       </div>
 
       {loadWarning && (
@@ -114,7 +146,6 @@ const DeptManagerDashboard = () => {
         </div>
       )}
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
         <StatCard 
           label="Yêu cầu của tôi" 
@@ -147,42 +178,11 @@ const DeptManagerDashboard = () => {
         />
       </div>
 
-      {/* Quick Actions */}
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">
-          Thao tác nhanh
-        </h2>
-        <div className="flex flex-wrap gap-3">
-          <button
-            onClick={() => navigate('/staff/dept-manager/job-requests/new')}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg font-medium"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Tạo yêu cầu tuyển dụng
-          </button>
-          <button
-            onClick={() => navigate('/staff/dept-manager/job-requests')}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-all border border-gray-300 font-medium"
-          >
-            📋 Xem tất cả yêu cầu
-          </button>
-          <button
-            onClick={() => navigate('/staff/interviews')}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-all border border-gray-300 font-medium"
-          >
-            📅 Lịch phỏng vấn của tôi
-          </button>
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Job Requests */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="p-5 border-b border-slate-200 bg-gradient-to-r from-blue-50 to-white">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-gray-900">
+              <h2 className="text-lg font-semibold text-blue-900">
                 Yêu cầu tuyển dụng gần đây
               </h2>
               <button
@@ -195,8 +195,8 @@ const DeptManagerDashboard = () => {
           </div>
 
           {recentJobRequests.length === 0 ? (
-            <div className="p-12 text-center text-gray-500">
-              <div className="text-5xl mb-3">📋</div>
+            <div className="p-10 text-center text-gray-500">
+              <div className="text-4xl mb-3">📋</div>
               <div className="text-sm">Chưa có yêu cầu tuyển dụng</div>
               <div className="text-xs text-gray-400 mt-1">Dữ liệu sẽ hiển thị khi bộ phận tạo yêu cầu mới</div>
             </div>
@@ -206,7 +206,7 @@ const DeptManagerDashboard = () => {
                 <div
                   key={request.id}
                   onClick={() => navigate(`/staff/dept-manager/job-requests/${request.id}`)}
-                  className="p-4 hover:bg-blue-50 cursor-pointer transition-all border-l-4 border-transparent hover:border-blue-600"
+                  className="p-4 hover:bg-blue-50/60 cursor-pointer transition-all border-l-4 border-transparent hover:border-blue-600"
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="font-semibold text-gray-900 text-sm flex-1">
@@ -243,11 +243,10 @@ const DeptManagerDashboard = () => {
           )}
         </div>
 
-        {/* Upcoming Interviews */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-white">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="p-5 border-b border-slate-200 bg-gradient-to-r from-violet-50 to-white">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-gray-900">
+              <h2 className="text-lg font-semibold text-violet-900">
                 Lịch phỏng vấn sắp tới
               </h2>
               <button
@@ -260,8 +259,8 @@ const DeptManagerDashboard = () => {
           </div>
 
           {upcomingInterviews.length === 0 ? (
-            <div className="p-12 text-center text-gray-500">
-              <div className="text-5xl mb-3">📅</div>
+            <div className="p-10 text-center text-gray-500">
+              <div className="text-4xl mb-3">📅</div>
               <div className="text-sm">Chưa có lịch phỏng vấn sắp tới</div>
               <div className="text-xs text-gray-400 mt-1">Khi có lịch mới, thông tin sẽ xuất hiện tại đây</div>
             </div>
@@ -271,7 +270,7 @@ const DeptManagerDashboard = () => {
                 <div
                   key={interview.id}
                   onClick={() => navigate(`/staff/interviews/${interview.id}`)}
-                  className="p-4 hover:bg-purple-50 cursor-pointer transition-all border-l-4 border-transparent hover:border-purple-600"
+                  className="p-4 hover:bg-violet-50/60 cursor-pointer transition-all border-l-4 border-transparent hover:border-violet-600"
                 >
                   <div className="font-semibold text-gray-900 text-sm mb-2">
                     {interview.candidateName}
@@ -293,31 +292,55 @@ const DeptManagerDashboard = () => {
           )}
         </div>
       </div>
+      </div>
     </div>
   );
 };
 
 const StatCard = ({ label, value, icon, description, color, highlight }) => {
   const themes = {
-    emerald: "from-emerald-500 to-emerald-600 text-emerald-50",
-    amber: "from-amber-500 to-amber-600 text-amber-50",
-    blue: "from-blue-500 to-blue-600 text-blue-50",
-    violet: "from-violet-500 to-violet-600 text-violet-50",
+    emerald: {
+      card: "border-emerald-200 bg-gradient-to-br from-emerald-50 to-white text-emerald-900",
+      badge: "bg-emerald-100 text-emerald-700",
+      icon: "bg-emerald-100 text-emerald-700",
+    },
+    amber: {
+      card: "border-amber-200 bg-gradient-to-br from-amber-50 to-white text-amber-900",
+      badge: "bg-amber-100 text-amber-700",
+      icon: "bg-amber-100 text-amber-700",
+    },
+    blue: {
+      card: "border-blue-200 bg-gradient-to-br from-blue-50 to-white text-blue-900",
+      badge: "bg-blue-100 text-blue-700",
+      icon: "bg-blue-100 text-blue-700",
+    },
+    violet: {
+      card: "border-violet-200 bg-gradient-to-br from-violet-50 to-white text-violet-900",
+      badge: "bg-violet-100 text-violet-700",
+      icon: "bg-violet-100 text-violet-700",
+    },
   };
+
+  const theme = themes[color] || themes.blue;
   
   return (
-    <div className={`bg-gradient-to-br ${themes[color]} rounded-2xl p-6 text-white shadow-lg shadow-${color}-100/50 hover:-translate-y-1 transition-all duration-300 group relative overflow-hidden`}>
-      <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-700"></div>
-      <div className="relative z-10">
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-4xl drop-shadow-md">{icon}</span>
-          <span className="text-3xl font-black">{value}</span>
-        </div>
-        <div className="text-white text-sm font-bold tracking-tight">{label}</div>
-        <div className="text-white/70 text-[11px] mt-1 font-medium">{description}</div>
+    <div className={`rounded-2xl border p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow ${theme.card}`}>
+      <div className="flex items-center justify-between mb-4">
+        <span className={`inline-flex h-10 w-10 items-center justify-center rounded-lg text-lg ${theme.icon}`}>
+          {icon}
+        </span>
+        <span className="text-3xl font-bold tracking-tight">{value}</span>
+      </div>
+      <div>
+        <div className="text-sm font-semibold tracking-tight">{label}</div>
+        <div className="text-[11px] text-slate-600 mt-1 font-medium">{description}</div>
       </div>
       {highlight && (
-        <div className="absolute top-3 right-3 w-2 h-2 bg-white rounded-full animate-ping"></div>
+        <div className="mt-3">
+          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${theme.badge}`}>
+            Cần theo dõi
+          </span>
+        </div>
       )}
     </div>
   );

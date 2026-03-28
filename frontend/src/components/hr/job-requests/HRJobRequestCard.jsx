@@ -156,7 +156,7 @@ export default function HRJobRequestCard({ request, isSelected, onSelect, onQuic
               </button>
             )}
             {/* Assign Staff Button (APPROVED only) */}
-            {isApproved && onAssignStaff && (
+            {isApproved && onAssignStaff && !request.assignedStaffId && (
               <button
                 onClick={(e) => onAssignStaff(e, request.id)}
                 className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600 hover:bg-green-100 transition-all"
