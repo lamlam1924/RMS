@@ -75,6 +75,10 @@ public class HROffersService : IHROffersService
 
     public async Task<ActionResponseDto> SaveOfferInNegotiationAsync(int offerId, UpdateOfferDto dto, int userId)
     {
+        var startDateError = ValidateOfferStartDateNotInPast(dto.StartDate);
+        if (startDateError != null)
+            return startDateError;
+
         var success = await _repository.SaveOfferEditHistoryAsync(offerId, dto.Salary, dto.Benefits, dto.StartDate, userId);
         return ResponseHelper.CreateActionResponse(
             success,
@@ -112,6 +116,10 @@ public class HROffersService : IHROffersService
 
     public async Task<ActionResponseDto> CreateOfferAsync(CreateOfferDto dto, int userId)
     {
+        var startDateError = ValidateOfferStartDateNotInPast(dto.StartDate);
+        if (startDateError != null)
+            return startDateError;
+
         var budget = await _repository.GetJobRequestBudgetAsync(dto.JobRequestId);
         if (budget.HasValue && dto.Salary > budget.Value)
         {
@@ -127,6 +135,10 @@ public class HROffersService : IHROffersService
 
     public async Task<ActionResponseDto> UpdateOfferAsync(int offerId, UpdateOfferDto dto, int userId)
     {
+        var startDateError = ValidateOfferStartDateNotInPast(dto.StartDate);
+        if (startDateError != null)
+            return startDateError;
+
         var success = await _repository.UpdateOfferAsync(offerId, dto.Salary, dto.Benefits, dto.StartDate, userId);
         return ResponseHelper.CreateActionResponse(
             success,
@@ -158,6 +170,10 @@ public class HROffersService : IHROffersService
 
     public async Task<ActionResponseDto> UpdateOfferAfterNegotiationAsync(int offerId, UpdateOfferAfterNegotiationDto dto, int userId)
     {
+        var startDateError = ValidateOfferStartDateNotInPast(dto.StartDate);
+        if (startDateError != null)
+            return startDateError;
+
         var success = await _repository.UpdateOfferAfterNegotiationAsync(
             offerId, dto.ProposedSalary, dto.Benefits, dto.StartDate, userId);
 
@@ -281,5 +297,17 @@ public class HROffersService : IHROffersService
             : $"Đã gửi danh sách {items.Count} ứng viên đã từ chối đến HR Manager";
             
         return ResponseHelper.CreateActionResponse(true, successMessage, "");
+    }
+
+    private static ActionResponseDto? ValidateOfferStartDateNotInPast(DateOnly? startDate)
+    {
+        if (!startDate.HasValue)
+            return null;
+
+        var today = DateOnly.FromDateTime(DateTimeHelper.Now.Date);
+        if (startDate.Value < today)
+            return ResponseHelper.Error("Ngày bắt đầu không được là ngày trong quá khứ.");
+
+        return null;
     }
 }

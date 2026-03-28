@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import hrService from '../../../services/hrService';
 import { authService } from '../../../services/authService';
 import notify from '../../../utils/notification';
+import { getTodayDateInputMin, isDateStrBeforeToday } from '../../../utils/helpers/dateUtils';
 
 export default function HROfferDetail() {
   const { id } = useParams();
@@ -63,6 +64,10 @@ export default function HROfferDetail() {
       notify.error('Vui lòng nhập mức lương hợp lệ');
       return;
     }
+    if (editForm.startDate && isDateStrBeforeToday(editForm.startDate)) {
+      notify.error('Ngày bắt đầu không được là ngày trong quá khứ');
+      return;
+    }
     const payload = {
       salary,
       benefits: editForm.benefits?.trim() || null,
@@ -85,6 +90,10 @@ export default function HROfferDetail() {
     const salary = parseFloat(editForm.salary) || 0;
     if (!salary || salary <= 0) {
       notify.error('Vui lòng nhập mức lương hợp lệ');
+      return;
+    }
+    if (editForm.startDate && isDateStrBeforeToday(editForm.startDate)) {
+      notify.error('Ngày bắt đầu không được là ngày trong quá khứ');
       return;
     }
     const payload = {
@@ -413,6 +422,7 @@ export default function HROfferDetail() {
               <label style={{ display: 'block', marginBottom: 6, fontSize: 14, color: '#374151' }}>Ngày bắt đầu</label>
               <input
                 type="date"
+                min={getTodayDateInputMin()}
                 value={editForm.startDate}
                 onChange={(e) => setEditForm((f) => ({ ...f, startDate: e.target.value }))}
                 style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 6 }}

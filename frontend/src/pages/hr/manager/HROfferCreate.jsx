@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import hrService from '../../../services/hrService';
 import notify from '../../../utils/notification';
+import { getTodayDateInputMin, isDateStrBeforeToday } from '../../../utils/helpers/dateUtils';
 
 export default function HROfferCreate() {
   const navigate = useNavigate();
@@ -98,6 +99,11 @@ export default function HROfferCreate() {
     const maxInterviewSalary = selectedJobRequest?.budget ? Number(selectedJobRequest.budget) : null;
     if (maxInterviewSalary && salary > maxInterviewSalary) {
       notify.error(`Mức lương không được vượt quá mức tối đa phỏng vấn: ${maxInterviewSalary.toLocaleString('vi-VN')} VNĐ`);
+      return;
+    }
+
+    if (form.startDate && isDateStrBeforeToday(form.startDate)) {
+      notify.error('Ngày bắt đầu không được là ngày trong quá khứ');
       return;
     }
 
@@ -256,6 +262,7 @@ export default function HROfferCreate() {
           <input
             type="date"
             name="startDate"
+            min={getTodayDateInputMin()}
             value={form.startDate}
             onChange={handleChange}
             style={{

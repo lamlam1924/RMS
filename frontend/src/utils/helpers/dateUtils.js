@@ -1,3 +1,12 @@
+/** Ngày hôm nay theo giờ local, định dạng YYYY-MM-DD (cho input type="date" min). */
+export const getTodayDateInputMin = () => new Date().toLocaleDateString('en-CA');
+
+/** Chuỗi YYYY-MM-DD có nhỏ hơn hôm nay (local) không. */
+export const isDateStrBeforeToday = (yyyyMmDd) => {
+  if (!yyyyMmDd || typeof yyyyMmDd !== 'string') return false;
+  return yyyyMmDd < getTodayDateInputMin();
+};
+
 /**
  * calculateDaysPending
  * Tính số ngày đã pending từ createdAt đến hiện tại
@@ -34,5 +43,7 @@ export const isPendingUrgent = (days) => {
 export default {
   calculateDaysPending,
   getDaysPendingLabel,
-  isPendingUrgent
+  isPendingUrgent,
+  getTodayDateInputMin,
+  isDateStrBeforeToday
 };
