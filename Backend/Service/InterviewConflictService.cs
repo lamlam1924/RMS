@@ -128,7 +128,7 @@ public class InterviewConflictService : IInterviewConflictService
             ConflictStart = conflictingInterview.StartTime,
             ConflictEnd = conflictingInterview.EndTime,
             ConflictType = "CANDIDATE",
-            Severity = "WARNING" // Candidate conflict is warning, not error
+            Severity = "ERROR" // Candidate conflict is now error, block scheduling
         };
     }
 

@@ -273,7 +273,7 @@ export default function MainLayout() {
 
         <div className="flex items-center gap-3">
           {/* Notifications */}
-          <button
+          {/* <button
             className="relative p-2.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-600 dark:text-slate-300 transition-all"
             aria-label="thông báo"
             title="Thông báo"
@@ -286,7 +286,7 @@ export default function MainLayout() {
                 {notifications}
               </span>
             )}
-          </button>
+          </button> */}
 
           {/* Dark mode toggle */}
           <button

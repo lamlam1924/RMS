@@ -342,7 +342,7 @@ export default function DirectorJobRequestList() {
           )}
 
           {/* Export dropdown */}
-          <div className="relative" ref={exportRef}>
+          {/* <div className="relative" ref={exportRef}>
             <button
               onClick={() => setShowExport((v) => !v)}
               className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 text-xs font-bold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-650 transition-all shadow-sm"
@@ -366,7 +366,7 @@ export default function DirectorJobRequestList() {
                 </button>
               </div>
             )}
-          </div>
+          </div> */}
 
           {/* Refresh button */}
           <button

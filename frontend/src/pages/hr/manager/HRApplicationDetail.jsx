@@ -19,6 +19,36 @@ export default function HRApplicationDetail() {
   const [newStatusId, setNewStatusId] = useState(null);
   const [note, setNote] = useState('');
 
+  // State và logic kiểm tra interview đang diễn ra
+  const [interviews, setInterviews] = useState([]);
+  const [hasOngoingInterview, setHasOngoingInterview] = useState(false);
+  const finishedInterviewStatus = [
+    'COMPLETED', 'CANCELLED', 'NO_SHOW', 'REJECTED', 'PASSED'
+  ];
+  // Chặn tạo lịch nếu candidate đang có interview chưa kết thúc ở bất kỳ hồ sơ nào
+  useEffect(() => {
+    if (!application?.candidateId) return;
+    const fetchInterviews = async () => {
+      try {
+        // Lấy tất cả application của candidate này
+        const allApplications = await hrService.applications.getAll();
+        const candidateApps = allApplications.filter(a => a.candidateId === application.candidateId);
+        const candidateAppIds = candidateApps.map(a => a.id);
+        // Lấy tất cả interview, lọc theo các applicationId của candidate
+        const allInterviews = await hrService.interviews.getAll();
+        const candidateInterviews = allInterviews.filter(i => candidateAppIds.includes(i.applicationId));
+        setInterviews(candidateInterviews);
+        // Kiểm tra có interview nào chưa kết thúc không
+        const ongoing = candidateInterviews.some(i => !finishedInterviewStatus.includes(i.statusCode));
+        setHasOngoingInterview(ongoing);
+      } catch (e) {
+        setInterviews([]);
+        setHasOngoingInterview(false);
+      }
+    };
+    fetchInterviews();
+  }, [application?.candidateId]);
+
   // Determine current user role
   const userRoles = authService.getUserInfo()?.roles || [];
   const isHRManager = userRoles.includes('HR_MANAGER');
@@ -159,7 +189,8 @@ export default function HRApplicationDetail() {
     return status ? status.color : '#6b7280';
   };
 
-  const canScheduleInterview = application?.statusId === 10;
+  // Chỉ cho tạo lịch khi hồ sơ ở trạng thái Screening và candidate không có interview nào đang diễn ra ở bất kỳ hồ sơ nào
+  const canScheduleInterview = application?.statusId === 10 && !hasOngoingInterview;
   const hasNotifiedStaffToCreateOffer = (application?.statusHistory || []).some((history) =>
     typeof history.note === 'string' && history.note.includes('[NOTIFY_HR_STAFF_CREATE_OFFER]')
   );
@@ -600,8 +631,10 @@ export default function HRApplicationDetail() {
                 Schedule Interview
               </button>
               {!canScheduleInterview && (
-                <div style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.4 }}>
-                  Chỉ tạo lịch khi hồ sơ ở trạng thái Screening.
+                <div style={{ fontSize: 12, color: '#ef4444', lineHeight: 1.4 }}>
+                  {hasOngoingInterview
+                    ? 'Ứng viên đang trong một buổi phỏng vấn khác. Cần có kết quả (pass/fail) trước khi tạo lịch mới.'
+                    : 'Chỉ tạo lịch khi hồ sơ ở trạng thái Screening.'}
                 </div>
               )}
               {/* HR Manager: chỉ gửi thông báo cho HR Staff tạo offer */}

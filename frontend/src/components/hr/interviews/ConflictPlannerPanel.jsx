@@ -30,6 +30,17 @@ export default function ConflictPlannerPanel({ form, setForm, slotsPreview = [],
             value={form.startTime}
             onChange={(e) => setForm((c) => ({ ...c, startTime: e.target.value }))}
             required
+            min={(() => {
+              const now = new Date();
+              // Ngày mai, 08:00
+              const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 8, 0, 0);
+              const pad = (n) => n.toString().padStart(2, '0');
+              return `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}T08:00`;
+            })()}
+            max={(() => {
+              // Không giới hạn ngày, chỉ giới hạn giờ trong ngày là 17:00
+              return 'T17:00';
+            })()}
             style={{
               width: '100%',
               padding: '8px 10px',

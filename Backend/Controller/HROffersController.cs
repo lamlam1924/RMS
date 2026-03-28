@@ -342,7 +342,6 @@ public class HROffersController : ControllerBase
     /// Send list of accepted offers to HR Manager (HR Staff/Manager)
     /// </summary>
     [HttpPost("send-accepted-to-manager")]
-    [HttpPost("send-accepted-to-manager")]
     [Authorize(Roles = "HR_MANAGER,HR_STAFF")]
     public async Task<ActionResult<ActionResponseDto>> SendAcceptedOffersToManager([FromBody] SendAcceptedToManagerDto dto)
     {

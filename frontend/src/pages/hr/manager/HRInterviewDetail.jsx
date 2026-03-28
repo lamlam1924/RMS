@@ -664,7 +664,7 @@ export default function HRInterviewDetail() {
         )}
 
         {/* 4. Xử lý sự cố + Chốt vòng + Lên lịch vòng tiếp (chỉ khi vòng hoàn thành) */}
-        {activeTab === 'overview' && <InterviewRoundActionsPanel interview={interview} onUpdated={loadAll} canReviewRound={isManager} />}
+        {/* {activeTab === 'overview' && <InterviewRoundActionsPanel interview={interview} onUpdated={loadAll} canReviewRound={isManager} />} */}
 
         {/* Sticky actions */}
         {(canFinalize || canCancel) && !isLocked && (

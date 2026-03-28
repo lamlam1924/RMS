@@ -341,7 +341,7 @@ export default function HRInterviewList() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <button
+            {/* <button
               type="button"
               onClick={() =>
                 navigate("/staff/hr-manager/interviews/batch-request")
@@ -358,7 +358,7 @@ export default function HRInterviewList() {
               className="rounded-lg border border-emerald-600 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"
             >
               Lên lịch vòng tiếp
-            </button>
+            </button> */}
             <button
               type="button"
               onClick={() => navigate("/staff/hr-manager/interviews/create")}

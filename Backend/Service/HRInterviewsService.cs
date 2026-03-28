@@ -55,32 +55,45 @@ public class HRInterviewsService : IHRInterviewsService
                 return ResponseHelper.CreateActionResponse(false, "", "Bạn chỉ được tạo phỏng vấn cho đơn ứng tuyển thuộc job được gán cho bạn.");
         }
 
-        var (interviewId, conflictWarning) = await _repository.CreateInterviewAsync(dto, userId);
-
-        if (interviewId <= 0)
-            return ResponseHelper.CreateActionResponse(false, "", "Tạo interview thất bại");
-
-        // Send emails asynchronously (don't wait)
-        _ = Task.Run(async () =>
+        try
         {
-            try
-            {
-                await SendInterviewEmailsAsync(interviewId, dto);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to send interview emails for interview {InterviewId}", interviewId);
-            }
-        });
+            var (interviewId, conflictWarning) = await _repository.CreateInterviewAsync(dto, userId);
 
-        return new ActionResponseDto
+            if (interviewId <= 0)
+                return ResponseHelper.CreateActionResponse(false, "", "Tạo interview thất bại");
+
+            // Send emails asynchronously (don't wait)
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await SendInterviewEmailsAsync(interviewId, dto);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send interview emails for interview {InterviewId}", interviewId);
+                }
+            });
+
+            return new ActionResponseDto
+            {
+                Success = true,
+                Message = conflictWarning != null
+                    ? $"Interview đã tạo và email đang được gửi (Cảnh báo: {conflictWarning})"
+                    : "Interview đã tạo thành công và email đang được gửi",
+                Data = new { Id = interviewId, ConflictWarning = conflictWarning }
+            };
+        }
+        catch (InvalidOperationException ex)
         {
-            Success = true,
-            Message = conflictWarning != null
-                ? $"Interview đã tạo và email đang được gửi (Cảnh báo: {conflictWarning})"
-                : "Interview đã tạo thành công và email đang được gửi",
-            Data = new { Id = interviewId, ConflictWarning = conflictWarning }
-        };
+            // Conflict business error (ví dụ: candidate đang có interview chưa kết thúc)
+            return ResponseHelper.CreateActionResponse(false, "", ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi không xác định khi tạo interview");
+            return ResponseHelper.CreateActionResponse(false, "", "Đã xảy ra lỗi hệ thống khi tạo interview");
+        }
     }
 
     private async Task SendInterviewEmailsAsync(int interviewId, CreateInterviewDto dto)
