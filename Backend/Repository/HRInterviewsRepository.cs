@@ -543,12 +543,15 @@ public class HRInterviewsRepository : IHRInterviewsRepository
     {
         var hasDecline = !string.IsNullOrWhiteSpace(i.CandidateDeclineNote)
             || (i.InterviewParticipants != null && i.InterviewParticipants.Any(p => p.DeclinedAt.HasValue));
+        var candidateEmail = i.Application.Cvprofile.Candidate.Email;
+        System.Diagnostics.Debug.WriteLine($"[Interview {i.Id}] CandidateEmail: {candidateEmail}");
         return new InterviewListDto
         {
             Id = i.Id,
             ApplicationId = i.ApplicationId,
             RoundNo = i.RoundNo,
             CandidateName = i.Application.Cvprofile.Candidate.FullName,
+            CandidateEmail = candidateEmail,
             PositionId = i.Application.JobRequest.Position.Id,
             PositionTitle = i.Application.JobRequest.Position.Title,
             DepartmentName = i.Application.JobRequest.Position.Department.Name,
@@ -575,6 +578,7 @@ public class HRInterviewsRepository : IHRInterviewsRepository
             ApplicationId    = list.ApplicationId,
             RoundNo          = list.RoundNo,
             CandidateName    = list.CandidateName,
+            CandidateEmail   = list.CandidateEmail, // Fix: truyền CandidateEmail
             PositionTitle    = list.PositionTitle,
             DepartmentName   = list.DepartmentName,
             StartTime        = list.StartTime,

@@ -237,6 +237,9 @@ public class HRInterviewsService : IHRInterviewsService
                 "Chỉ được gửi yêu cầu xác nhận cho ứng viên khi tất cả người phỏng vấn đã xác nhận tham gia.");
         }
 
+        if (string.IsNullOrWhiteSpace(interview.CandidateEmail))
+            return ResponseHelper.CreateActionResponse(false, "", "Không tìm thấy email của ứng viên. Vui lòng bổ sung email cho ứng viên trước khi gửi.");
+
         var sent = await SendCandidateConfirmationRequestsCoreAsync(new[] { interviewId }, userId);
         return ResponseHelper.CreateActionResponse(
             sent > 0,
@@ -332,11 +335,16 @@ public class HRInterviewsService : IHRInterviewsService
                 _logger.LogWarning("Skip candidate invitation for interview {Id} because not all interviewers confirmed.", interviewId);
                 continue;
             }
+            if (string.IsNullOrWhiteSpace(interview.CandidateEmail))
+            {
+                _logger.LogError("Candidate email is missing for interview {InterviewId}", interviewId);
+                continue;
+            }
             try
             {
                 var invitationData = new InterviewInvitationEmailData
                 {
-                    CandidateEmail = interview.CandidateEmail ?? "candidate@example.com",
+                    CandidateEmail = interview.CandidateEmail,
                     CandidateName = interview.CandidateName,
                     PositionTitle = interview.PositionTitle,
                     RoundNo = interview.RoundNo,
@@ -361,7 +369,6 @@ public class HRInterviewsService : IHRInterviewsService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to send candidate confirmation request for interview {InterviewId}", interviewId);
-                throw;
             }
         }
         return sent;
@@ -401,27 +408,22 @@ public class HRInterviewsService : IHRInterviewsService
             sb.Append("<thead><tr style=\"background: #f1f5f9;\">");
             sb.Append("<th style=\"text-align: left; border: 1px solid #e2e8f0;\">Ứng viên</th>");
             sb.Append("<th style=\"text-align: left; border: 1px solid #e2e8f0;\">Vị trí</th>");
-            sb.Append("<th style=\"text-align: left; border: 1px solid #e2e8f0;\">Vòng</th>");
             sb.Append("<th style=\"text-align: left; border: 1px solid #e2e8f0;\">Thời gian</th>");
-            sb.Append("<th style=\"text-align: left; border: 1px solid #e2e8f0;\">Thao tác</th>");
+            sb.Append("<th style=\"text-align: left; border: 1px solid #e2e8f0;\">Địa điểm/Link</th>");
             sb.Append("</tr></thead><tbody>");
 
             foreach (var (id, inv) in assignments)
             {
                 var dateStr = inv.StartTime.ToString("dd/MM/yyyy HH:mm", culture);
-                var confirmLink = $"{baseUrl}/staff/employee/interviews/{id}/confirm";
-                var declineLink = $"{baseUrl}/staff/employee/interviews/{id}/decline";
-                var detailLink = $"{baseUrl}/staff/employee/interviews/{id}";
+                var locationOrLink = !string.IsNullOrWhiteSpace(inv.MeetingLink)
+                    ? $"<a href=\"{System.Net.WebUtility.HtmlEncode(inv.MeetingLink)}\" style=\"color: #2563eb;\">{System.Net.WebUtility.HtmlEncode(inv.MeetingLink)}</a>"
+                    : System.Net.WebUtility.HtmlEncode(inv.Location ?? "");
                 sb.Append("<tr>");
                 sb.Append($"<td style=\"border: 1px solid #e2e8f0;\">{System.Net.WebUtility.HtmlEncode(inv.CandidateName)}</td>");
                 sb.Append($"<td style=\"border: 1px solid #e2e8f0;\">{System.Net.WebUtility.HtmlEncode(inv.PositionTitle)}</td>");
-                sb.Append($"<td style=\"border: 1px solid #e2e8f0;\">Vòng {inv.RoundNo}</td>");
                 sb.Append($"<td style=\"border: 1px solid #e2e8f0;\">{dateStr}</td>");
-                sb.Append("<td style=\"border: 1px solid #e2e8f0;\">");
-                sb.Append($"<a href=\"{confirmLink}\" style=\"color: #16a34a; margin-right: 8px;\">Xác nhận</a> ");
-                sb.Append($"<a href=\"{declineLink}\" style=\"color: #dc2626; margin-right: 8px;\">Từ chối</a> ");
-                sb.Append($"<a href=\"{detailLink}\" style=\"color: #667eea;\">Chi tiết</a>");
-                sb.Append("</td></tr>");
+                sb.Append($"<td style=\"border: 1px solid #e2e8f0;\">{locationOrLink}</td>");
+                sb.Append("</tr>");
             }
             sb.Append("</tbody></table>");
 
@@ -440,7 +442,7 @@ public class HRInterviewsService : IHRInterviewsService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to send interviewer bulk to {Email}", email);
-                throw;
+                // Không throw ra ngoài, chỉ log lỗi để không làm treo API
             }
         }
     }

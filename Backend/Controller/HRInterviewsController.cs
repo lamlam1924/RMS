@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using RMS.Common;
 using RMS.Dto.Common;
 using RMS.Dto.HR;
@@ -18,19 +19,22 @@ public class HRInterviewsController : ControllerBase
     private readonly IInterviewConflictService _conflictService;
     private readonly IInterviewNoShowService _noShowService;
     private readonly IInterviewMultiRoundService _multiRoundService;
+    private readonly ILogger<HRInterviewsController> _logger;
 
     public HRInterviewsController(
         IHRInterviewsService service,
         IParticipantRequestService requestService,
         IInterviewConflictService conflictService,
         IInterviewNoShowService noShowService,
-        IInterviewMultiRoundService multiRoundService)
+        IInterviewMultiRoundService multiRoundService,
+        ILogger<HRInterviewsController> logger)
     {
         _service = service;
         _requestService = requestService;
         _conflictService = conflictService;
         _noShowService = noShowService;
         _multiRoundService = multiRoundService;
+        _logger = logger;
     }
 
     /// <summary>HR Manager: toàn bộ. HR Staff: chỉ interview thuộc job được gán.</summary>
@@ -211,6 +215,7 @@ public class HRInterviewsController : ControllerBase
         if (err != null) return err;
         var userId = CurrentUserHelper.GetCurrentUserId(this);
         var scope = GetScopeByStaffId(User, userId);
+        _logger.LogInformation("[SendInvitation] Received request for interviewId={InterviewId}, userId={UserId}", id, userId);
         var result = await _service.SendInvitationAsync(id, dto, scope);
         return result.Success ? Ok(result) : BadRequest(result);
     }

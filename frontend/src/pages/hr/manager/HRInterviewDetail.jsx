@@ -187,7 +187,9 @@ export default function HRInterviewDetail() {
   const [deptManagers, setDeptManagers] = useState([]);
   const [directors, setDirectors] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState(false); // cho các modal và thao tác khác
+  const [submittingInvitation, setSubmittingInvitation] = useState(false); // chỉ cho gửi thông báo interviewer
+  const [submittingCandidateConfirmation, setSubmittingCandidateConfirmation] = useState(false); // chỉ cho gửi xác nhận ứng viên
 
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showForwardModal, setShowForwardModal] = useState(false);
@@ -207,6 +209,7 @@ export default function HRInterviewDetail() {
   const [sendInvitationType, setSendInvitationType] = useState('online');
   const [sendInvitationLink, setSendInvitationLink] = useState('');
   const [sendInvitationLocation, setSendInvitationLocation] = useState('');
+  const [invitationSent, setInvitationSent] = useState(false);
   const [activeTab, setActiveTab] = useState('overview'); // overview | coordination | feedback | history
 
   const activeIdx = useMemo(() => {
@@ -357,13 +360,14 @@ export default function HRInterviewDetail() {
 
   const handleSendInvitation = async () => {
     const body = sendInvitationType === 'online' ? { meetingLink: sendInvitationLink || undefined } : { location: sendInvitationLocation || undefined };
-    setSubmitting(true);
+    setSubmittingInvitation(true);
     try {
       await hrService.interviews.sendInvitation(id, body);
       notify.success('Đã gửi thông báo cho người phỏng vấn');
+      setInvitationSent(true);
       await loadAll();
     } catch (err) { notify.error(err.message || 'Gửi thông báo thất bại'); }
-    finally { setSubmitting(false); }
+    finally { setSubmittingInvitation(false); }
   };
 
   const hasParticipantDeclines = interview?.participants?.some((p) => p.declinedAt);
@@ -403,8 +407,10 @@ export default function HRInterviewDetail() {
   const badge = getStatusBadge(interview.statusCode);
   const requiredInterviewerSlots = getRequiredInterviewerConfirmCount(participantRequests, interview.participants);
   const confirmedInterviewerSlots = getConfirmedInterviewerCount(interview.participants);
+  // Chỉ hiện nút gửi xác nhận cho ứng viên khi đủ interviewer xác nhận và đã có địa chỉ hoặc link
+  const hasLocationOrLink = !!(sendInvitationType === 'online' ? sendInvitationLink?.trim() : sendInvitationLocation?.trim());
   const canSendCandidateConfirmation =
-    requiredInterviewerSlots > 0 && confirmedInterviewerSlots >= requiredInterviewerSlots;
+    requiredInterviewerSlots > 0 && confirmedInterviewerSlots >= requiredInterviewerSlots && hasLocationOrLink;
   const isParticipant = interview.participants?.some(p => p.userId === currentUserId);
   const myParticipant = interview.participants?.find(p => p.userId === currentUserId);
   const myConfirmedParticipation = !!(myParticipant?.confirmedAt && !myParticipant?.declinedAt);
@@ -581,47 +587,55 @@ export default function HRInterviewDetail() {
                 </div>
               )}
             </div>
+            {/* Gửi thông báo cho người phỏng vấn: Luôn hiển thị nếu chưa khóa vòng */}
             {!isLocked && (
-              <div className="space-y-4">
-                <div>
-                  <h4 className="mb-2 text-sm font-semibold text-slate-700">Gửi thông báo cho người phỏng vấn</h4>
-                  <p className="mb-3 text-xs text-slate-500">Sau khi chọn Online (link) hoặc Offline (địa điểm), gửi thông báo chỉ cho interviewer để họ xác nhận tham gia. Ứng viên chưa nhận email ở bước này.</p>
-                  <SendInvitationForm
-                    type={sendInvitationType} setType={setSendInvitationType}
-                    link={sendInvitationLink} setLink={setSendInvitationLink}
-                    location={sendInvitationLocation} setLocation={setSendInvitationLocation}
-                    onSubmit={handleSendInvitation} submitting={submitting}
-                  />
-                </div>
+              <div className="mb-6">
+                <h4 className="mb-2 text-sm font-semibold text-slate-700">Gửi thông báo cho người phỏng vấn</h4>
+                <p className="mb-3 text-xs text-slate-500">Sau khi chọn Online (link) hoặc Offline (địa điểm), gửi thông báo chỉ cho interviewer để họ xác nhận tham gia. Ứng viên chưa nhận email ở bước này.</p>
+                <SendInvitationForm
+                  type={sendInvitationType} setType={setSendInvitationType}
+                  link={sendInvitationLink} setLink={setSendInvitationLink}
+                  location={sendInvitationLocation} setLocation={setSendInvitationLocation}
+                  onSubmit={handleSendInvitation} submitting={submittingInvitation}
+                />
+              </div>
+            )}
+
+            {/* Gửi yêu cầu xác nhận cho ứng viên: Chỉ phụ thuộc đủ interviewer xác nhận */}
+            {!isLocked && (
+              <div>
                 {canSendCandidateConfirmation ? (
                   <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-                    <h4 className="mb-1 text-sm font-semibold text-emerald-800">Gửi yêu cầu xác nhận tham gia cho ứng viên</h4>
+                    <h4 className="mb-1 text-sm font-semibold text-emerald-800">Gửi yêu cầu xác nhận cho ứng viên</h4>
                     <p className="mb-2.5 text-xs text-emerald-700">
-                      Đã đủ {confirmedInterviewerSlots}/{requiredInterviewerSlots} người phỏng vấn xác nhận tham gia (chỉ tính người đã chấp nhận). Ứng viên sẽ thấy buổi trong &quot;Phỏng vấn của tôi&quot; và nhận email nhắc xác nhận.
+                      {`Đã đủ ${confirmedInterviewerSlots}/${requiredInterviewerSlots} người phỏng vấn xác nhận tham gia. Ứng viên sẽ thấy buổi này trong "Phỏng vấn của tôi" và nhận email xác nhận.`}
                     </p>
                     <button
                       type="button"
                       onClick={async () => {
-                        setSubmitting(true);
+                        setSubmittingCandidateConfirmation(true);
                         try {
                           await hrService.interviews.sendCandidateConfirmation(id);
-                          notify.success('Đã gửi yêu cầu xác nhận tham gia cho ứng viên');
+                          notify.success('Đã gửi yêu cầu xác nhận cho ứng viên');
                           await loadAll();
                         } catch (err) {
-                          notify.error(err?.message || 'Gửi thất bại');
+                          // Hiển thị rõ message lỗi trả về từ backend
+                          let msg = err?.message;
+                          if (err?.response?.data?.message) msg = err.response.data.message;
+                          notify.error(msg || 'Gửi thất bại');
                         } finally {
-                          setSubmitting(false);
+                          setSubmittingCandidateConfirmation(false);
                         }
                       }}
-                      disabled={submitting}
+                      disabled={submittingCandidateConfirmation}
                       className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
                     >
-                      {submitting ? 'Đang gửi...' : 'Gửi yêu cầu xác nhận cho ứng viên'}
+                      {submittingCandidateConfirmation ? 'Đang gửi...' : 'Gửi yêu cầu xác nhận cho ứng viên'}
                     </button>
                   </div>
                 ) : (
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                    <h4 className="mb-1 text-sm font-semibold text-slate-700">Gửi yêu cầu xác nhận tham gia cho ứng viên</h4>
+                    <h4 className="mb-1 text-sm font-semibold text-slate-700">Gửi yêu cầu xác nhận cho ứng viên</h4>
                     <p className="text-xs text-slate-500">
                       {requiredInterviewerSlots <= 0
                         ? 'Cần có người tham gia phỏng vấn (hoặc yêu cầu đề cử) để xác định số lượng cần xác nhận trước khi gửi cho ứng viên.'
