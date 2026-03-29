@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 // =========================================================
 // ĐẶT THÔNG TIN TÀI KHOẢN CANDIDATE THẬT VÀO ĐÂY
-const CANDIDATE_EMAIL = 'de180616huynhngocson@gmail.com';
+const CANDIDATE_EMAIL = 'lamltde180684@fpt.edu.vn';
 const CANDIDATE_PASSWORD = '123456';
 const SAMPLE_CV_PATH = fileURLToPath(new URL('./fixtures/sample-cv.pdf', import.meta.url));
 // =========================================================

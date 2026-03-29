@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 // =========================================================
 // ĐẶT THÔNG TIN TÀI KHOẢN TEST THẬT VÀO ĐÂY
-const VALID_EMAIL = 'de180616huynhngocson@gmail.com';    // <-- Thay thành email thật
+const VALID_EMAIL = 'lamltde180684@fpt.edu.vn';    // <-- Thay thành email thật
 const VALID_PASSWORD = '123456';       // <-- Thay thành mật khẩu thật
 const WRONG_PASSWORD = 'SaiMatKhauNay!999';
 // =========================================================
