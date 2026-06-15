@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "deploy": "gh-pages -d dist",
     "test:e2e": "cross-env PW_SLOWMO=1200 playwright test tests/e2e/auth.spec.js tests/e2e/candidate.spec.js --project=chromium --workers=1 --reporter=line --headed",
     "test:e2e:auth-candidate": "playwright test tests/e2e/auth.spec.js tests/e2e/candidate.spec.js --project=chromium --workers=1 --reporter=line",
     "test:e2e:ui": "cross-env PW_SLOWMO=1500 playwright test tests/e2e/auth.spec.js tests/e2e/candidate.spec.js --project=chromium --workers=1 --ui"
@@ -26,6 +27,7 @@
     "@playwright/test": "^1.58.2",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.24",
+    "gh-pages": "^6.3.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
     "vite": "^5.4.2"

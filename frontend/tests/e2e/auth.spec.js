@@ -11,7 +11,7 @@ test.describe('Authentication Tests', () => {
   test('1 màn login: sai mật khẩu -> thiếu input -> đúng mật khẩu -> logout', async ({ page }) => {
     test.setTimeout(120000);
 
-    await page.goto('/login');
+    await page.goto('/login');P
 
     // 1) Sai mật khẩu
     await page.fill('#email', VALID_EMAIL);

@@ -10,6 +10,9 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+
+    base: "/RMS/",
+
     server: {
       port: 5173,
       proxy: {
